@@ -1,0 +1,21 @@
+# Build output
+/amd/build/
+node_modules/
+vendor/
+
+# Dependency lockfiles are kept; build artifacts are not.
+
+# Local config / env
+.env
+.env.local
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Test / coverage artifacts
+/coverage/
+.phpunit.result.cache
