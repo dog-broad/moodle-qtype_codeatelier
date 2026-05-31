@@ -1,0 +1,51 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template qtype_codeatelier/spike_control
+
+    Renders the CodeAtelier question text and the result control used to validate
+    the grading round-trip.
+
+    Context variables required for this template:
+    * questiontext string - the rendered question text (already safe HTML)
+    * prompt string - the group prompt shown in the fieldset legend
+    * options array - the selectable results, each with:
+        * name string - the form field name shared by the radio group
+        * id string - the unique input id
+        * value string - the submitted fraction in [0, 1]
+        * label string - the visible label
+        * checked bool - whether this option is currently selected
+        * readonly bool - whether the control is disabled (review)
+    * hasvalidationerror bool - whether to show the validation message
+    * validationerror string - the validation message
+}}
+<div class="qtype_codeatelier qtype_codeatelier_spike">
+    <div class="qtext">{{{questiontext}}}</div>
+    <fieldset class="ablock">
+        <legend class="prompt h6 font-weight-normal">{{prompt}}</legend>
+        {{#options}}
+        <div class="form-check">
+            <input class="form-check-input" type="radio" name="{{name}}" id="{{id}}" value="{{value}}"
+                {{#checked}}checked="checked"{{/checked}} {{#readonly}}disabled="disabled"{{/readonly}}>
+            <label class="form-check-label" for="{{id}}">{{label}}</label>
+        </div>
+        {{/options}}
+    </fieldset>
+    {{#hasvalidationerror}}
+    <div class="validationerror">{{validationerror}}</div>
+    {{/hasvalidationerror}}
+</div>
