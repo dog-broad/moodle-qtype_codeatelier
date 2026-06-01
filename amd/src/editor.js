@@ -24,6 +24,7 @@
  */
 
 import {EditorView, basicSetup} from 'codemirror';
+import {EditorState} from '@codemirror/state';
 import {python} from '@codemirror/lang-python';
 import {sql} from '@codemirror/lang-sql';
 import {javascript} from '@codemirror/lang-javascript';
@@ -48,26 +49,48 @@ const languageExtension = (language) => {
 };
 
 /**
- * Mount a CodeMirror 6 editor inside the given container.
+ * Enhance a textarea with a CodeMirror 6 editor.
  *
- * @param {String} elementid the id of the container element
- * @param {String} initialcode the starting source shown in the editor
+ * The textarea remains the form field: edits are mirrored back into it so the
+ * student's code is submitted and persisted. The textarea is hidden visually.
+ *
+ * @param {HTMLTextAreaElement} textarea the backing form field
  * @param {String} language the syntax-highlighting language
+ * @param {Object} options optional {readonly: bool, onChange: function}
+ * @return {Object} {getValue} accessor for the current source
  */
-export const init = (elementid, initialcode, language) => {
-    const parent = document.getElementById(elementid);
-    if (!parent) {
-        return;
-    }
+export const create = (textarea, language, options) => {
+    const opts = options || {};
     const extensions = [basicSetup];
+
     const langext = languageExtension(language);
     if (langext) {
         extensions.push(langext);
     }
-    // eslint-disable-next-line no-new
-    new EditorView({
-        doc: initialcode,
-        extensions,
-        parent,
+
+    if (opts.readonly) {
+        extensions.push(EditorView.editable.of(false));
+        extensions.push(EditorState.readOnly.of(true));
+    } else {
+        extensions.push(EditorView.updateListener.of((update) => {
+            if (update.docChanged) {
+                textarea.value = update.state.doc.toString();
+                if (typeof opts.onChange === 'function') {
+                    opts.onChange();
+                }
+            }
+        }));
+    }
+
+    const view = new EditorView({
+        doc: textarea.value,
+        extensions: extensions,
+        parent: textarea.parentNode,
     });
+
+    textarea.style.display = 'none';
+
+    return {
+        getValue: () => view.state.doc.toString(),
+    };
 };

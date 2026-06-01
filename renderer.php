@@ -27,6 +27,12 @@ defined('MOODLE_INTERNAL') || die();
 /**
  * Generates the output for CodeAtelier questions.
  *
+ * Renders the code editor, a run/check control, and a results area. The student
+ * writes code (the 'answer' field); the browser runs and grades it client-side
+ * and writes the fraction into the hidden 'score' field. The practice tier ships
+ * the test cases to the browser, so it is for practice only — never secure
+ * grading (see the integrity boundary).
+ *
  * @copyright  2026 CodeAtelier
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -34,52 +40,69 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
     public function formulation_and_controls(question_attempt $qa,
             question_display_options $options) {
-
         global $PAGE;
 
         $question = $qa->get_question();
-        $inputname = $qa->get_qt_field_name('score');
-        $current = $qa->get_last_qt_var('score', '');
-
-        $editorid = $inputname . '_editor';
-
-        // Lazy-load CodeMirror 6 as an AMD module through Moodle's own JavaScript
-        // loader (no external CDN). The editor is bundled to a single minified AMD
-        // module by the plugin's build step, so Moodle's requirejs serves it like
-        // any core module. The question's authored language selects the syntax mode.
         $language = !empty($question->language) ? $question->language : 'python';
-        $PAGE->requires->js_call_amd('qtype_codeatelier/editor', 'init',
-                [$editorid, $this->starter_code($language), $language]);
 
-        $choices = array('1', '0.5', '0');
-        $labels = array(
-            '1' => get_string('optionaccepted', 'qtype_codeatelier'),
-            '0.5' => get_string('optionpartial', 'qtype_codeatelier'),
-            '0' => get_string('optionwrong', 'qtype_codeatelier'),
-        );
+        $answername = $qa->get_qt_field_name('answer');
+        $scorename = $qa->get_qt_field_name('score');
+        $wrapperid = $answername . '_wrapper';
 
-        $optionsdata = array();
-        foreach ($choices as $i => $value) {
-            $optionsdata[] = array(
-                'name' => $inputname,
-                'id' => $inputname . '_' . $i,
-                'value' => $value,
-                'label' => $labels[$value],
-                'checked' => ((string) $current === $value),
-                'readonly' => $options->readonly,
+        $currentcode = $qa->get_last_qt_var('answer', '');
+        if ($currentcode === '') {
+            $currentcode = $this->starter_code($language);
+        }
+        $currentscore = $qa->get_last_qt_var('score', '');
+
+        // Ship the test cases to the browser grader. This is the practice tier:
+        // hidden tests are only "polite-hidden" because the client must grade.
+        $tests = array();
+        foreach ($question->tests as $test) {
+            $tests[] = array(
+                'input' => $test->input,
+                'expected' => $test->expected,
+                'matchmode' => $test->matchmode,
+                'tolerance' => $test->tolerance,
+                'weight' => $test->weight,
+                'visibility' => (int) $test->visibility,
             );
         }
 
         $context = array(
             'questiontext' => $question->format_questiontext($qa),
-            'prompt' => get_string('spikeprompt', 'qtype_codeatelier'),
-            'editorid' => $editorid,
-            'options' => $optionsdata,
+            'wrapperid' => $wrapperid,
+            'answername' => $answername,
+            'answerid' => $answername,
+            'answervalue' => $currentcode,
+            'answerlabel' => get_string('answerlabel', 'qtype_codeatelier'),
+            'scorename' => $scorename,
+            'scorevalue' => $currentscore,
+            'runlabel' => get_string('runlabel', 'qtype_codeatelier'),
+            'practicenote' => get_string('practicenote', 'qtype_codeatelier'),
+            'readonly' => $options->readonly,
             'hasvalidationerror' => $qa->get_state() == question_state::$invalid,
-            'validationerror' => $question->get_validation_error(array('score' => $current)),
+            'validationerror' => $question->get_validation_error(array('score' => $currentscore)),
         );
 
-        return $this->render_from_template('qtype_codeatelier/spike_control', $context);
+        $PAGE->requires->js_call_amd('qtype_codeatelier/control', 'init', array(array(
+            'wrapperid' => $wrapperid,
+            'language' => $language,
+            'tests' => $tests,
+            'timeoutms' => 5000,
+            'readonly' => (bool) $options->readonly,
+            'strings' => array(
+                'running' => get_string('running', 'qtype_codeatelier'),
+                'runerror' => get_string('runerror', 'qtype_codeatelier'),
+                'pass' => get_string('result_pass', 'qtype_codeatelier'),
+                'fail' => get_string('result_fail', 'qtype_codeatelier'),
+                'test' => get_string('result_test', 'qtype_codeatelier'),
+                'hidden' => get_string('result_hidden', 'qtype_codeatelier'),
+                'score' => get_string('result_score', 'qtype_codeatelier'),
+            ),
+        )));
+
+        return $this->render_from_template('qtype_codeatelier/editor_control', $context);
     }
 
     /**

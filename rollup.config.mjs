@@ -26,6 +26,14 @@ export default [
         plugins: [nodeResolve(), terser()],
     },
     {
+        // The controller depends on the other plugin modules as AMD modules
+        // (kept external so CodeMirror is not duplicated into this bundle).
+        input: 'amd/src/control.js',
+        external: (id) => id.startsWith('qtype_codeatelier/'),
+        output: {file: 'amd/build/control.min.js', format: 'amd', sourcemap: false},
+        plugins: [nodeResolve(), terser()],
+    },
+    {
         input: 'amd/src/worker.js',
         output: {file: 'amd/build/worker.min.js', format: 'iife', sourcemap: false},
         plugins: [nodeResolve(), terser()],

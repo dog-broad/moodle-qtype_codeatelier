@@ -25,19 +25,25 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['pluginname'] = 'CodeAtelier';
-$string['pluginname_help'] = 'A code question that runs and grades student code. This early build records a client-supplied result through the quiz engine to validate the grading round-trip.';
+$string['pluginname_help'] = 'A code question where students write code in an in-browser editor, run it against your test cases, and get instant feedback. Practice-tier grading runs in the browser and is for formative practice, not secure assessment.';
 $string['pluginnamesummary'] = 'A code question for writing, running, and grading student code inside the quiz engine.';
 $string['pluginnameadding'] = 'Adding a CodeAtelier question';
 $string['pluginnameediting'] = 'Editing a CodeAtelier question';
 
 $string['privacy:metadata'] = 'The CodeAtelier question type does not store any personal data; submitted responses are held by the Moodle question engine.';
 
-$string['spikeprompt'] = 'Select the result your code produced. This stands in for the in-browser run while the grading round-trip is being validated.';
-$string['optionaccepted'] = 'Accepted — full marks (100%)';
-$string['optionpartial'] = 'Partial — half marks (50%)';
-$string['optionwrong'] = 'Wrong answer — no marks (0%)';
-$string['summariseresponse'] = 'Recorded result: {$a}%';
-$string['pleaserun'] = 'Please select a result before submitting.';
+// Student attempt UI.
+$string['answerlabel'] = 'Your code';
+$string['runlabel'] = 'Run / Check';
+$string['practicenote'] = 'Your code runs in your browser for instant practice feedback. This is not a secure exam mode.';
+$string['running'] = 'Running…';
+$string['runerror'] = 'Your code could not be run';
+$string['result_score'] = 'Score';
+$string['result_test'] = 'Test';
+$string['result_hidden'] = 'Hidden test';
+$string['result_pass'] = 'passed';
+$string['result_fail'] = 'failed';
+$string['pleaserun'] = 'Please run your code before submitting.';
 
 // Authoring: language.
 $string['language'] = 'Language';

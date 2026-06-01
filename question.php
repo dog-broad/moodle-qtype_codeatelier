@@ -29,10 +29,13 @@ require_once($CFG->dirroot . '/question/type/questionbase.php');
 /**
  * Represents a CodeAtelier question at runtime.
  *
- * The result is computed on the client and submitted as the 'score' response
- * variable (a fraction in [0, 1]). grade_response() clamps and returns it. The
- * score is part of the stored response, so a later regrade reads the same value
- * and returns the same fraction (the grade is idempotent under regrade).
+ * The student writes code (the 'answer' response variable). In the practice tier
+ * the browser runs that code against the question's test cases, grades it with
+ * the declarative matching spec, and submits the resulting fraction as the
+ * 'score' response variable. grade_response() returns that score (clamped).
+ * Because the score is stored with the response, a regrade re-reads the same
+ * value and returns the same fraction (idempotent). This client-side grade is
+ * for practice only — see the integrity boundary; real grading is the judge tier.
  *
  * @copyright  2026 CodeAtelier
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -46,14 +49,16 @@ class qtype_codeatelier_question extends question_graded_automatically {
     public $tests = array();
 
     public function get_expected_data() {
-        return array('score' => PARAM_RAW_TRIMMED);
+        return array('answer' => PARAM_RAW, 'score' => PARAM_RAW_TRIMMED);
     }
 
     public function get_correct_response() {
-        return array('score' => '1');
+        // There is no single canonical solution to display.
+        return null;
     }
 
     public function is_complete_response(array $response) {
+        // The student must run their code (which sets the score) to submit.
         return array_key_exists('score', $response) && $response['score'] !== ''
                 && is_numeric($response['score']);
     }
@@ -71,16 +76,16 @@ class qtype_codeatelier_question extends question_graded_automatically {
 
     public function is_same_response(array $prevresponse, array $newresponse) {
         return question_utils::arrays_same_at_key_missing_is_blank(
-                $prevresponse, $newresponse, 'score');
+                        $prevresponse, $newresponse, 'answer')
+                && question_utils::arrays_same_at_key_missing_is_blank(
+                        $prevresponse, $newresponse, 'score');
     }
 
     public function summarise_response(array $response) {
-        if (!array_key_exists('score', $response) || $response['score'] === ''
-                || !is_numeric($response['score'])) {
+        if (!array_key_exists('answer', $response) || trim($response['answer']) === '') {
             return null;
         }
-        return get_string('summariseresponse', 'qtype_codeatelier',
-                format_float((float) $response['score'] * 100, 1));
+        return shorten_text(trim($response['answer']), 200);
     }
 
     public function grade_response(array $response) {
