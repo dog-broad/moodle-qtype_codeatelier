@@ -25,22 +25,49 @@
 
 import {EditorView, basicSetup} from 'codemirror';
 import {python} from '@codemirror/lang-python';
+import {sql} from '@codemirror/lang-sql';
+import {javascript} from '@codemirror/lang-javascript';
+
+/**
+ * Resolve the CodeMirror language extension for a CodeAtelier language code.
+ *
+ * @param {String} language python, sql or javascript
+ * @return {Object|null} the language extension, or null for plain text
+ */
+const languageExtension = (language) => {
+    switch (language) {
+        case 'sql':
+            return sql();
+        case 'javascript':
+            return javascript();
+        case 'python':
+            return python();
+        default:
+            return null;
+    }
+};
 
 /**
  * Mount a CodeMirror 6 editor inside the given container.
  *
  * @param {String} elementid the id of the container element
  * @param {String} initialcode the starting source shown in the editor
+ * @param {String} language the syntax-highlighting language
  */
-export const init = (elementid, initialcode) => {
+export const init = (elementid, initialcode, language) => {
     const parent = document.getElementById(elementid);
     if (!parent) {
         return;
     }
+    const extensions = [basicSetup];
+    const langext = languageExtension(language);
+    if (langext) {
+        extensions.push(langext);
+    }
     // eslint-disable-next-line no-new
     new EditorView({
         doc: initialcode,
-        extensions: [basicSetup, python()],
+        extensions,
         parent,
     });
 };

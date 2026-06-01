@@ -46,10 +46,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         // Lazy-load CodeMirror 6 as an AMD module through Moodle's own JavaScript
         // loader (no external CDN). The editor is bundled to a single minified AMD
         // module by the plugin's build step, so Moodle's requirejs serves it like
-        // any core module. This is the spike: confirm a modern editor loads cleanly
-        // through this pipeline, which the incumbent Ace editor does not.
-        $initialcode = "# Write your Python code here\n";
-        $PAGE->requires->js_call_amd('qtype_codeatelier/editor', 'init', [$editorid, $initialcode]);
+        // any core module. The question's authored language selects the syntax mode.
+        $language = !empty($question->language) ? $question->language : 'python';
+        $PAGE->requires->js_call_amd('qtype_codeatelier/editor', 'init',
+                [$editorid, $this->starter_code($language), $language]);
 
         $choices = array('1', '0.5', '0');
         $labels = array(
@@ -80,5 +80,23 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         );
 
         return $this->render_from_template('qtype_codeatelier/spike_control', $context);
+    }
+
+    /**
+     * A language-appropriate placeholder shown in a fresh editor.
+     *
+     * @param string $language python, sql or javascript
+     * @return string the starter source
+     */
+    protected function starter_code($language) {
+        switch ($language) {
+            case 'sql':
+                return "-- Write your SQL query here\n";
+            case 'javascript':
+                return "// Write your JavaScript here\n";
+            case 'python':
+            default:
+                return "# Write your Python code here\n";
+        }
     }
 }
