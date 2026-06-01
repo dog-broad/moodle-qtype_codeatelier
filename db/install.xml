@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="question/type/codeatelier/db" VERSION="20260602" COMMENT="XMLDB file for the CodeAtelier question type"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="qtype_codeatelier_options" COMMENT="Per-question options for CodeAtelier questions">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Foreign key references question.id."/>
+        <FIELD NAME="language" TYPE="char" LENGTH="32" NOTNULL="true" DEFAULT="python" SEQUENCE="false" COMMENT="Practice-tier language: python, sql or javascript."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="questionid" TYPE="foreign-unique" FIELDS="questionid" REFTABLE="question" REFFIELDS="id"/>
+      </KEYS>
+    </TABLE>
+    <TABLE NAME="qtype_codeatelier_tests" COMMENT="Test cases for CodeAtelier questions">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Foreign key references question.id."/>
+        <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Display/run order of the test case."/>
+        <FIELD NAME="input" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="Input fed to the student code (stdin, SQL setup, or function args)."/>
+        <FIELD NAME="expected" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="Expected output or result set."/>
+        <FIELD NAME="matchmode" TYPE="char" LENGTH="16" NOTNULL="true" DEFAULT="trimmed" SEQUENCE="false" COMMENT="Declarative matching rule: exact, trimmed, regex or float."/>
+        <FIELD NAME="tolerance" TYPE="number" LENGTH="12" DECIMALS="7" NOTNULL="false" SEQUENCE="false" COMMENT="Absolute tolerance, used only when matchmode is float."/>
+        <FIELD NAME="weight" TYPE="number" LENGTH="12" DECIMALS="7" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Relative weight of this test case for partial credit."/>
+        <FIELD NAME="visibility" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="1 shown to students, 0 hidden (polite-hidden in the practice tier)."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="questionid" TYPE="foreign" FIELDS="questionid" REFTABLE="question" REFFIELDS="id"/>
+      </KEYS>
+    </TABLE>
+  </TABLES>
+</XMLDB>
