@@ -38,3 +38,32 @@ $string['optionpartial'] = 'Partial — half marks (50%)';
 $string['optionwrong'] = 'Wrong answer — no marks (0%)';
 $string['summariseresponse'] = 'Recorded result: {$a}%';
 $string['pleaserun'] = 'Please select a result before submitting.';
+
+// Authoring: language.
+$string['language'] = 'Language';
+$string['language_help'] = 'The language the student writes in. In the practice tier this selects the in-browser runtime and the editor\'s syntax highlighting: Python (Pyodide), SQL (sql.js) or JavaScript.';
+$string['lang_python'] = 'Python';
+$string['lang_sql'] = 'SQL';
+$string['lang_javascript'] = 'JavaScript';
+
+// Authoring: test cases.
+$string['testcases'] = 'Test cases';
+$string['testcaseno'] = 'Test case {$a}';
+$string['input'] = 'Input';
+$string['expected'] = 'Expected output';
+$string['matchmode'] = 'Matching rule';
+$string['match_exact'] = 'Exact match';
+$string['match_trimmed'] = 'Trimmed (ignore leading/trailing whitespace)';
+$string['match_regex'] = 'Regular expression';
+$string['match_float'] = 'Numeric (within tolerance)';
+$string['tolerance'] = 'Tolerance';
+$string['weight'] = 'Weight';
+$string['visibility'] = 'Visibility';
+$string['visible_shown'] = 'Shown to students';
+$string['visible_hidden'] = 'Hidden';
+$string['addmoretestcases'] = 'Add another test case';
+
+// Authoring: validation.
+$string['weightnumeric'] = 'The weight must be a number.';
+$string['tolerancenumeric'] = 'A numeric tolerance is required when the matching rule is numeric.';
+$string['notenoughtests'] = 'You must provide at least one test case.';
