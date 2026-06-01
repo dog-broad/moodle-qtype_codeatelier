@@ -21,6 +21,11 @@ export default [
         plugins: [nodeResolve(), terser()],
     },
     {
+        input: 'amd/src/grader.js',
+        output: {file: 'amd/build/grader.min.js', format: 'amd', sourcemap: false},
+        plugins: [nodeResolve(), terser()],
+    },
+    {
         input: 'amd/src/worker.js',
         output: {file: 'amd/build/worker.min.js', format: 'iife', sourcemap: false},
         plugins: [nodeResolve(), terser()],
