@@ -29,14 +29,90 @@ require_once($CFG->libdir . '/questionlib.php');
 /**
  * The CodeAtelier question type.
  *
- * This early build carries no authored options of its own: the grade is supplied
- * with the response and returned by the question's grade_response(). That keeps
- * the focus on the practice-tier grading round-trip through the quiz engine.
+ * A question carries a language and a list of test cases. The test cases (input,
+ * expected output, matching rule, weight, visibility) are the declarative
+ * matching spec the practice-tier and judge-tier graders both interpret. The
+ * single per-question option (language) is handled by the base class via
+ * extra_question_fields(); the test-case rows are stored in a dedicated table.
  *
  * @copyright  2026 CodeAtelier
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_codeatelier extends question_type {
+
+    public function extra_question_fields() {
+        return array('qtype_codeatelier_options', 'language');
+    }
+
+    public function get_question_options($question) {
+        global $DB;
+        parent::get_question_options($question);
+        $question->options->tests = $DB->get_records('qtype_codeatelier_tests',
+                array('questionid' => $question->id), 'sortorder ASC, id ASC');
+        return true;
+    }
+
+    public function save_question_options($question) {
+        global $DB;
+
+        // Saves the language option into qtype_codeatelier_options.
+        parent::save_question_options($question);
+
+        $oldtests = $DB->get_records('qtype_codeatelier_tests',
+                array('questionid' => $question->id), 'id ASC');
+
+        $sortorder = 0;
+        $inputs = isset($question->testinput) ? $question->testinput : array();
+        foreach ($inputs as $key => $input) {
+            $expected = isset($question->testexpected[$key]) ? $question->testexpected[$key] : '';
+            // Skip a completely blank row.
+            if (trim($input) === '' && trim($expected) === '') {
+                continue;
+            }
+
+            $matchmode = $question->matchmode[$key];
+            $tolerance = null;
+            if ($matchmode === 'float' && isset($question->tolerance[$key])
+                    && trim($question->tolerance[$key]) !== '') {
+                $tolerance = $question->tolerance[$key];
+            }
+
+            $record = new stdClass();
+            $record->questionid = $question->id;
+            $record->sortorder = $sortorder++;
+            $record->input = $input;
+            $record->expected = $expected;
+            $record->matchmode = $matchmode;
+            $record->tolerance = $tolerance;
+            $record->weight = $question->testweight[$key];
+            $record->visibility = $question->testvisibility[$key];
+
+            $existing = array_shift($oldtests);
+            if ($existing) {
+                $record->id = $existing->id;
+                $DB->update_record('qtype_codeatelier_tests', $record);
+            } else {
+                $DB->insert_record('qtype_codeatelier_tests', $record);
+            }
+        }
+
+        // Remove any test rows the author deleted from the form.
+        foreach ($oldtests as $leftover) {
+            $DB->delete_records('qtype_codeatelier_tests', array('id' => $leftover->id));
+        }
+    }
+
+    protected function initialise_question_instance(question_definition $question, $questiondata) {
+        parent::initialise_question_instance($question, $questiondata);
+        // $question->language is filled by the base class from extra_question_fields().
+        $question->tests = array_values($questiondata->options->tests);
+    }
+
+    public function delete_question($questionid, $contextid) {
+        global $DB;
+        $DB->delete_records('qtype_codeatelier_tests', array('questionid' => $questionid));
+        parent::delete_question($questionid, $contextid);
+    }
 
     public function get_random_guess_score($questiondata) {
         // The result is supplied with the response, so there is no meaningful

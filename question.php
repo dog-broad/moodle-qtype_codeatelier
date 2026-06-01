@@ -39,6 +39,12 @@ require_once($CFG->dirroot . '/question/type/questionbase.php');
  */
 class qtype_codeatelier_question extends question_graded_automatically {
 
+    /** @var string the practice-tier language: python, sql or javascript. */
+    public $language;
+
+    /** @var array the test cases (rows from qtype_codeatelier_tests). */
+    public $tests = array();
+
     public function get_expected_data() {
         return array('score' => PARAM_RAW_TRIMMED);
     }
