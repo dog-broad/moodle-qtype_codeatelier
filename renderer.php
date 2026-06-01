@@ -43,44 +43,13 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
         $editorid = $inputname . '_editor';
 
-        // Load CodeMirror 6 from CDN.
-        // This spike verifies that lazy-loading a modern editor (CodeMirror)
-        // through Moodle's JavaScript pipeline works without minifier timeout,
-        // unlike the incumbent Ace editor.
-        $PAGE->requires->js_amd_inline("
-            require(['jquery'], function(\$) {
-                // Load CodeMirror CSS and JS from CDN on page load.
-                \$(function() {
-                    // Add CSS link for CodeMirror theme.
-                    const cssLink = document.createElement('link');
-                    cssLink.rel = 'stylesheet';
-                    cssLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.0.1/codemirror.min.css';
-                    document.head.appendChild(cssLink);
-
-                    // Add CodeMirror script.
-                    const script = document.createElement('script');
-                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.0.1/codemirror.min.js';
-                    script.onload = function() {
-                        // Load Python mode after CodeMirror is loaded.
-                        const pythonScript = document.createElement('script');
-                        pythonScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.0.1/mode/python/python.min.js';
-                        pythonScript.onload = function() {
-                            const container = document.getElementById('$editorid');
-                            if (container && window.CodeMirror) {
-                                const editor = window.CodeMirror(container, {
-                                    value: '# Write your Python code here',
-                                    mode: 'python',
-                                    lineNumbers: true,
-                                    theme: 'default',
-                                });
-                            }
-                        };
-                        document.head.appendChild(pythonScript);
-                    };
-                    document.head.appendChild(script);
-                });
-            });
-        ");
+        // Lazy-load CodeMirror 6 as an AMD module through Moodle's own JavaScript
+        // loader (no external CDN). The editor is bundled to a single minified AMD
+        // module by the plugin's build step, so Moodle's requirejs serves it like
+        // any core module. This is the spike: confirm a modern editor loads cleanly
+        // through this pipeline, which the incumbent Ace editor does not.
+        $initialcode = "# Write your Python code here\n";
+        $PAGE->requires->js_call_amd('qtype_codeatelier/editor', 'init', [$editorid, $initialcode]);
 
         $choices = array('1', '0.5', '0');
         $labels = array(

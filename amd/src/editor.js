@@ -14,96 +14,33 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * CodeMirror 6 editor wrapper for qtype_codeatelier.
- * Lazy-loads CodeMirror on demand to avoid bloating Moodle's AMD minifier.
+ * CodeMirror 6 editor for qtype_codeatelier.
+ *
+ * The CodeMirror packages are bundled into this module at build time (see
+ * rollup.config.mjs), so it ships as a single AMD module served by Moodle's
+ * requirejs loader. No code is fetched from an external CDN at runtime.
  *
  * @module qtype_codeatelier/editor
  */
 
-define([], function() {
-  'use strict';
+import {EditorView, basicSetup} from 'codemirror';
+import {python} from '@codemirror/lang-python';
 
-  /**
-   * Initialize a CodeMirror 6 editor in the given DOM element.
-   *
-   * @param {string} elementId - ID of the container element for the editor
-   * @param {string} language - Language for syntax highlighting ('python', 'sql', 'javascript', etc.)
-   * @param {string} initialValue - Initial code content
-   * @returns {Promise<Object>} Promise resolving to editor instance with getValue() and focus() methods
-   */
-  const init = async function(elementId, language, initialValue) {
-    const domElement = document.getElementById(elementId);
-    if (!domElement) {
-      console.error('Editor container not found:', elementId);
-      return null;
+/**
+ * Mount a CodeMirror 6 editor inside the given container.
+ *
+ * @param {String} elementid the id of the container element
+ * @param {String} initialcode the starting source shown in the editor
+ */
+export const init = (elementid, initialcode) => {
+    const parent = document.getElementById(elementid);
+    if (!parent) {
+        return;
     }
-
-    try {
-      // Lazy-load CodeMirror 6 bundles from CDN.
-      // Using esm.sh for ES module distribution.
-      const cmModule = await import('https://esm.sh/codemirror@6.0.1');
-      const { EditorState, EditorView } = cmModule;
-
-      // Language extensions for syntax highlighting.
-      const languageModules = {
-        python: () => import('https://esm.sh/@codemirror/lang-python@6.0.0'),
-        sql: () => import('https://esm.sh/@codemirror/lang-sql@6.0.0'),
-        javascript: () => import('https://esm.sh/@codemirror/lang-javascript@6.0.0'),
-      };
-
-      // Load language extension if available.
-      let languageExtension = null;
-      if (languageModules[language]) {
-        try {
-          const langModule = await languageModules[language]();
-          const langName = language.charAt(0).toUpperCase() + language.slice(1);
-          if (langModule[langName]) {
-            languageExtension = langModule[langName]();
-          }
-        } catch (e) {
-          console.warn('CodeMirror language extension not loaded for:', language, e);
-        }
-      }
-
-      // Create editor state with language extension.
-      const extensions = languageExtension ? [languageExtension] : [];
-      const state = EditorState.create({
-        doc: initialValue || '',
-        extensions: [
-          ...extensions,
-          EditorView.lineNumbers(),
-        ],
-      });
-
-      // Create the editor view and mount it.
-      const view = new EditorView({
-        state,
-        parent: domElement,
-      });
-
-      // Store the view for potential later access.
-      domElement._codeatelier_editor = {
-        getValue: () => view.state.doc.toString(),
-        setValue: (code) => {
-          view.dispatch({
-            changes: {
-              from: 0,
-              to: view.state.doc.length,
-              insert: code,
-            },
-          });
-        },
-        focus: () => view.focus(),
-        destroy: () => view.destroy(),
-      };
-
-      return domElement._codeatelier_editor;
-    } catch (error) {
-      console.error('Failed to initialize CodeMirror editor:', error);
-      domElement.textContent = 'Failed to load editor. See console for details.';
-      return null;
-    }
-  };
-
-  return init;
-});
+    // eslint-disable-next-line no-new
+    new EditorView({
+        doc: initialcode,
+        extensions: [basicSetup, python()],
+        parent,
+    });
+};
