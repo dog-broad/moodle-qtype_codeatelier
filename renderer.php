@@ -35,9 +35,20 @@ class qtype_codeatelier_renderer extends qtype_renderer {
     public function formulation_and_controls(question_attempt $qa,
             question_display_options $options) {
 
+        global $PAGE;
+
         $question = $qa->get_question();
         $inputname = $qa->get_qt_field_name('score');
         $current = $qa->get_last_qt_var('score', '');
+
+        $editorid = $inputname . '_editor';
+
+        // Load the editor module to initialize CodeMirror.
+        $PAGE->requires->js_call_amd('qtype_codeatelier/editor', null, [
+            $editorid,
+            'python',
+            '',
+        ]);
 
         $choices = array('1', '0.5', '0');
         $labels = array(
@@ -61,6 +72,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         $context = array(
             'questiontext' => $question->format_questiontext($qa),
             'prompt' => get_string('spikeprompt', 'qtype_codeatelier'),
+            'editorid' => $editorid,
             'options' => $optionsdata,
             'hasvalidationerror' => $qa->get_state() == question_state::$invalid,
             'validationerror' => $question->get_validation_error(array('score' => $current)),

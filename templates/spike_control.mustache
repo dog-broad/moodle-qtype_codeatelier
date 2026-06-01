@@ -23,6 +23,7 @@
     Context variables required for this template:
     * questiontext string - the rendered question text (already safe HTML)
     * prompt string - the group prompt shown in the fieldset legend
+    * editorid string - the unique ID for the editor container
     * options array - the selectable results, each with:
         * name string - the form field name shared by the radio group
         * id string - the unique input id
@@ -35,6 +36,9 @@
 }}
 <div class="qtype_codeatelier qtype_codeatelier_spike">
     <div class="qtext">{{{questiontext}}}</div>
+    <div class="editor-container">
+        <div id="{{editorid}}" class="codemirror-editor"></div>
+    </div>
     <fieldset class="ablock">
         <legend class="prompt h6 font-weight-normal">{{prompt}}</legend>
         {{#options}}
