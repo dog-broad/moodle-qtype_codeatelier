@@ -127,3 +127,40 @@
     content: "\2717\00a0";
     color: #b02a37;
 }
+
+/* SQL schema and sample-data viewer. */
+.qtype_codeatelier .codeatelier-schema {
+    margin: 0.5rem 0;
+}
+
+.qtype_codeatelier .codeatelier-schema-heading {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.qtype_codeatelier .codeatelier-schema-table {
+    margin-bottom: 0.5rem;
+}
+
+.qtype_codeatelier .codeatelier-schema-table summary {
+    cursor: pointer;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.85rem;
+}
+
+.qtype_codeatelier .codeatelier-schema-data {
+    border-collapse: collapse;
+    margin: 0.4rem 0;
+    font-size: 0.85rem;
+}
+
+.qtype_codeatelier .codeatelier-schema-data th,
+.qtype_codeatelier .codeatelier-schema-data td {
+    border: 1px solid #ced4da;
+    padding: 0.2rem 0.5rem;
+    text-align: left;
+}
+
+.qtype_codeatelier .codeatelier-schema-data th {
+    background: #f1f3f5;
+}

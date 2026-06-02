@@ -35,6 +35,9 @@ $string['privacy:metadata'] = 'The CodeAtelier question type does not store any 
 // Admin settings.
 $string['pyodidebaseurl'] = 'Pyodide base URL';
 $string['pyodidebaseurl_desc'] = 'Where the browser loads the Python (Pyodide) runtime from for practice-tier Python questions. The default is a pinned public CDN; point it at a local mirror for offline or locked-down sites. Must end with a trailing slash.';
+$string['sqljsbaseurl'] = 'sql.js base URL';
+$string['sqljsbaseurl_desc'] = 'Where the browser loads the SQL (sql.js / SQLite) runtime from for practice-tier SQL questions. The default is a pinned public CDN; point it at a local mirror for offline or locked-down sites. Must end with a trailing slash.';
+$string['schematables'] = 'Tables and sample data';
 
 // Student attempt UI.
 $string['answerlabel'] = 'Your code';
@@ -63,6 +66,11 @@ $string['scenario'] = 'Scenario';
 $string['scenario_help'] = 'How the student\'s code is run and graded. **Standard input/output**: the code reads input and prints output, compared as text. **Function**: the student writes a named function; each test calls it with arguments and checks the return value.';
 $string['scenario_stdinstdout'] = 'Standard input / output';
 $string['scenario_function'] = 'Function (call and check the return value)';
+$string['scenario_sql'] = 'SQL (query a database)';
+$string['schemasql'] = 'Schema and seed data (SQL)';
+$string['schemasql_help'] = 'SQL run before the student\'s query to set up the database: CREATE TABLE statements and INSERTs. Runs on SQLite (sql.js) in the browser.';
+$string['checkerquery'] = 'Checker query (SQL)';
+$string['checkerquery_help'] = 'For questions that change data (INSERT/UPDATE/DELETE): a SELECT run after the student\'s statements; its result set is compared with the expected result. Leave empty to compare the student query\'s own result set.';
 $string['entrypoint'] = 'Function name';
 $string['entrypoint_help'] = 'The name of the function the student must define. Each test case calls this function with the arguments given in its Input field.';
 $string['startercode'] = 'Starter code';
@@ -79,6 +87,8 @@ $string['match_trimmed'] = 'Trimmed (ignore leading/trailing whitespace)';
 $string['match_regex'] = 'Regular expression';
 $string['match_float'] = 'Numeric (within tolerance)';
 $string['match_structured'] = 'Structured (deep-equal JSON value)';
+$string['match_resultset'] = 'Result set (rows, any order)';
+$string['match_resultset_ordered'] = 'Result set (rows, in order)';
 $string['tolerance'] = 'Tolerance';
 $string['weight'] = 'Weight';
 $string['visibility'] = 'Visibility';

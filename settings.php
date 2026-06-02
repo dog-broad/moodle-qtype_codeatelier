@@ -32,4 +32,12 @@ if ($ADMIN->fulltree) {
         'https://cdn.jsdelivr.net/pyodide/v0.29.4/full/',
         PARAM_URL
     ));
+
+    $settings->add(new admin_setting_configtext(
+        'qtype_codeatelier/sqljsbaseurl',
+        get_string('sqljsbaseurl', 'qtype_codeatelier'),
+        get_string('sqljsbaseurl_desc', 'qtype_codeatelier'),
+        'https://cdn.jsdelivr.net/npm/sql.js@1.13.0/dist/',
+        PARAM_URL
+    ));
 }

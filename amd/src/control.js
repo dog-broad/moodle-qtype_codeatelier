@@ -26,8 +26,61 @@
  */
 
 import {create} from 'qtype_codeatelier/editor';
-import {run} from 'qtype_codeatelier/runner';
+import {run, describe} from 'qtype_codeatelier/runner';
 import {grade} from 'qtype_codeatelier/grader';
+
+/**
+ * Render the SQL schema + sample-data viewer.
+ *
+ * @param {HTMLElement} element the container
+ * @param {Object} info {tables: [...]} from runner.describe
+ * @param {Object} strings labels
+ */
+const renderSchema = (element, info, strings) => {
+    element.textContent = '';
+    if (!info || info.error || !info.tables || !info.tables.length) {
+        return;
+    }
+    const heading = document.createElement('p');
+    heading.className = 'codeatelier-schema-heading';
+    heading.textContent = strings.schematables || 'Tables and sample data';
+    element.appendChild(heading);
+
+    info.tables.forEach((table) => {
+        const details = document.createElement('details');
+        details.className = 'codeatelier-schema-table';
+        const summary = document.createElement('summary');
+        const cols = table.columns.map((col) => col.name + ' ' + col.type).join(', ');
+        summary.textContent = table.name + ' (' + cols + ')';
+        details.appendChild(summary);
+
+        const tbl = document.createElement('table');
+        tbl.className = 'codeatelier-schema-data';
+        const thead = document.createElement('thead');
+        const headrow = document.createElement('tr');
+        (table.sampleColumns || []).forEach((col) => {
+            const th = document.createElement('th');
+            th.textContent = col;
+            headrow.appendChild(th);
+        });
+        thead.appendChild(headrow);
+        tbl.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        (table.sampleRows || []).forEach((row) => {
+            const tr = document.createElement('tr');
+            row.forEach((value) => {
+                const td = document.createElement('td');
+                td.textContent = (value === null) ? 'NULL' : String(value);
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        tbl.appendChild(tbody);
+        details.appendChild(tbl);
+        element.appendChild(details);
+    });
+};
 
 /**
  * Initialise a CodeAtelier question.
@@ -68,6 +121,13 @@ export const init = (config) => {
     }
     if (skeleton) {
         skeleton.style.display = 'none';
+    }
+
+    const schemael = root.querySelector('[data-role="schema"]');
+    if (config.scenario === 'sql' && schemael) {
+        describe(config.sqljsbaseurl, config.schemasql).then((info) => {
+            renderSchema(schemael, info, strings);
+        });
     }
 
     if (config.readonly || !runbutton) {
@@ -115,6 +175,8 @@ export const init = (config) => {
             scenario: config.scenario,
             entrypoint: config.entrypoint,
             pyodideBaseUrl: config.pyodidebaseurl,
+            sqljsBaseUrl: config.sqljsbaseurl,
+            schemasql: config.schemasql,
             onStatus: (state) => {
                 statusel.textContent = (state === 'loading')
                     ? (strings.loading || 'Preparing…')

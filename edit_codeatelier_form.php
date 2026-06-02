@@ -54,6 +54,12 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->setType('startercode', PARAM_RAW);
         $mform->addHelpButton('startercode', 'startercode', 'qtype_codeatelier');
 
+        $mform->addElement('textarea', 'schemasql', get_string('schemasql', 'qtype_codeatelier'),
+                array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
+        $mform->setType('schemasql', PARAM_RAW);
+        $mform->addHelpButton('schemasql', 'schemasql', 'qtype_codeatelier');
+        $mform->hideIf('schemasql', 'scenario', 'neq', 'sql');
+
         $mform->addElement('header', 'testcasesheader', get_string('testcases', 'qtype_codeatelier'));
         $mform->setExpanded('testcasesheader');
 
@@ -83,6 +89,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 get_string('weight', 'qtype_codeatelier'), array('size' => 10));
         $repeated[] = $mform->createElement('select', 'testvisibility',
                 get_string('visibility', 'qtype_codeatelier'), $this->visibility_options());
+        $repeated[] = $mform->createElement('textarea', 'checkerquery',
+                get_string('checkerquery', 'qtype_codeatelier'), array('rows' => 2, 'cols' => 60));
 
         // Note: do not set a 'default' for the matchmode/testweight/testvisibility
         // elements here. For repeated elements a default overrides the values
@@ -92,11 +100,13 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $repeatedoptions = array();
         $repeatedoptions['testinput']['type'] = PARAM_RAW;
         $repeatedoptions['testexpected']['type'] = PARAM_RAW;
-        $repeatedoptions['matchmode']['type'] = PARAM_ALPHA;
+        $repeatedoptions['matchmode']['type'] = PARAM_ALPHANUMEXT;
         $repeatedoptions['tolerance']['type'] = PARAM_RAW_TRIMMED;
         $repeatedoptions['tolerance']['disabledif'] = array('matchmode', 'neq', 'float');
         $repeatedoptions['testweight']['type'] = PARAM_RAW_TRIMMED;
         $repeatedoptions['testvisibility']['type'] = PARAM_INT;
+        $repeatedoptions['checkerquery']['type'] = PARAM_RAW;
+        $repeatedoptions['checkerquery']['hideif'] = array('scenario', 'neq', 'sql');
 
         if (!empty($this->question->options->tests)) {
             $repeats = count($this->question->options->tests);
@@ -115,6 +125,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         return array(
             'stdinstdout' => get_string('scenario_stdinstdout', 'qtype_codeatelier'),
             'function' => get_string('scenario_function', 'qtype_codeatelier'),
+            'sql' => get_string('scenario_sql', 'qtype_codeatelier'),
         );
     }
 
@@ -139,6 +150,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'regex' => get_string('match_regex', 'qtype_codeatelier'),
             'float' => get_string('match_float', 'qtype_codeatelier'),
             'structured' => get_string('match_structured', 'qtype_codeatelier'),
+            'resultset' => get_string('match_resultset', 'qtype_codeatelier'),
+            'resultset_ordered' => get_string('match_resultset_ordered', 'qtype_codeatelier'),
         );
     }
 
@@ -165,6 +178,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $question->tolerance = array();
         $question->testweight = array();
         $question->testvisibility = array();
+        $question->checkerquery = array();
 
         foreach (array_values($question->options->tests) as $i => $test) {
             $question->testinput[$i] = $test->input;
@@ -173,6 +187,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             $question->tolerance[$i] = $test->tolerance;
             $question->testweight[$i] = 0 + $test->weight;
             $question->testvisibility[$i] = $test->visibility;
+            $question->checkerquery[$i] = $test->checkerquery;
         }
 
         return $question;

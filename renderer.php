@@ -68,6 +68,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'tolerance' => $test->tolerance,
                 'weight' => $test->weight,
                 'visibility' => (int) $test->visibility,
+                'checkerquery' => $test->checkerquery,
             );
         }
 
@@ -93,7 +94,9 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'language' => $language,
             'scenario' => !empty($question->scenario) ? $question->scenario : 'stdinstdout',
             'entrypoint' => $question->entrypoint,
+            'schemasql' => $question->schemasql,
             'pyodidebaseurl' => get_config('qtype_codeatelier', 'pyodidebaseurl'),
+            'sqljsbaseurl' => get_config('qtype_codeatelier', 'sqljsbaseurl'),
             'tests' => $tests,
             'timeoutms' => 5000,
             'readonly' => (bool) $options->readonly,
@@ -106,6 +109,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'test' => get_string('result_test', 'qtype_codeatelier'),
                 'hidden' => get_string('result_hidden', 'qtype_codeatelier'),
                 'score' => get_string('result_score', 'qtype_codeatelier'),
+                'schematables' => get_string('schematables', 'qtype_codeatelier'),
             ),
         )));
 
