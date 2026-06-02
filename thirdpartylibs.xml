@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<libraries>
+    <library>
+        <location>amd/build/editor.min.js</location>
+        <name>CodeMirror 6</name>
+        <description>Code editor and syntax highlighter. Bundled at build time (Rollup) from the npm packages codemirror (6.0.2), @codemirror/state (6.6.0), @codemirror/view (6.43.0), @codemirror/commands (6.x), @codemirror/lint (6.x), @codemirror/lang-python, @codemirror/lang-sql, @codemirror/lang-javascript, @lezer/highlight (1.2.3) and @lezer/common (1.5.2). All are MIT-licensed and authored by Marijn Haverbeke and contributors.</description>
+        <version>6.0.2</version>
+        <license>MIT</license>
+    </library>
+</libraries>

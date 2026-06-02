@@ -51,3 +51,15 @@ The editor and question interface are built to work with a screen reader and key
 ## License
 
 GPLv3 or later. See [LICENSE](LICENSE).
+
+### Third-party software
+
+All bundled and runtime dependencies are GPLv3-compatible:
+
+| Software | License | How it is used |
+|---|---|---|
+| [CodeMirror 6](https://codemirror.net/) (incl. `@codemirror/*` and `@lezer/*`) | MIT | Bundled into the editor AMD module at build time (see [`thirdpartylibs.xml`](thirdpartylibs.xml)). |
+| [Pyodide](https://pyodide.org/) | MPL-2.0 | The Python runtime for practice-tier Python. **Not bundled** — loaded in the browser at runtime from a configurable URL (a pinned public CDN by default). |
+| [sql.js](https://sql.js.org/) (SQLite) | MIT | The SQL runtime for practice-tier SQL. **Not bundled** — loaded in the browser at runtime from a configurable URL. |
+
+Pyodide and sql.js are fetched by the browser, not shipped in this repository, and the source URL is a site admin setting so institutions can mirror them locally for offline or locked-down deployments.
