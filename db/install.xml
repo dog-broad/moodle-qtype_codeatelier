@@ -12,6 +12,7 @@
         <FIELD NAME="scenario" TYPE="char" LENGTH="32" NOTNULL="true" DEFAULT="stdinstdout" SEQUENCE="false" COMMENT="Question scenario: stdinstdout, function or sql. Selects the run harness and comparison."/>
         <FIELD NAME="entrypoint" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Function name to call for the function scenario."/>
         <FIELD NAME="startercode" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Starter code shown in the student editor."/>
+        <FIELD NAME="schemasql" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="SQL scenario: schema + seed (DDL and INSERTs) loaded before the student query."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -29,6 +30,7 @@
         <FIELD NAME="tolerance" TYPE="number" LENGTH="12" DECIMALS="7" NOTNULL="false" SEQUENCE="false" COMMENT="Absolute tolerance, used only when matchmode is float."/>
         <FIELD NAME="weight" TYPE="number" LENGTH="12" DECIMALS="7" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Relative weight of this test case for partial credit."/>
         <FIELD NAME="visibility" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="1 shown to students, 0 hidden (polite-hidden in the practice tier)."/>
+        <FIELD NAME="checkerquery" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="SQL scenario: query run after the student's statements to verify a mutation; empty means compare the student query's own result set."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>

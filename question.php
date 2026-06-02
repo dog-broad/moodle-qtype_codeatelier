@@ -54,6 +54,9 @@ class qtype_codeatelier_question extends question_graded_automatically {
     /** @var string|null starter code shown in the editor. */
     public $startercode;
 
+    /** @var string|null SQL scenario schema + seed run before the student query. */
+    public $schemasql;
+
     /** @var array the test cases (rows from qtype_codeatelier_tests). */
     public $tests = array();
 

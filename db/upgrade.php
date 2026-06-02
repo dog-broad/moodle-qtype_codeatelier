@@ -68,5 +68,22 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026060300, 'qtype', 'codeatelier');
     }
 
+    if ($oldversion < 2026060500) {
+        // SQL scenario: question-level schema+seed and a per-test checker query.
+        $optionstable = new xmldb_table('qtype_codeatelier_options');
+        $schemasql = new xmldb_field('schemasql', XMLDB_TYPE_TEXT, null, null, null, null, null, 'startercode');
+        if (!$dbman->field_exists($optionstable, $schemasql)) {
+            $dbman->add_field($optionstable, $schemasql);
+        }
+
+        $teststable = new xmldb_table('qtype_codeatelier_tests');
+        $checkerquery = new xmldb_field('checkerquery', XMLDB_TYPE_TEXT, null, null, null, null, null, 'visibility');
+        if (!$dbman->field_exists($teststable, $checkerquery)) {
+            $dbman->add_field($teststable, $checkerquery);
+        }
+
+        upgrade_plugin_savepoint(true, 2026060500, 'qtype', 'codeatelier');
+    }
+
     return true;
 }

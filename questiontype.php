@@ -41,7 +41,7 @@ require_once($CFG->libdir . '/questionlib.php');
 class qtype_codeatelier extends question_type {
 
     public function extra_question_fields() {
-        return array('qtype_codeatelier_options', 'language', 'scenario', 'entrypoint', 'startercode');
+        return array('qtype_codeatelier_options', 'language', 'scenario', 'entrypoint', 'startercode', 'schemasql');
     }
 
     public function get_question_options($question) {
@@ -86,6 +86,7 @@ class qtype_codeatelier extends question_type {
             $record->tolerance = $tolerance;
             $record->weight = $question->testweight[$key];
             $record->visibility = $question->testvisibility[$key];
+            $record->checkerquery = isset($question->checkerquery[$key]) ? $question->checkerquery[$key] : null;
 
             $existing = array_shift($oldtests);
             if ($existing) {
