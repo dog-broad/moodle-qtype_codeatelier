@@ -52,6 +52,16 @@ $string['lang_python'] = 'Python';
 $string['lang_sql'] = 'SQL';
 $string['lang_javascript'] = 'JavaScript';
 
+// Authoring: scenario.
+$string['scenario'] = 'Scenario';
+$string['scenario_help'] = 'How the student\'s code is run and graded. **Standard input/output**: the code reads input and prints output, compared as text. **Function**: the student writes a named function; each test calls it with arguments and checks the return value.';
+$string['scenario_stdinstdout'] = 'Standard input / output';
+$string['scenario_function'] = 'Function (call and check the return value)';
+$string['entrypoint'] = 'Function name';
+$string['entrypoint_help'] = 'The name of the function the student must define. Each test case calls this function with the arguments given in its Input field.';
+$string['startercode'] = 'Starter code';
+$string['startercode_help'] = 'Optional code pre-filled in the student\'s editor — for example a function signature to complete.';
+
 // Authoring: test cases.
 $string['testcases'] = 'Test cases';
 $string['testcaseno'] = 'Test case {$a}';
@@ -62,6 +72,7 @@ $string['match_exact'] = 'Exact match';
 $string['match_trimmed'] = 'Trimmed (ignore leading/trailing whitespace)';
 $string['match_regex'] = 'Regular expression';
 $string['match_float'] = 'Numeric (within tolerance)';
+$string['match_structured'] = 'Structured (deep-equal JSON value)';
 $string['tolerance'] = 'Tolerance';
 $string['weight'] = 'Weight';
 $string['visibility'] = 'Visibility';
@@ -73,3 +84,4 @@ $string['addmoretestcases'] = 'Add another test case';
 $string['weightnumeric'] = 'The weight must be a number.';
 $string['tolerancenumeric'] = 'A numeric tolerance is required when the matching rule is numeric.';
 $string['notenoughtests'] = 'You must provide at least one test case.';
+$string['entrypointrequired'] = 'Enter the function name for a function question.';

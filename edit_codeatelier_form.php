@@ -38,6 +38,22 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->addHelpButton('language', 'language', 'qtype_codeatelier');
         $mform->setDefault('language', $this->get_default_value('language', 'python'));
 
+        $mform->addElement('select', 'scenario', get_string('scenario', 'qtype_codeatelier'),
+                $this->scenario_options());
+        $mform->addHelpButton('scenario', 'scenario', 'qtype_codeatelier');
+        $mform->setDefault('scenario', $this->get_default_value('scenario', 'stdinstdout'));
+
+        $mform->addElement('text', 'entrypoint', get_string('entrypoint', 'qtype_codeatelier'),
+                array('size' => 40));
+        $mform->setType('entrypoint', PARAM_RAW_TRIMMED);
+        $mform->addHelpButton('entrypoint', 'entrypoint', 'qtype_codeatelier');
+        $mform->hideIf('entrypoint', 'scenario', 'neq', 'function');
+
+        $mform->addElement('textarea', 'startercode', get_string('startercode', 'qtype_codeatelier'),
+                array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
+        $mform->setType('startercode', PARAM_RAW);
+        $mform->addHelpButton('startercode', 'startercode', 'qtype_codeatelier');
+
         $mform->addElement('header', 'testcasesheader', get_string('testcases', 'qtype_codeatelier'));
         $mform->setExpanded('testcasesheader');
 
@@ -93,6 +109,16 @@ class qtype_codeatelier_edit_form extends question_edit_form {
     }
 
     /**
+     * @return array scenario code => display name
+     */
+    protected function scenario_options() {
+        return array(
+            'stdinstdout' => get_string('scenario_stdinstdout', 'qtype_codeatelier'),
+            'function' => get_string('scenario_function', 'qtype_codeatelier'),
+        );
+    }
+
+    /**
      * @return array language code => display name
      */
     protected function language_options() {
@@ -112,6 +138,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'trimmed' => get_string('match_trimmed', 'qtype_codeatelier'),
             'regex' => get_string('match_regex', 'qtype_codeatelier'),
             'float' => get_string('match_float', 'qtype_codeatelier'),
+            'structured' => get_string('match_structured', 'qtype_codeatelier'),
         );
     }
 
@@ -153,6 +180,10 @@ class qtype_codeatelier_edit_form extends question_edit_form {
 
     public function validation($data, $files) {
         $errors = parent::validation($data, $files);
+
+        if ($data['scenario'] === 'function' && trim($data['entrypoint']) === '') {
+            $errors['entrypoint'] = get_string('entrypointrequired', 'qtype_codeatelier');
+        }
 
         $count = 0;
         foreach ($data['testinput'] as $key => $input) {
