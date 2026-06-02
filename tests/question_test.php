@@ -1,0 +1,81 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+namespace qtype_codeatelier;
+
+use question_state;
+use test_question_maker;
+
+/**
+ * Runtime grading tests for the CodeAtelier question.
+ *
+ * @package    qtype_codeatelier
+ * @copyright  2026 CodeAtelier
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @covers     \qtype_codeatelier_question
+ */
+final class question_test extends \advanced_testcase {
+
+    /**
+     * @return \qtype_codeatelier_question
+     */
+    protected function make_question() {
+        return test_question_maker::make_question('codeatelier', 'function');
+    }
+
+    public function test_get_expected_data(): void {
+        $question = $this->make_question();
+        $this->assertEquals(
+                array('answer' => PARAM_RAW, 'score' => PARAM_RAW_TRIMMED),
+                $question->get_expected_data());
+    }
+
+    public function test_is_complete_response(): void {
+        $question = $this->make_question();
+        $this->assertFalse($question->is_complete_response(array()));
+        $this->assertFalse($question->is_complete_response(array('answer' => 'x', 'score' => '')));
+        $this->assertFalse($question->is_complete_response(array('answer' => 'x', 'score' => 'abc')));
+        $this->assertTrue($question->is_complete_response(array('answer' => 'x', 'score' => '0.5')));
+    }
+
+    public function test_grade_response_reads_and_clamps_score(): void {
+        $question = $this->make_question();
+
+        list($fraction, $state) = $question->grade_response(array('answer' => 'x', 'score' => '1'));
+        $this->assertEquals(1.0, $fraction);
+        $this->assertEquals(question_state::$gradedright, $state);
+
+        list($fraction) = $question->grade_response(array('answer' => 'x', 'score' => '0.5'));
+        $this->assertEquals(0.5, $fraction);
+
+        // Out-of-range and non-numeric scores are clamped / rejected.
+        list($fraction) = $question->grade_response(array('answer' => 'x', 'score' => '2'));
+        $this->assertEquals(1.0, $fraction);
+        list($fraction) = $question->grade_response(array('answer' => 'x', 'score' => '-3'));
+        $this->assertEquals(0.0, $fraction);
+        list($fraction) = $question->grade_response(array('answer' => 'x', 'score' => 'abc'));
+        $this->assertEquals(0.0, $fraction);
+    }
+
+    public function test_regrade_is_idempotent(): void {
+        $question = $this->make_question();
+        $response = array('answer' => 'whatever', 'score' => '0.75');
+        list($first) = $question->grade_response($response);
+        list($second) = $question->grade_response($response);
+        $this->assertEquals($first, $second);
+        $this->assertEquals(0.75, $second);
+    }
+}
