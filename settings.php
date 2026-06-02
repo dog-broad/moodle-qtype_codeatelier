@@ -40,4 +40,25 @@ if ($ADMIN->fulltree) {
         'https://cdn.jsdelivr.net/npm/sql.js@1.13.0/dist/',
         PARAM_URL
     ));
+
+    $settings->add(new admin_setting_heading(
+        'qtype_codeatelier/judgeheading',
+        get_string('judgeheading', 'qtype_codeatelier'),
+        get_string('judgeheading_desc', 'qtype_codeatelier')
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'qtype_codeatelier/judge0baseurl',
+        get_string('judge0baseurl', 'qtype_codeatelier'),
+        get_string('judge0baseurl_desc', 'qtype_codeatelier'),
+        '',
+        PARAM_URL
+    ));
+
+    $settings->add(new admin_setting_configpasswordunmask(
+        'qtype_codeatelier/judge0apikey',
+        get_string('judge0apikey', 'qtype_codeatelier'),
+        get_string('judge0apikey_desc', 'qtype_codeatelier'),
+        ''
+    ));
 }

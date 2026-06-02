@@ -38,6 +38,12 @@ $string['pyodidebaseurl_desc'] = 'Where the browser loads the Python (Pyodide) r
 $string['sqljsbaseurl'] = 'sql.js base URL';
 $string['sqljsbaseurl_desc'] = 'Where the browser loads the SQL (sql.js / SQLite) runtime from for practice-tier SQL questions. The default is a pinned public CDN; point it at a local mirror for offline or locked-down sites. Must end with a trailing slash.';
 $string['schematables'] = 'Tables and sample data';
+$string['judgeheading'] = 'Judge tier (server-side grading)';
+$string['judgeheading_desc'] = 'The judge tier runs and grades submissions in a server sandbox (Judge0) with enforced time and memory limits and hidden tests that never reach the browser. This is the authoritative, secure grading path. Leave the base URL empty to disable it.';
+$string['judge0baseurl'] = 'Judge0 base URL';
+$string['judge0baseurl_desc'] = 'Base URL of the Judge0 instance the server submits code to, for example http://judge.example.org:2358. Judge0 must run on a host configured for cgroup v1. Leave empty until a Judge0 instance is available.';
+$string['judge0apikey'] = 'Judge0 auth token';
+$string['judge0apikey_desc'] = 'Optional authentication token sent with each submission (a self-hosted Judge0 auth token, or a hosted-gateway API key). Leave empty if the instance needs no authentication.';
 
 // Student attempt UI.
 $string['answerlabel'] = 'Your code';
