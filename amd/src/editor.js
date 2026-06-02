@@ -27,6 +27,7 @@ import {EditorView, basicSetup} from 'codemirror';
 import {EditorState} from '@codemirror/state';
 import {keymap} from '@codemirror/view';
 import {indentWithTab} from '@codemirror/commands';
+import {lintGutter, setDiagnostics} from '@codemirror/lint';
 import {python} from '@codemirror/lang-python';
 import {sql} from '@codemirror/lang-sql';
 import {javascript} from '@codemirror/lang-javascript';
@@ -63,7 +64,7 @@ const languageExtension = (language) => {
  */
 export const create = (textarea, language, options) => {
     const opts = options || {};
-    const extensions = [basicSetup];
+    const extensions = [basicSetup, lintGutter()];
 
     const langext = languageExtension(language);
     if (langext) {
@@ -95,7 +96,32 @@ export const create = (textarea, language, options) => {
 
     textarea.style.display = 'none';
 
+    const clearErrors = () => {
+        view.dispatch(setDiagnostics(view.state, []));
+    };
+
     return {
         getValue: () => view.state.doc.toString(),
+        clearErrors: clearErrors,
+        /**
+         * Mark a runtime error on a 1-based line (gutter + inline + hover).
+         *
+         * @param {Number} line 1-based line number
+         * @param {String} message
+         */
+        showError: (line, message) => {
+            const doc = view.state.doc;
+            if (!line || line < 1 || line > doc.lines) {
+                clearErrors();
+                return;
+            }
+            const text = doc.line(line);
+            view.dispatch(setDiagnostics(view.state, [{
+                from: text.from,
+                to: text.to,
+                severity: 'error',
+                message: message,
+            }]));
+        },
     };
 };

@@ -72,6 +72,40 @@ const loadSqlRuntime = (baseurl) => {
 };
 
 /**
+ * Best-effort student-code line for a Python traceback (reliable: exec reports
+ * student lines directly as "<string>").
+ *
+ * @param {String} trace traceback text
+ * @return {Number|null}
+ */
+const pythonErrorLine = (trace) => {
+    const re = /File "<string>", line (\d+)/g;
+    let match;
+    let last = null;
+    while ((match = re.exec(trace)) !== null) {
+        last = parseInt(match[1], 10);
+    }
+    return last;
+};
+
+/**
+ * Best-effort student-code line for a JavaScript error (subtracts the
+ * new Function header offset; V8-tuned, may be absent on other engines).
+ *
+ * @param {Error} err
+ * @return {Number|null}
+ */
+const jsErrorLine = (err) => {
+    const stack = (err && err.stack) ? String(err.stack) : '';
+    const match = stack.match(/<anonymous>:(\d+):\d+/);
+    if (!match) {
+        return null;
+    }
+    const line = parseInt(match[1], 10) - 2;
+    return (line >= 1) ? line : null;
+};
+
+/**
  * Execute one stdin/stdout JavaScript case, capturing console.log as stdout.
  *
  * @param {String} code the student source
@@ -94,7 +128,7 @@ const runJavascript = (code, input) => {
             returnvalue: (returnvalue === undefined) ? null : String(returnvalue),
         };
     } catch (err) {
-        return {stdout: lines.join('\n'), error: String(err)};
+        return {stdout: lines.join('\n'), error: String(err), errorline: jsErrorLine(err)};
     }
 };
 
@@ -132,7 +166,7 @@ const runJavascriptFunction = (code, entrypoint, input) => {
         const returnvalue = fn.apply(null, args);
         return {stdout: lines.join('\n'), returnvalue: returnvalue};
     } catch (err) {
-        return {stdout: lines.join('\n'), error: String(err)};
+        return {stdout: lines.join('\n'), error: String(err), errorline: jsErrorLine(err)};
     }
 };
 
@@ -199,7 +233,7 @@ const runPython = (pyodide, scenario, code, entrypoint, input) => {
     const resultjson = pyodide.globals.get('_ca_result');
 
     if (error) {
-        return {stdout: stdout, error: String(error)};
+        return {stdout: stdout, error: String(error), errorline: pythonErrorLine(String(error))};
     }
     if (scenario === 'function') {
         return {stdout: stdout, returnvalue: (resultjson === undefined || resultjson === null) ? null : String(resultjson)};

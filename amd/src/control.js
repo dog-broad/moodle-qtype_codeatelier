@@ -505,11 +505,25 @@ export const init = (config) => {
         resultsel.textContent = (strings.runerror || 'Could not run your code') + ' (' + detail + ')';
     };
 
+    // Mark the first errored result's line in the editor (gutter + inline).
+    const markEditorError = (results) => {
+        if (!editor.showError) {
+            return;
+        }
+        const errored = (results || []).find((result) => result && result.error && result.errorline);
+        if (errored) {
+            editor.showError(errored.errorline, errored.error);
+        }
+    };
+
     // Check: grade against the test cases.
     checkbutton.addEventListener('click', () => {
         setRunning(true);
         statusel.textContent = strings.running || 'Running…';
         resultsel.textContent = '';
+        if (editor.clearErrors) {
+            editor.clearErrors();
+        }
         setTab('tests');
         run(editor.getValue(), config.language, config.tests, runOptions())
             .then((result) => {
@@ -525,6 +539,7 @@ export const init = (config) => {
                     scoreinput.value = graded.fraction;
                 }
                 renderFeedback(resultsel, graded, result.results, config, strings);
+                markEditorError(result.results);
             })
             .catch((err) => {
                 showError(err);
@@ -541,12 +556,18 @@ export const init = (config) => {
         if (consoleel) {
             consoleel.textContent = '';
         }
+        if (editor.clearErrors) {
+            editor.clearErrors();
+        }
         setTab('console');
         const scratch = scratchinput ? scratchinput.value : '';
         run(editor.getValue(), config.language, [{input: scratch}], runOptions())
             .then((result) => {
                 const single = (result.results && result.results.length) ? result.results[0] : result;
                 renderConsole(consoleel, result.aborted ? result : single, config, strings);
+                if (!result.aborted) {
+                    markEditorError([single]);
+                }
             })
             .catch((err) => {
                 renderConsole(consoleel, {error: String(err)}, config, strings);
