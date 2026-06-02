@@ -31,6 +31,7 @@ import {lintGutter, setDiagnostics} from '@codemirror/lint';
 import {python} from '@codemirror/lang-python';
 import {sql} from '@codemirror/lang-sql';
 import {javascript} from '@codemirror/lang-javascript';
+import {highlightTree, classHighlighter} from '@lezer/highlight';
 
 /**
  * Resolve the CodeMirror language extension for a CodeAtelier language code.
@@ -49,6 +50,83 @@ const languageExtension = (language) => {
         default:
             return null;
     }
+};
+
+// Cache the Lezer parser per language (parsing the prompt's code blocks reuses
+// the same language packages the editor bundles, so no extra dependency).
+const parserCache = {};
+
+/**
+ * The Lezer parser for a language, or null for plain text.
+ *
+ * @param {String} language python, sql or javascript
+ * @return {Object|null}
+ */
+const parserFor = (language) => {
+    if (!(language in parserCache)) {
+        const support = languageExtension(language);
+        parserCache[language] = (support && support.language) ? support.language.parser : null;
+    }
+    return parserCache[language];
+};
+
+/**
+ * Map a `language-*` CSS class to one of our supported languages.
+ *
+ * @param {String} className
+ * @return {String|null}
+ */
+const languageFromClass = (className) => {
+    const match = (className || '').match(/language-([\w+-]+)/i);
+    if (!match) {
+        return null;
+    }
+    const name = match[1].toLowerCase();
+    const alias = {py: 'python', js: 'javascript', node: 'javascript'};
+    const resolved = alias[name] || name;
+    return (resolved === 'python' || resolved === 'sql' || resolved === 'javascript') ? resolved : null;
+};
+
+const escapeHtml = (value) => value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+/**
+ * Syntax-highlight `<pre><code class="language-*">` blocks within an element,
+ * in place, using the bundled CodeMirror language parsers. Inline `<code>` is
+ * left to CSS. Idempotent: a block is highlighted at most once.
+ *
+ * @param {HTMLElement} root the container to scan (e.g. the question text)
+ */
+export const highlightWithin = (root) => {
+    if (!root) {
+        return;
+    }
+    root.querySelectorAll('pre > code[class*="language-"]').forEach((code) => {
+        if (code.dataset.codeatelierHl) {
+            return;
+        }
+        const parser = parserFor(languageFromClass(code.className));
+        if (!parser) {
+            return;
+        }
+        const text = code.textContent;
+        const tree = parser.parse(text);
+        let html = '';
+        let pos = 0;
+        highlightTree(tree, classHighlighter, (from, to, classes) => {
+            if (from > pos) {
+                html += escapeHtml(text.slice(pos, from));
+            }
+            html += '<span class="' + classes + '">' + escapeHtml(text.slice(from, to)) + '</span>';
+            pos = to;
+        });
+        html += escapeHtml(text.slice(pos));
+        code.innerHTML = html;
+        code.dataset.codeatelierHl = '1';
+        code.classList.add('codeatelier-hl');
+    });
 };
 
 /**

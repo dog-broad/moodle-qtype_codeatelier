@@ -24,7 +24,7 @@
  * @module qtype_codeatelier/control
  */
 
-import {create} from 'qtype_codeatelier/editor';
+import {create, highlightWithin} from 'qtype_codeatelier/editor';
 import {run, describe, stop} from 'qtype_codeatelier/runner';
 import {grade} from 'qtype_codeatelier/grader';
 import {tokenDiff} from 'qtype_codeatelier/diff';
@@ -413,6 +413,9 @@ export const init = (config) => {
     if (!root) {
         return;
     }
+
+    // Syntax-highlight any code blocks the author put in the question prompt.
+    highlightWithin(root.querySelector('.qtext') || root);
 
     const textarea = root.querySelector('[data-role="answer"]');
     const scoreinput = root.querySelector('[data-role="score"]');
