@@ -90,6 +90,18 @@ const sameMultiset = (a, b) => {
 };
 
 /**
+ * Extract the numeric tokens from a value, in order. Matches integers, decimals
+ * and scientific notation, with an optional sign.
+ *
+ * @param {String} value
+ * @return {Array} the parsed numbers, in the order they appear
+ */
+const extractNumbers = (value) => {
+    const tokens = String(value).match(/[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g);
+    return tokens ? tokens.map(Number) : [];
+};
+
+/**
  * Decide whether an actual output matches the expected value under a rule.
  *
  * @param {String} actual the produced output
@@ -111,12 +123,15 @@ const matches = (actual, expected, mode, tolerance) => {
                 return false;
             }
         case 'float': {
-            const a = parseFloat(actual);
-            const b = parseFloat(expected);
-            if (Number.isNaN(a) || Number.isNaN(b)) {
+            // Compare every number in the output positionally within tolerance.
+            // A single value is just the one-element case.
+            const actuals = extractNumbers(actual);
+            const expecteds = extractNumbers(expected);
+            if (expecteds.length === 0 || actuals.length !== expecteds.length) {
                 return false;
             }
-            return Math.abs(a - b) <= (tolerance || 0);
+            const tol = tolerance || 0;
+            return expecteds.every((b, i) => !Number.isNaN(actuals[i]) && Math.abs(actuals[i] - b) <= tol);
         }
         case 'structured': {
             let expectedval;
