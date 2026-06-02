@@ -16,21 +16,38 @@
 /**
  * Practice-tier execution worker for qtype_codeatelier.
  *
- * Runs in a Web Worker off the UI thread. It speaks a narrow protocol: it
- * receives a single {type:'run', language, code, cases} message and replies with
+ * Runs off the UI thread as an ES-module worker. It speaks a narrow protocol:
+ * a {type:'run', language, scenario, ...} message produces zero or more
+ * {type:'status', state} messages (loading/running) and finally a
  * {type:'result', results} (or {error}). It only executes and captures output;
- * grading against expected values happens elsewhere. It does not (and cannot)
- * guard against runaway code itself — the host terminates it on timeout.
+ * grading happens on the main thread. It cannot guard against runaway code — the
+ * host terminates it on timeout.
  *
- * This build executes native JavaScript only. The Python (Pyodide) and SQL
- * (sql.js) runtimes are added behind this same protocol in their own tasks; for
- * now they report that they are unsupported rather than failing silently.
+ * JavaScript runs natively. Python runs via Pyodide, lazily imported from a
+ * base URL supplied by the host and initialised once per worker.
  */
 
-/* eslint-env worker */
+/* eslint-disable promise/avoid-new */
+
+let pyodidePromise = null;
 
 /**
- * Execute one JavaScript case, capturing console.log output as stdout.
+ * Lazily import and initialise Pyodide once, from the given base URL.
+ *
+ * @param {String} baseurl the Pyodide distribution base URL (trailing slash)
+ * @return {Promise<Object>} the Pyodide instance
+ */
+const loadPyodideRuntime = (baseurl) => {
+    if (!pyodidePromise) {
+        pyodidePromise = import(baseurl + 'pyodide.mjs').then((module) => {
+            return module.loadPyodide({indexURL: baseurl});
+        });
+    }
+    return pyodidePromise;
+};
+
+/**
+ * Execute one stdin/stdout JavaScript case, capturing console.log as stdout.
  *
  * @param {String} code the student source
  * @param {String} input the case input, exposed to the code as `input`
@@ -57,22 +74,20 @@ const runJavascript = (code, input) => {
 };
 
 /**
- * Execute one function-style case: call the named entry point with the case's
- * arguments (a JSON array) and capture its return value.
+ * Execute one function-style JavaScript case.
  *
- * @param {String} code the student source (defines the entry-point function)
+ * @param {String} code the student source (defines the entry point)
  * @param {String} entrypoint the function name to call
  * @param {String} input the arguments as a JSON array
  * @return {Object} {stdout, returnvalue} or {stdout, error}
  */
-const runFunction = (code, entrypoint, input) => {
+const runJavascriptFunction = (code, entrypoint, input) => {
     const lines = [];
     const sandboxconsole = {
         log: function() {
             lines.push(Array.prototype.slice.call(arguments).join(' '));
         },
     };
-
     let args;
     try {
         args = input ? JSON.parse(input) : [];
@@ -82,7 +97,6 @@ const runFunction = (code, entrypoint, input) => {
     if (!Array.isArray(args)) {
         args = [args];
     }
-
     try {
         // eslint-disable-next-line no-new-func
         const factory = new Function('console', code + '\n; return ' + entrypoint + ';');
@@ -97,27 +111,115 @@ const runFunction = (code, entrypoint, input) => {
     }
 };
 
-self.onmessage = (event) => {
+// Python wrapper: runs the student code with stdout captured and stdin fed from
+// a StringIO, then exposes stdout, an optional traceback, and (for the function
+// scenario) the JSON-encoded return value as module globals.
+const PYTHON_WRAPPER = `
+import sys, io, json, traceback
+_ca_out = io.StringIO()
+_ca_err = None
+_ca_result = None
+_ca_old_stdout = sys.stdout
+_ca_old_stdin = sys.stdin
+sys.stdin = io.StringIO(_ca_stdin)
+sys.stdout = _ca_out
+try:
+    _ca_g = {'__name__': '__main__'}
+    exec(_ca_code, _ca_g)
+    if _ca_entry:
+        _ca_result = json.dumps(_ca_g[_ca_entry](*_ca_args))
+except Exception:
+    _ca_err = traceback.format_exc()
+finally:
+    sys.stdout = _ca_old_stdout
+    sys.stdin = _ca_old_stdin
+_ca_stdout = _ca_out.getvalue()
+`;
+
+/**
+ * Execute one Python case (stdin/stdout or function) via Pyodide.
+ *
+ * @param {Object} pyodide the Pyodide instance
+ * @param {String} scenario stdinstdout or function
+ * @param {String} code the student source
+ * @param {String} entrypoint the function name (function scenario) or null
+ * @param {String} input stdin text, or a JSON argument array for function scenario
+ * @return {Object} {stdout, returnvalue} or {stdout, error}
+ */
+const runPython = (pyodide, scenario, code, entrypoint, input) => {
+    let args = [];
+    let stdin = '';
+    if (scenario === 'function') {
+        try {
+            args = input ? JSON.parse(input) : [];
+        } catch (err) {
+            return {stdout: '', error: 'Invalid arguments JSON: ' + String(err)};
+        }
+        if (!Array.isArray(args)) {
+            args = [args];
+        }
+    } else {
+        stdin = input || '';
+    }
+
+    pyodide.globals.set('_ca_code', code);
+    pyodide.globals.set('_ca_stdin', stdin);
+    pyodide.globals.set('_ca_entry', scenario === 'function' ? entrypoint : null);
+    pyodide.globals.set('_ca_args', pyodide.toPy(args));
+
+    pyodide.runPython(PYTHON_WRAPPER);
+
+    const stdout = pyodide.globals.get('_ca_stdout') || '';
+    const error = pyodide.globals.get('_ca_err');
+    const resultjson = pyodide.globals.get('_ca_result');
+
+    if (error) {
+        return {stdout: stdout, error: String(error)};
+    }
+    if (scenario === 'function') {
+        return {stdout: stdout, returnvalue: (resultjson === undefined || resultjson === null) ? null : String(resultjson)};
+    }
+    return {stdout: stdout};
+};
+
+self.onmessage = async (event) => {
     const message = event.data;
     if (!message || message.type !== 'run') {
         return;
     }
+    const scenario = message.scenario || 'stdinstdout';
 
-    if (message.language !== 'javascript') {
-        self.postMessage({
-            error: 'languagenotsupported',
-            language: message.language,
-            results: [],
+    if (message.language === 'javascript') {
+        self.postMessage({type: 'status', state: 'running'});
+        const results = message.cases.map((testcase) => {
+            return scenario === 'function'
+                ? runJavascriptFunction(message.code, message.entrypoint, testcase.input || '')
+                : runJavascript(message.code, testcase.input || '');
         });
+        self.postMessage({type: 'result', results: results});
         return;
     }
 
-    const scenario = message.scenario || 'stdinstdout';
-    const results = message.cases.map((testcase) => {
-        if (scenario === 'function') {
-            return runFunction(message.code, message.entrypoint, testcase.input || '');
+    if (message.language === 'python') {
+        if (!message.pyodideBaseUrl) {
+            self.postMessage({error: 'nopyodideurl', results: []});
+            return;
         }
-        return runJavascript(message.code, testcase.input || '');
-    });
-    self.postMessage({type: 'result', results: results});
+        self.postMessage({type: 'status', state: 'loading'});
+        let pyodide;
+        try {
+            pyodide = await loadPyodideRuntime(message.pyodideBaseUrl);
+        } catch (err) {
+            self.postMessage({error: 'pyodideloadfailed: ' + String(err), results: []});
+            return;
+        }
+        self.postMessage({type: 'status', state: 'running'});
+        const results = message.cases.map((testcase) => {
+            return runPython(pyodide, scenario, message.code, message.entrypoint, testcase.input || '');
+        });
+        self.postMessage({type: 'result', results: results});
+        return;
+    }
+
+    self.postMessage({error: 'languagenotsupported', language: message.language, results: []});
 };
