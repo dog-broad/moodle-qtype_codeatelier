@@ -43,5 +43,30 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026060200, 'qtype', 'codeatelier');
     }
 
+    if ($oldversion < 2026060300) {
+        // Add the scenario, entrypoint and starter-code options.
+        $table = new xmldb_table('qtype_codeatelier_options');
+
+        $scenario = new xmldb_field('scenario', XMLDB_TYPE_CHAR, '32', null,
+                XMLDB_NOTNULL, null, 'stdinstdout', 'language');
+        if (!$dbman->field_exists($table, $scenario)) {
+            $dbman->add_field($table, $scenario);
+        }
+
+        $entrypoint = new xmldb_field('entrypoint', XMLDB_TYPE_CHAR, '64', null,
+                null, null, null, 'scenario');
+        if (!$dbman->field_exists($table, $entrypoint)) {
+            $dbman->add_field($table, $entrypoint);
+        }
+
+        $startercode = new xmldb_field('startercode', XMLDB_TYPE_TEXT, null, null,
+                null, null, null, 'entrypoint');
+        if (!$dbman->field_exists($table, $startercode)) {
+            $dbman->add_field($table, $startercode);
+        }
+
+        upgrade_plugin_savepoint(true, 2026060300, 'qtype', 'codeatelier');
+    }
+
     return true;
 }

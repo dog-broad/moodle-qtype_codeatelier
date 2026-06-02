@@ -9,6 +9,9 @@
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Foreign key references question.id."/>
         <FIELD NAME="language" TYPE="char" LENGTH="32" NOTNULL="true" DEFAULT="python" SEQUENCE="false" COMMENT="Practice-tier language: python, sql or javascript."/>
+        <FIELD NAME="scenario" TYPE="char" LENGTH="32" NOTNULL="true" DEFAULT="stdinstdout" SEQUENCE="false" COMMENT="Question scenario: stdinstdout, function or sql. Selects the run harness and comparison."/>
+        <FIELD NAME="entrypoint" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Function name to call for the function scenario."/>
+        <FIELD NAME="startercode" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Starter code shown in the student editor."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
