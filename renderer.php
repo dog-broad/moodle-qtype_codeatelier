@@ -78,6 +78,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'answerid' => $answername,
             'answervalue' => $currentcode,
             'answerlabel' => get_string('answerlabel', 'qtype_codeatelier'),
+            'loadingeditor' => get_string('loadingeditor', 'qtype_codeatelier'),
             'scorename' => $scorename,
             'scorevalue' => $currentscore,
             'runlabel' => get_string('runlabel', 'qtype_codeatelier'),

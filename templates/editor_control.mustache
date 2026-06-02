@@ -39,8 +39,14 @@
     <div class="qtext">{{{questiontext}}}</div>
     <div class="codeatelier-editor">
         <label class="sr-only" for="{{answerid}}">{{answerlabel}}</label>
+        <div class="codeatelier-skeleton" data-role="skeleton" aria-hidden="true">
+            <span class="codeatelier-skeleton-label">{{loadingeditor}}</span>
+        </div>
         <textarea class="codeatelier-answer" data-role="answer" name="{{answername}}" id="{{answerid}}"
             rows="12" cols="80" spellcheck="false" {{#readonly}}readonly="readonly"{{/readonly}}>{{answervalue}}</textarea>
+        <noscript>
+            <style>.qtype_codeatelier .codeatelier-answer{display:block}.qtype_codeatelier .codeatelier-skeleton{display:none}</style>
+        </noscript>
     </div>
     {{^readonly}}
     <div class="codeatelier-actions">

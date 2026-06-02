@@ -45,19 +45,30 @@ export const init = (config) => {
     const runbutton = root.querySelector('[data-role="run"]');
     const statusel = root.querySelector('[data-role="status"]');
     const resultsel = root.querySelector('[data-role="results"]');
+    const skeleton = root.querySelector('[data-role="skeleton"]');
     const strings = config.strings || {};
 
-    const editor = create(textarea, config.language, {
-        readonly: config.readonly,
-        onChange: () => {
-            if (scoreinput) {
-                scoreinput.value = '';
-            }
-            if (resultsel) {
-                resultsel.textContent = '';
-            }
-        },
-    });
+    let editor;
+    try {
+        editor = create(textarea, config.language, {
+            readonly: config.readonly,
+            onChange: () => {
+                if (scoreinput) {
+                    scoreinput.value = '';
+                }
+                if (resultsel) {
+                    resultsel.textContent = '';
+                }
+            },
+        });
+    } catch (e) {
+        // The editor failed to load: fall back to the plain textarea.
+        textarea.style.display = 'block';
+        editor = {getValue: () => textarea.value};
+    }
+    if (skeleton) {
+        skeleton.style.display = 'none';
+    }
 
     if (config.readonly || !runbutton) {
         return;

@@ -38,6 +38,7 @@ $string['pyodidebaseurl_desc'] = 'Where the browser loads the Python (Pyodide) r
 
 // Student attempt UI.
 $string['answerlabel'] = 'Your code';
+$string['loadingeditor'] = 'Loading editor…';
 $string['runlabel'] = 'Run / Check';
 $string['practicenote'] = 'Your code runs in your browser for instant practice feedback. This is not a secure exam mode.';
 $string['running'] = 'Running…';
