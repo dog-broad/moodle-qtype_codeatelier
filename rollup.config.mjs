@@ -26,6 +26,11 @@ export default [
         plugins: [nodeResolve(), terser()],
     },
     {
+        input: 'amd/src/diff.js',
+        output: {file: 'amd/build/diff.min.js', format: 'amd', sourcemap: true, sourcemapExcludeSources: true},
+        plugins: [nodeResolve(), terser()],
+    },
+    {
         // The controller depends on the other plugin modules as AMD modules
         // (kept external so CodeMirror is not duplicated into this bundle).
         input: 'amd/src/control.js',
