@@ -106,6 +106,10 @@ const runOnce = (code, language, jobcases, opts) => {
 
         worker.onmessage = (event) => {
             const data = event.data;
+            if (data && data.type === 'describe') {
+                // Schema-introspection reply (see describe()); not a run result.
+                return;
+            }
             if (data && data.type === 'status') {
                 if (data.state === 'running') {
                     // Runtime is ready; only now arm the execution timeout.
@@ -134,6 +138,8 @@ const runOnce = (code, language, jobcases, opts) => {
             scenario: opts.scenario || 'stdinstdout',
             entrypoint: opts.entrypoint || null,
             pyodideBaseUrl: opts.pyodideBaseUrl || null,
+            sqljsBaseUrl: opts.sqljsBaseUrl || null,
+            schemasql: opts.schemasql || null,
             code: code,
             cases: jobcases,
         });
@@ -161,4 +167,38 @@ const run = (code, language, cases, options) => {
     return next;
 };
 
-export {run};
+/**
+ * Introspect a SQL question's schema for the student-facing viewer: returns
+ * {tables: [{name, columns, sampleColumns, sampleRows}]} or {error}. Reuses the
+ * persistent sql worker.
+ *
+ * @param {String} sqljsBaseUrl
+ * @param {String} schemasql
+ * @return {Promise<Object>}
+ */
+const describe = (sqljsBaseUrl, schemasql) => {
+    return new Promise((resolve) => {
+        const worker = getWorker('sql');
+        let settled = false;
+        const timer = window.setTimeout(() => {
+            if (!settled) {
+                settled = true;
+                resolve({error: 'describetimeout'});
+            }
+        }, INIT_TIMEOUT_MS);
+        const handler = (event) => {
+            const data = event.data;
+            if (!data || data.type !== 'describe' || settled) {
+                return;
+            }
+            settled = true;
+            window.clearTimeout(timer);
+            worker.removeEventListener('message', handler);
+            resolve(data);
+        };
+        worker.addEventListener('message', handler);
+        worker.postMessage({type: 'describe', sqljsBaseUrl: sqljsBaseUrl, schemasql: schemasql});
+    });
+};
+
+export {run, describe};
