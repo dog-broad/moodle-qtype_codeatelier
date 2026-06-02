@@ -34,8 +34,10 @@ export default [
         plugins: [nodeResolve(), terser()],
     },
     {
+        // The execution worker is a module worker (new Worker(url, {type:'module'}))
+        // so it can dynamically import the Pyodide ES module at runtime.
         input: 'amd/src/worker.js',
-        output: {file: 'amd/build/worker.min.js', format: 'iife', sourcemap: false},
+        output: {file: 'amd/build/worker.min.js', format: 'es', sourcemap: false},
         plugins: [nodeResolve(), terser()],
     },
 ];
