@@ -30,48 +30,55 @@
     * scorename string - the qt field name for the browser-computed score
     * scorevalue string - the current score
     * runlabel string - the run button label
+    * focuslabel string - the focus-mode toggle button label
     * practicenote string - a note that this runs in the browser for practice
     * readonly bool - whether the question is being reviewed (no editing/running)
     * hasvalidationerror bool - whether to show the validation message
     * validationerror string - the validation message
 }}
 <div class="qtype_codeatelier" id="{{wrapperid}}">
-    <div class="qtext">{{{questiontext}}}</div>
-    <div class="codeatelier-schema" data-role="schema"></div>
-    <div class="codeatelier-examples" data-role="examples"></div>
-    <div class="codeatelier-editor">
-        <label class="sr-only" for="{{answerid}}">{{answerlabel}}</label>
-        <div class="codeatelier-skeleton" data-role="skeleton" aria-hidden="true">
-            <span class="codeatelier-skeleton-label">{{loadingeditor}}</span>
+    <div class="codeatelier-pane codeatelier-pane-problem" data-role="pane-problem">
+        <div class="qtext">{{{questiontext}}}</div>
+        <div class="codeatelier-schema" data-role="schema"></div>
+        <div class="codeatelier-examples" data-role="examples"></div>
+    </div>
+    <div class="codeatelier-pane codeatelier-pane-work" data-role="pane-work">
+        <div class="codeatelier-editor">
+            <label class="sr-only" for="{{answerid}}">{{answerlabel}}</label>
+            <div class="codeatelier-skeleton" data-role="skeleton" aria-hidden="true">
+                <span class="codeatelier-skeleton-label">{{loadingeditor}}</span>
+            </div>
+            <textarea class="codeatelier-answer" data-role="answer" name="{{answername}}" id="{{answerid}}"
+                rows="12" cols="80" spellcheck="false" {{#readonly}}readonly="readonly"{{/readonly}}>{{answervalue}}</textarea>
+            <noscript>
+                <style>.qtype_codeatelier .codeatelier-answer{display:block}.qtype_codeatelier .codeatelier-skeleton{display:none}</style>
+            </noscript>
         </div>
-        <textarea class="codeatelier-answer" data-role="answer" name="{{answername}}" id="{{answerid}}"
-            rows="12" cols="80" spellcheck="false" {{#readonly}}readonly="readonly"{{/readonly}}>{{answervalue}}</textarea>
-        <noscript>
-            <style>.qtype_codeatelier .codeatelier-answer{display:block}.qtype_codeatelier .codeatelier-skeleton{display:none}</style>
-        </noscript>
+        {{^readonly}}
+        <div class="codeatelier-scratch" data-role="scratchwrap" style="display: none;">
+            <label class="codeatelier-block-label" data-role="scratchlabel" for="{{answerid}}_scratch"></label>
+            <textarea class="codeatelier-scratch-input" data-role="scratch" id="{{answerid}}_scratch"
+                rows="2" cols="80" spellcheck="false"></textarea>
+        </div>
+        <div class="codeatelier-actions">
+            <button type="button" class="btn btn-secondary" data-role="run">{{runlabel}}</button>
+            <button type="button" class="btn btn-primary" data-role="check">{{checklabel}}</button>
+            <button type="button" class="btn btn-secondary" data-role="stop" style="display: none;">{{stoplabel}}</button>
+            <span class="codeatelier-status" data-role="status" role="status" aria-live="polite"></span>
+            <button type="button" class="btn btn-link codeatelier-focus-toggle" data-role="focus"
+                aria-pressed="false">{{focuslabel}}</button>
+        </div>
+        <p class="codeatelier-practicenote small text-muted">{{practicenote}}</p>
+        <div class="codeatelier-tabs" role="tablist">
+            <button type="button" class="codeatelier-tab" data-role="tab" data-tab="console">{{consolelabel}}</button>
+            <button type="button" class="codeatelier-tab" data-role="tab" data-tab="tests">{{testslabel}}</button>
+        </div>
+        {{/readonly}}
+        <input type="hidden" data-role="score" name="{{scorename}}" value="{{scorevalue}}">
+        <div class="codeatelier-console" data-role="console" data-tabpanel="console" aria-live="polite"></div>
+        <div class="codeatelier-results" data-role="results" data-tabpanel="tests" aria-live="polite"></div>
+        {{#hasvalidationerror}}
+        <div class="validationerror">{{validationerror}}</div>
+        {{/hasvalidationerror}}
     </div>
-    {{^readonly}}
-    <div class="codeatelier-scratch" data-role="scratchwrap" style="display: none;">
-        <label class="codeatelier-block-label" data-role="scratchlabel" for="{{answerid}}_scratch"></label>
-        <textarea class="codeatelier-scratch-input" data-role="scratch" id="{{answerid}}_scratch"
-            rows="2" cols="80" spellcheck="false"></textarea>
-    </div>
-    <div class="codeatelier-actions">
-        <button type="button" class="btn btn-secondary" data-role="run">{{runlabel}}</button>
-        <button type="button" class="btn btn-primary" data-role="check">{{checklabel}}</button>
-        <button type="button" class="btn btn-secondary" data-role="stop" style="display: none;">{{stoplabel}}</button>
-        <span class="codeatelier-status" data-role="status" role="status" aria-live="polite"></span>
-    </div>
-    <p class="codeatelier-practicenote small text-muted">{{practicenote}}</p>
-    <div class="codeatelier-tabs" role="tablist">
-        <button type="button" class="codeatelier-tab" data-role="tab" data-tab="console">{{consolelabel}}</button>
-        <button type="button" class="codeatelier-tab" data-role="tab" data-tab="tests">{{testslabel}}</button>
-    </div>
-    {{/readonly}}
-    <input type="hidden" data-role="score" name="{{scorename}}" value="{{scorevalue}}">
-    <div class="codeatelier-console" data-role="console" data-tabpanel="console" aria-live="polite"></div>
-    <div class="codeatelier-results" data-role="results" data-tabpanel="tests" aria-live="polite"></div>
-    {{#hasvalidationerror}}
-    <div class="validationerror">{{validationerror}}</div>
-    {{/hasvalidationerror}}
 </div>

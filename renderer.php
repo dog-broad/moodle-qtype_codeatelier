@@ -85,6 +85,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'scorename' => $scorename,
             'scorevalue' => $currentscore,
             'runlabel' => get_string('runlabel', 'qtype_codeatelier'),
+            'focuslabel' => get_string('focus', 'qtype_codeatelier'),
             'checklabel' => get_string('checklabel', 'qtype_codeatelier'),
             'stoplabel' => get_string('stoplabel', 'qtype_codeatelier'),
             'consolelabel' => get_string('consolelabel', 'qtype_codeatelier'),
@@ -128,6 +129,9 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'teacherfeedback' => get_string('result_feedback', 'qtype_codeatelier'),
                 'stale' => get_string('stale', 'qtype_codeatelier'),
                 'degraded' => get_string('degraded', 'qtype_codeatelier'),
+                'focus' => get_string('focus', 'qtype_codeatelier'),
+                'exitfocus' => get_string('exitfocus', 'qtype_codeatelier'),
+                'focusmode' => get_string('focusmode', 'qtype_codeatelier'),
             ),
         )));
 

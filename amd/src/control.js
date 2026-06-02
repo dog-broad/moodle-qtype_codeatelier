@@ -499,6 +499,87 @@ export const init = (config) => {
     });
     setTab('tests');
 
+    // Focus mode: an opt-in split-pane that fills the viewport. Implemented as a
+    // class on the question root so the editor, results and form fields keep
+    // their DOM position (the score/answer fields must stay inside the quiz
+    // form) and CodeMirror is never remounted.
+    const focusbutton = root.querySelector('[data-role="focus"]');
+    if (focusbutton) {
+        const cmContent = () => root.querySelector('.cm-content');
+        const focusables = () => Array.prototype.slice.call(root.querySelectorAll(
+            '.cm-content, a[href], button:not([disabled]), textarea:not([disabled]),'
+            + ' input:not([type="hidden"]):not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )).filter((el) => el.offsetParent !== null || el === document.activeElement);
+
+        let focusActive = false;
+        let restoreTo = null;
+
+        const setFocusMode = (on) => {
+            focusActive = on;
+            root.classList.toggle('codeatelier-focus', on);
+            focusbutton.setAttribute('aria-pressed', on ? 'true' : 'false');
+            focusbutton.textContent = on
+                ? (strings.exitfocus || 'Exit focus')
+                : (strings.focus || 'Focus');
+            if (on) {
+                root.setAttribute('role', 'dialog');
+                root.setAttribute('aria-modal', 'true');
+                root.setAttribute('aria-label', strings.focusmode || 'Code workbench (focus mode)');
+                restoreTo = document.activeElement;
+                const cm = cmContent();
+                if (cm) {
+                    cm.focus();
+                }
+            } else {
+                root.removeAttribute('role');
+                root.removeAttribute('aria-modal');
+                root.removeAttribute('aria-label');
+                if (restoreTo && typeof restoreTo.focus === 'function') {
+                    restoreTo.focus();
+                } else {
+                    focusbutton.focus();
+                }
+            }
+        };
+
+        focusbutton.addEventListener('click', () => setFocusMode(!focusActive));
+
+        root.addEventListener('keydown', (e) => {
+            if (!focusActive) {
+                return;
+            }
+            if (e.key === 'Escape') {
+                // Let the editor keep Escape (its Escape-then-Tab focus escape hatch).
+                const cm = cmContent();
+                if (!(cm && cm.contains(document.activeElement))) {
+                    setFocusMode(false);
+                    e.preventDefault();
+                }
+                return;
+            }
+            if (e.key === 'Tab') {
+                // CodeMirror owns Tab while the caret is in the editor (it indents).
+                const cm = cmContent();
+                if (cm && cm.contains(document.activeElement)) {
+                    return;
+                }
+                const items = focusables();
+                if (!items.length) {
+                    return;
+                }
+                const first = items[0];
+                const last = items[items.length - 1];
+                if (e.shiftKey && document.activeElement === first) {
+                    last.focus();
+                    e.preventDefault();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                    first.focus();
+                    e.preventDefault();
+                }
+            }
+        });
+    }
+
     const runOptions = () => ({
         timeoutMs: config.timeoutms,
         scenario: config.scenario,
