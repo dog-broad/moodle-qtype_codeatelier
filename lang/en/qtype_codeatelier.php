@@ -26,7 +26,7 @@ defined('MOODLE_INTERNAL') || die();
 
 $string['pluginname'] = 'CodeAtelier';
 $string['pluginname_help'] = 'A code question where students write code in an in-browser editor, run it against your test cases, and get instant feedback. Practice-tier grading runs in the browser and is for formative practice, not secure assessment.';
-$string['pluginnamesummary'] = 'A code question for writing, running, and grading student code inside the quiz engine.';
+$string['pluginnamesummary'] = 'An in-browser code question for instant, run-it-yourself coding practice (Python, SQL, JavaScript). Practice tier — for formative use, not secure assessment.';
 $string['pluginnameadding'] = 'Adding a CodeAtelier question';
 $string['pluginnameediting'] = 'Editing a CodeAtelier question';
 
