@@ -110,6 +110,11 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'hidden' => get_string('result_hidden', 'qtype_codeatelier'),
                 'score' => get_string('result_score', 'qtype_codeatelier'),
                 'schematables' => get_string('schematables', 'qtype_codeatelier'),
+                'examples' => get_string('examples', 'qtype_codeatelier'),
+                'input' => get_string('input', 'qtype_codeatelier'),
+                'expected' => get_string('expected', 'qtype_codeatelier'),
+                'call' => get_string('result_call', 'qtype_codeatelier'),
+                'got' => get_string('result_got', 'qtype_codeatelier'),
             ),
         )));
 

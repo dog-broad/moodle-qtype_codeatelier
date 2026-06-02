@@ -16,11 +16,10 @@
 /**
  * Question controller for qtype_codeatelier.
  *
- * Wires the editor, the runner and the grader to the question's form fields:
- * the student's code lives in the 'answer' textarea; clicking run executes it
- * against the test cases, grades it, writes the fraction into the hidden 'score'
- * field, and shows per-test results. Editing after a run clears the score so the
- * student must re-run before submitting.
+ * Wires the editor, runner and grader to the question's form fields, renders the
+ * worked examples (from the visible test cases) and the diagnostic per-test
+ * feedback after a Check. Hidden tests are only ever shown as pass/fail — their
+ * expected/actual values never reach the DOM (the integrity boundary).
  *
  * @module qtype_codeatelier/control
  */
@@ -28,13 +27,114 @@
 import {create} from 'qtype_codeatelier/editor';
 import {run, describe} from 'qtype_codeatelier/runner';
 import {grade} from 'qtype_codeatelier/grader';
+import {tokenDiff} from 'qtype_codeatelier/diff';
+
+/**
+ * @param {String} value
+ * @return {*} parsed JSON, or null on failure
+ */
+const parseJson = (value) => {
+    try {
+        return JSON.parse(value);
+    } catch (e) {
+        return null;
+    }
+};
+
+/**
+ * Build a <pre> showing one side of a diff: equal tokens plus the kept change
+ * type (del for the expected side, ins for the actual side) highlighted.
+ *
+ * @param {Array} ops from tokenDiff
+ * @param {String} keep 'del' or 'ins'
+ * @return {HTMLElement}
+ */
+const diffPre = (ops, keep) => {
+    const pre = document.createElement('pre');
+    pre.className = 'codeatelier-diff';
+    ops.forEach((op) => {
+        if (op.type === 'equal' || op.type === keep) {
+            const span = document.createElement('span');
+            span.textContent = op.text;
+            if (op.type === keep) {
+                span.className = (keep === 'del') ? 'codeatelier-diff-del' : 'codeatelier-diff-ins';
+            }
+            pre.appendChild(span);
+        }
+    });
+    return pre;
+};
+
+/**
+ * Build a result-set table.
+ *
+ * @param {Array} columns optional column names
+ * @param {Array} rows array of row arrays
+ * @param {Object} extrakeys set of JSON-stringified rows to highlight
+ * @return {HTMLElement}
+ */
+const resultSetTable = (columns, rows, extrakeys) => {
+    const table = document.createElement('table');
+    table.className = 'codeatelier-resultset';
+    if (columns && columns.length) {
+        const thead = document.createElement('thead');
+        const tr = document.createElement('tr');
+        columns.forEach((col) => {
+            const th = document.createElement('th');
+            th.textContent = col;
+            tr.appendChild(th);
+        });
+        thead.appendChild(tr);
+        table.appendChild(thead);
+    }
+    const tbody = document.createElement('tbody');
+    (rows || []).forEach((row) => {
+        const tr = document.createElement('tr');
+        if (extrakeys && extrakeys[JSON.stringify(row)]) {
+            tr.className = 'codeatelier-diff-row';
+        }
+        row.forEach((value) => {
+            const td = document.createElement('td');
+            td.textContent = (value === null) ? 'NULL' : String(value);
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    return table;
+};
+
+/**
+ * Rows present in `rows` but not in `other` (as a multiset by JSON key).
+ *
+ * @param {Array} rows
+ * @param {Array} other
+ * @return {Object} set of JSON keys
+ */
+const extraRowKeys = (rows, other) => {
+    const counts = {};
+    (other || []).forEach((row) => {
+        const key = JSON.stringify(row);
+        counts[key] = (counts[key] || 0) + 1;
+    });
+    const extra = {};
+    (rows || []).forEach((row) => {
+        const key = JSON.stringify(row);
+        if (counts[key]) {
+            counts[key]--;
+        } else {
+            extra[key] = true;
+        }
+    });
+    return extra;
+};
 
 /**
  * Render the SQL schema + sample-data viewer.
  *
- * @param {HTMLElement} element the container
+ * @param {HTMLElement} element
  * @param {Object} info {tables: [...]} from runner.describe
- * @param {Object} strings labels
+ * @param {Object} strings
  */
 const renderSchema = (element, info, strings) => {
     element.textContent = '';
@@ -45,47 +145,209 @@ const renderSchema = (element, info, strings) => {
     heading.className = 'codeatelier-schema-heading';
     heading.textContent = strings.schematables || 'Tables and sample data';
     element.appendChild(heading);
-
     info.tables.forEach((table) => {
         const details = document.createElement('details');
         details.className = 'codeatelier-schema-table';
         const summary = document.createElement('summary');
-        const cols = table.columns.map((col) => col.name + ' ' + col.type).join(', ');
-        summary.textContent = table.name + ' (' + cols + ')';
+        summary.textContent = table.name + ' (' + table.columns.map((c) => c.name + ' ' + c.type).join(', ') + ')';
         details.appendChild(summary);
-
-        const tbl = document.createElement('table');
-        tbl.className = 'codeatelier-schema-data';
-        const thead = document.createElement('thead');
-        const headrow = document.createElement('tr');
-        (table.sampleColumns || []).forEach((col) => {
-            const th = document.createElement('th');
-            th.textContent = col;
-            headrow.appendChild(th);
-        });
-        thead.appendChild(headrow);
-        tbl.appendChild(thead);
-
-        const tbody = document.createElement('tbody');
-        (table.sampleRows || []).forEach((row) => {
-            const tr = document.createElement('tr');
-            row.forEach((value) => {
-                const td = document.createElement('td');
-                td.textContent = (value === null) ? 'NULL' : String(value);
-                tr.appendChild(td);
-            });
-            tbody.appendChild(tr);
-        });
-        tbl.appendChild(tbody);
-        details.appendChild(tbl);
+        details.appendChild(resultSetTable(table.sampleColumns, table.sampleRows, null));
         element.appendChild(details);
     });
 };
 
 /**
+ * Format a function call for display: entrypoint(arg1, arg2).
+ *
+ * @param {String} entrypoint
+ * @param {String} input JSON array of arguments
+ * @return {String}
+ */
+const formatCall = (entrypoint, input) => {
+    const args = parseJson(input);
+    const list = Array.isArray(args) ? args.map((a) => JSON.stringify(a)).join(', ') : '';
+    return (entrypoint || 'solve') + '(' + list + ')';
+};
+
+/**
+ * Add a labelled block to a container.
+ *
+ * @param {HTMLElement} parent
+ * @param {String} label
+ * @param {HTMLElement|String} body
+ */
+const addBlock = (parent, label, body) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'codeatelier-block';
+    const lab = document.createElement('span');
+    lab.className = 'codeatelier-block-label';
+    lab.textContent = label;
+    wrap.appendChild(lab);
+    if (typeof body === 'string') {
+        const pre = document.createElement('pre');
+        pre.className = 'codeatelier-diff';
+        pre.textContent = body;
+        wrap.appendChild(pre);
+    } else {
+        wrap.appendChild(body);
+    }
+    parent.appendChild(wrap);
+};
+
+/**
+ * Render the worked examples from the visible test cases.
+ *
+ * @param {HTMLElement} element
+ * @param {Object} config
+ * @param {Object} strings
+ */
+const renderExamples = (element, config, strings) => {
+    element.textContent = '';
+    const tests = config.tests || [];
+    const visible = tests.filter((t) => Number(t.visibility) === 1);
+    const hidden = tests.length - visible.length;
+    if (!visible.length && !hidden) {
+        return;
+    }
+
+    if (visible.length) {
+        const heading = document.createElement('p');
+        heading.className = 'codeatelier-examples-heading';
+        heading.textContent = strings.examples || 'Examples';
+        element.appendChild(heading);
+    }
+
+    visible.forEach((test, i) => {
+        const block = document.createElement('div');
+        block.className = 'codeatelier-example';
+        const title = document.createElement('span');
+        title.className = 'codeatelier-block-label';
+        title.textContent = (strings.test || 'Test') + ' ' + (i + 1);
+        block.appendChild(title);
+
+        if (config.scenario === 'function') {
+            addBlock(block, strings.call || 'Call', formatCall(config.entrypoint, test.input));
+            addBlock(block, strings.expected || 'Expected', String(test.expected));
+        } else if (config.scenario === 'sql') {
+            const rows = parseJson(test.expected) || [];
+            addBlock(block, strings.expected || 'Expected', resultSetTable(null, rows, null));
+        } else {
+            if (test.input) {
+                addBlock(block, strings.input || 'Input', String(test.input));
+            }
+            addBlock(block, strings.expected || 'Expected', String(test.expected));
+        }
+        element.appendChild(block);
+    });
+
+    if (hidden) {
+        const note = document.createElement('p');
+        note.className = 'codeatelier-hidden-note';
+        note.textContent = hidden + ' ' + (strings.hidden || 'hidden') + (hidden === 1 ? '' : 's');
+        element.appendChild(note);
+    }
+};
+
+/**
+ * Render the diagnostic feedback for a graded run.
+ *
+ * @param {HTMLElement} element
+ * @param {Object} graded from grade()
+ * @param {Array} results from run()
+ * @param {Object} config
+ * @param {Object} strings
+ */
+const renderFeedback = (element, graded, results, config, strings) => {
+    element.textContent = '';
+
+    const pct = Math.round(graded.fraction * 1000) / 10;
+    const header = document.createElement('p');
+    header.className = 'codeatelier-score codeatelier-verdict-' + graded.verdict;
+    header.textContent = (strings.score || 'Score') + ': ' + pct + '% (' + graded.verdict + ')';
+    element.appendChild(header);
+
+    let firstfailureopen = false;
+    let hiddenpassed = 0;
+    let hiddentotal = 0;
+
+    graded.testresults.forEach((tr, index) => {
+        if (!Number(tr.visibility)) {
+            hiddentotal++;
+            if (tr.passed) {
+                hiddenpassed++;
+            }
+            return;
+        }
+
+        const result = results[index] || {};
+        const details = document.createElement('details');
+        details.className = 'codeatelier-feedback ' + (tr.passed ? 'codeatelier-pass' : 'codeatelier-fail');
+        if (!tr.passed && !firstfailureopen) {
+            details.open = true;
+            firstfailureopen = true;
+        }
+        const summary = document.createElement('summary');
+        summary.textContent = (strings.test || 'Test') + ' ' + (index + 1) + ': '
+            + (tr.passed ? (strings.pass || 'passed') : (strings.fail || 'failed'));
+        details.appendChild(summary);
+
+        const body = document.createElement('div');
+        body.className = 'codeatelier-feedback-body';
+
+        if (result.error) {
+            addBlock(body, strings.runerror || 'Error', String(result.error));
+        } else if (!tr.passed) {
+            renderMismatch(body, config, config.tests[index], result, strings);
+        }
+        details.appendChild(body);
+        element.appendChild(details);
+    });
+
+    if (hiddentotal) {
+        const note = document.createElement('p');
+        note.className = 'codeatelier-hidden-note';
+        note.textContent = (strings.hidden || 'Hidden') + ': ' + hiddenpassed + '/' + hiddentotal;
+        element.appendChild(note);
+    }
+};
+
+/**
+ * Render an expected-vs-actual mismatch for one visible test, by scenario.
+ *
+ * @param {HTMLElement} body
+ * @param {Object} config
+ * @param {Object} test
+ * @param {Object} result
+ * @param {Object} strings
+ */
+const renderMismatch = (body, config, test, result, strings) => {
+    if (config.scenario === 'sql') {
+        const expectedrows = parseJson(test.expected) || [];
+        const actualrows = result.rows || [];
+        addBlock(body, strings.expected || 'Expected',
+            resultSetTable(null, expectedrows, extraRowKeys(expectedrows, actualrows)));
+        addBlock(body, strings.got || 'Got',
+            resultSetTable(result.columns, actualrows, extraRowKeys(actualrows, expectedrows)));
+        return;
+    }
+
+    let actualtext;
+    if (config.scenario === 'function') {
+        addBlock(body, strings.call || 'Call', formatCall(config.entrypoint, test.input));
+        actualtext = (result.returnvalue === undefined || result.returnvalue === null)
+            ? '' : String(result.returnvalue);
+    } else {
+        actualtext = (result.stdout === undefined || result.stdout === null) ? '' : String(result.stdout);
+    }
+    const ops = tokenDiff(String(test.expected), actualtext);
+    addBlock(body, strings.expected || 'Expected', diffPre(ops, 'del'));
+    addBlock(body, strings.got || 'Got', diffPre(ops, 'ins'));
+};
+
+/**
  * Initialise a CodeAtelier question.
  *
- * @param {Object} config {wrapperid, language, tests, timeoutms, readonly, strings}
+ * @param {Object} config
  */
 export const init = (config) => {
     const root = document.getElementById(config.wrapperid);
@@ -99,7 +361,12 @@ export const init = (config) => {
     const statusel = root.querySelector('[data-role="status"]');
     const resultsel = root.querySelector('[data-role="results"]');
     const skeleton = root.querySelector('[data-role="skeleton"]');
+    const examplesel = root.querySelector('[data-role="examples"]');
     const strings = config.strings || {};
+
+    if (examplesel) {
+        renderExamples(examplesel, config, strings);
+    }
 
     let editor;
     try {
@@ -115,7 +382,6 @@ export const init = (config) => {
             },
         });
     } catch (e) {
-        // The editor failed to load: fall back to the plain textarea.
         textarea.style.display = 'block';
         editor = {getValue: () => textarea.value};
     }
@@ -133,30 +399,6 @@ export const init = (config) => {
     if (config.readonly || !runbutton) {
         return;
     }
-
-    const renderResults = (graded) => {
-        resultsel.textContent = '';
-
-        const pct = Math.round(graded.fraction * 1000) / 10;
-        const summary = document.createElement('p');
-        summary.className = 'codeatelier-score';
-        summary.textContent = (strings.score || 'Score') + ': ' + pct + '% (' + graded.verdict + ')';
-        resultsel.appendChild(summary);
-
-        const list = document.createElement('ul');
-        list.className = 'codeatelier-testlist';
-        graded.testresults.forEach((testresult, index) => {
-            const item = document.createElement('li');
-            const label = testresult.visibility
-                ? (strings.test || 'Test') + ' ' + (index + 1)
-                : (strings.hidden || 'Hidden test');
-            const outcome = testresult.passed ? (strings.pass || 'passed') : (strings.fail || 'failed');
-            item.textContent = label + ': ' + outcome;
-            item.className = testresult.passed ? 'codeatelier-pass' : 'codeatelier-fail';
-            list.appendChild(item);
-        });
-        resultsel.appendChild(list);
-    };
 
     const showError = (detail) => {
         if (scoreinput) {
@@ -193,7 +435,7 @@ export const init = (config) => {
                 if (scoreinput) {
                     scoreinput.value = graded.fraction;
                 }
-                renderResults(graded);
+                renderFeedback(resultsel, graded, result.results, config, strings);
             })
             .catch((err) => {
                 statusel.textContent = '';
