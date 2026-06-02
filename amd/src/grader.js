@@ -68,6 +68,28 @@ const deepEqual = (a, b) => {
 };
 
 /**
+ * Compare two arrays of rows ignoring order (as multisets of rows).
+ *
+ * @param {Array} a
+ * @param {Array} b
+ * @return {Boolean}
+ */
+const sameMultiset = (a, b) => {
+    if (a.length !== b.length) {
+        return false;
+    }
+    const used = new Array(b.length).fill(false);
+    return a.every((row) => {
+        const idx = b.findIndex((other, i) => !used[i] && deepEqual(other, row));
+        if (idx === -1) {
+            return false;
+        }
+        used[idx] = true;
+        return true;
+    });
+};
+
+/**
  * Decide whether an actual output matches the expected value under a rule.
  *
  * @param {String} actual the produced output
@@ -112,6 +134,21 @@ const matches = (actual, expected, mode, tolerance) => {
                 }
             }
             return deepEqual(actualval, expectedval);
+        }
+        case 'resultset':
+        case 'resultset_ordered': {
+            let expectedrows;
+            try {
+                expectedrows = JSON.parse(expected);
+            } catch (e) {
+                return false;
+            }
+            if (!Array.isArray(actual) || !Array.isArray(expectedrows)) {
+                return false;
+            }
+            return mode === 'resultset_ordered'
+                ? deepEqual(actual, expectedrows)
+                : sameMultiset(actual, expectedrows);
         }
         default:
             return normalise(actual) === normalise(expected);
@@ -161,10 +198,16 @@ const grade = (results, tests) => {
         } else if (result.error) {
             status = 'error';
         } else {
-            // Structured comparison uses the raw return value; text modes use stdout.
-            const actual = (test.matchmode === 'structured')
-                ? result.returnvalue
-                : actualOutput(result);
+            // Pick what to compare by mode: structured -> return value;
+            // result-set -> the SQL result rows; text modes -> stdout.
+            let actual;
+            if (test.matchmode === 'structured') {
+                actual = result.returnvalue;
+            } else if (test.matchmode === 'resultset' || test.matchmode === 'resultset_ordered') {
+                actual = result.rows;
+            } else {
+                actual = actualOutput(result);
+            }
             passed = matches(actual, test.expected, test.matchmode, parseFloat(test.tolerance));
             status = passed ? 'pass' : 'fail';
         }
