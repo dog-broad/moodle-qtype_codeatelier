@@ -32,11 +32,16 @@ $string['pluginnameediting'] = 'Editing a CodeAtelier question';
 
 $string['privacy:metadata'] = 'The CodeAtelier question type does not store any personal data; submitted responses are held by the Moodle question engine.';
 
+// Admin settings.
+$string['pyodidebaseurl'] = 'Pyodide base URL';
+$string['pyodidebaseurl_desc'] = 'Where the browser loads the Python (Pyodide) runtime from for practice-tier Python questions. The default is a pinned public CDN; point it at a local mirror for offline or locked-down sites. Must end with a trailing slash.';
+
 // Student attempt UI.
 $string['answerlabel'] = 'Your code';
 $string['runlabel'] = 'Run / Check';
 $string['practicenote'] = 'Your code runs in your browser for instant practice feedback. This is not a secure exam mode.';
 $string['running'] = 'Running…';
+$string['preparingruntime'] = 'Preparing the runtime… (first run only)';
 $string['runerror'] = 'Your code could not be run';
 $string['result_score'] = 'Score';
 $string['result_test'] = 'Test';
