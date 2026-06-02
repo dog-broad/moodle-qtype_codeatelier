@@ -1,0 +1,25 @@
+{
+    "name": "qtype_codeatelier-assets",
+    "version": "0.1.0",
+    "private": true,
+    "description": "Front-end build for the CodeAtelier question type (bundles CodeMirror 6 into a Moodle AMD module).",
+    "license": "GPL-3.0-or-later",
+    "scripts": {
+        "build": "rollup -c"
+    },
+    "dependencies": {
+        "@codemirror/commands": "^6.6.0",
+        "@codemirror/lang-javascript": "^6.2.2",
+        "@codemirror/lint": "^6.8.0",
+        "@codemirror/lang-python": "^6.1.6",
+        "@codemirror/lang-sql": "^6.7.0",
+        "@codemirror/view": "^6.28.0",
+        "@lezer/highlight": "^1.2.3",
+        "codemirror": "^6.0.1"
+    },
+    "devDependencies": {
+        "@rollup/plugin-node-resolve": "^15.3.0",
+        "@rollup/plugin-terser": "^0.4.4",
+        "rollup": "^4.21.0"
+    }
+}

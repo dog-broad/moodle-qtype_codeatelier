@@ -1,0 +1,462 @@
+/* CodeAtelier question type styles. */
+
+.qtype_codeatelier .codeatelier-editor {
+    margin: 0.5rem 0;
+}
+
+/*
+ * The textarea is the form field. It is hidden by default: a skeleton loader is
+ * shown until CodeMirror mounts, then CodeMirror replaces it. The <noscript>
+ * block in the template reveals the textarea (and hides the skeleton) when
+ * JavaScript is off, so it still works as a plain code box. The code styling
+ * below applies in that fallback case.
+ */
+.qtype_codeatelier .codeatelier-answer {
+    display: none;
+    width: 100%;
+    min-height: 14rem;
+    box-sizing: border-box;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    tab-size: 4;
+    white-space: pre;
+    overflow: auto;
+    background: #fff;
+    color: #1f2933;
+}
+
+/* Skeleton loader shown while CodeMirror downloads and mounts. */
+.qtype_codeatelier .codeatelier-skeleton {
+    position: relative;
+    min-height: 14rem;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    background: #f8f9fa;
+    overflow: hidden;
+}
+
+.qtype_codeatelier .codeatelier-skeleton-label {
+    position: absolute;
+    top: 0.6rem;
+    left: 0.75rem;
+    color: #8a929b;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.9rem;
+}
+
+.qtype_codeatelier .codeatelier-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.05), transparent);
+    animation: codeatelier-shimmer 1.4s infinite;
+}
+
+@keyframes codeatelier-shimmer {
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .qtype_codeatelier .codeatelier-skeleton::after {
+        animation: none;
+    }
+}
+
+/* CodeMirror editor frame. */
+.qtype_codeatelier .cm-editor {
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    font-size: 0.9rem;
+    max-height: 30rem;
+}
+
+.qtype_codeatelier .cm-editor.cm-focused {
+    outline: 2px solid #0f6cbf;
+    outline-offset: -1px;
+}
+
+.qtype_codeatelier .cm-scroller {
+    overflow: auto;
+}
+
+/* Run / status / results. */
+.qtype_codeatelier .codeatelier-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.5rem 0;
+}
+
+.qtype_codeatelier .codeatelier-status {
+    color: #5c6770;
+    font-style: italic;
+}
+
+.qtype_codeatelier .codeatelier-results {
+    margin-top: 0.5rem;
+}
+
+.qtype_codeatelier .codeatelier-score {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.qtype_codeatelier .codeatelier-testlist {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.qtype_codeatelier .codeatelier-testlist li {
+    padding: 0.1rem 0;
+}
+
+.qtype_codeatelier .codeatelier-pass::before {
+    content: "\2713\00a0";
+    color: #1f7a3d;
+}
+
+.qtype_codeatelier .codeatelier-fail::before {
+    content: "\2717\00a0";
+    color: #b02a37;
+}
+
+/* SQL schema and sample-data viewer. */
+.qtype_codeatelier .codeatelier-schema {
+    margin: 0.5rem 0;
+}
+
+.qtype_codeatelier .codeatelier-schema-heading {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.qtype_codeatelier .codeatelier-schema-table {
+    margin-bottom: 0.5rem;
+}
+
+.qtype_codeatelier .codeatelier-schema-table summary {
+    cursor: pointer;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.85rem;
+}
+
+.qtype_codeatelier .codeatelier-schema-data {
+    border-collapse: collapse;
+    margin: 0.4rem 0;
+    font-size: 0.85rem;
+}
+
+.qtype_codeatelier .codeatelier-schema-data th,
+.qtype_codeatelier .codeatelier-schema-data td {
+    border: 1px solid #ced4da;
+    padding: 0.2rem 0.5rem;
+    text-align: left;
+}
+
+.qtype_codeatelier .codeatelier-schema-data th {
+    background: #f1f3f5;
+}
+
+/* Worked examples + diagnostic feedback. */
+.qtype_codeatelier .codeatelier-examples-heading,
+.qtype_codeatelier .codeatelier-score {
+    font-weight: 600;
+    margin: 0.5rem 0 0.25rem;
+}
+
+.qtype_codeatelier .codeatelier-example {
+    border-left: 3px solid #ced4da;
+    padding: 0.25rem 0 0.25rem 0.75rem;
+    margin: 0.4rem 0;
+}
+
+.qtype_codeatelier .codeatelier-block {
+    margin: 0.2rem 0;
+}
+
+.qtype_codeatelier .codeatelier-block-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #5c6770;
+}
+
+.qtype_codeatelier .codeatelier-diff {
+    margin: 0.15rem 0;
+    padding: 0.35rem 0.5rem;
+    background: #f8f9fa;
+    border-radius: 0.25rem;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    overflow-x: auto;
+}
+
+.qtype_codeatelier .codeatelier-diff-del {
+    background: #fbdcdc;
+    text-decoration: line-through;
+}
+
+.qtype_codeatelier .codeatelier-diff-ins {
+    background: #cde6d3;
+}
+
+.qtype_codeatelier .codeatelier-feedback {
+    margin: 0.25rem 0;
+    border: 1px solid #e0e3e7;
+    border-radius: 0.375rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.qtype_codeatelier .codeatelier-feedback > summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.qtype_codeatelier .codeatelier-feedback.codeatelier-pass > summary {
+    color: #1f7a3d;
+}
+
+.qtype_codeatelier .codeatelier-feedback.codeatelier-fail > summary {
+    color: #b02a37;
+}
+
+.qtype_codeatelier .codeatelier-feedback-body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 0.4rem;
+}
+
+.qtype_codeatelier .codeatelier-resultset {
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin: 0.15rem 0;
+}
+
+.qtype_codeatelier .codeatelier-resultset th,
+.qtype_codeatelier .codeatelier-resultset td {
+    border: 1px solid #ced4da;
+    padding: 0.2rem 0.5rem;
+    text-align: left;
+}
+
+.qtype_codeatelier .codeatelier-resultset th {
+    background: #f1f3f5;
+}
+
+.qtype_codeatelier .codeatelier-resultset .codeatelier-diff-row td {
+    background: #fbdcdc;
+}
+
+.qtype_codeatelier .codeatelier-hidden-note {
+    color: #5c6770;
+    font-style: italic;
+    margin: 0.25rem 0;
+}
+
+.qtype_codeatelier .codeatelier-verdict-AC {
+    color: #1f7a3d;
+}
+
+.qtype_codeatelier .codeatelier-verdict-WA,
+.qtype_codeatelier .codeatelier-verdict-RE,
+.qtype_codeatelier .codeatelier-verdict-TIMEOUT {
+    color: #b02a37;
+}
+
+/* Three-verb action bar: scratch input, tabs, console. */
+.qtype_codeatelier .codeatelier-scratch {
+    margin: 0.4rem 0;
+}
+
+.qtype_codeatelier .codeatelier-scratch-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.85rem;
+}
+
+.qtype_codeatelier .codeatelier-tabs {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid #ced4da;
+    margin-top: 0.5rem;
+}
+
+.qtype_codeatelier .codeatelier-tab {
+    border: none;
+    background: none;
+    padding: 0.35rem 0.75rem;
+    cursor: pointer;
+    color: #5c6770;
+    border-bottom: 2px solid transparent;
+}
+
+.qtype_codeatelier .codeatelier-tab-active {
+    color: #1f2933;
+    border-bottom-color: #0f6cbf;
+    font-weight: 600;
+}
+
+.qtype_codeatelier .codeatelier-console {
+    margin-top: 0.5rem;
+}
+
+.qtype_codeatelier .codeatelier-stale {
+    color: #8a6d00;
+    background: #fff8e1;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.375rem;
+}
+
+.qtype_codeatelier .codeatelier-degraded {
+    color: #b02a37;
+    background: #fbeaec;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.375rem;
+}
+
+/* Code in the question prompt: inline <code> and highlighted <pre><code> blocks. */
+.qtype_codeatelier .qtext code {
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.9em;
+    background: #f1f3f5;
+    color: #1f2933;
+    padding: 0.1em 0.3em;
+    border-radius: 0.2rem;
+}
+
+.qtype_codeatelier .qtext pre {
+    background: #f8f9fa;
+    border: 1px solid #e0e3e7;
+    border-radius: 0.375rem;
+    padding: 0.6rem 0.8rem;
+    overflow: auto;
+}
+
+.qtype_codeatelier .qtext pre code {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    white-space: pre;
+}
+
+/* Token colours for prompt code highlighted at render time (CodeMirror parsers). */
+.qtype_codeatelier .codeatelier-hl .tok-keyword,
+.qtype_codeatelier .codeatelier-hl .tok-modifier,
+.qtype_codeatelier .codeatelier-hl .tok-controlKeyword,
+.qtype_codeatelier .codeatelier-hl .tok-operatorKeyword {
+    color: #0b66c3;
+}
+
+.qtype_codeatelier .codeatelier-hl .tok-comment {
+    color: #6a737d;
+    font-style: italic;
+}
+
+.qtype_codeatelier .codeatelier-hl .tok-string,
+.qtype_codeatelier .codeatelier-hl .tok-string2 {
+    color: #0a7d33;
+}
+
+.qtype_codeatelier .codeatelier-hl .tok-number,
+.qtype_codeatelier .codeatelier-hl .tok-bool,
+.qtype_codeatelier .codeatelier-hl .tok-null,
+.qtype_codeatelier .codeatelier-hl .tok-atom {
+    color: #a4258f;
+}
+
+.qtype_codeatelier .codeatelier-hl .tok-typeName,
+.qtype_codeatelier .codeatelier-hl .tok-className,
+.qtype_codeatelier .codeatelier-hl .tok-namespace {
+    color: #b5690c;
+}
+
+.qtype_codeatelier .codeatelier-hl .tok-function,
+.qtype_codeatelier .codeatelier-hl .tok-propertyName {
+    color: #6f42c1;
+}
+
+.qtype_codeatelier .codeatelier-hl .tok-operator,
+.qtype_codeatelier .codeatelier-hl .tok-punctuation {
+    color: #5c6770;
+}
+
+/* Authoring: the live-preview pane (the real student workbench, rendered in the edit form). */
+.codeatelier-preview {
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem;
+    border: 1px dashed #ced4da;
+    border-radius: 0.375rem;
+    background: #fcfcfd;
+}
+
+.codeatelier-preview:empty {
+    display: none;
+}
+
+/*
+ * Focus mode: an opt-in split-pane overlay. The default (inline) layout leaves
+ * the two panes as ordinary stacked blocks, so the vertical order is unchanged.
+ * Adding the .codeatelier-focus class flips the question root to a fixed,
+ * full-viewport two-column grid without moving any DOM node — the editor and
+ * the form fields keep their place inside the quiz form.
+ */
+.qtype_codeatelier .codeatelier-pane {
+    min-width: 0;
+}
+
+.qtype_codeatelier .codeatelier-focus-toggle {
+    margin-left: auto;
+}
+
+.qtype_codeatelier.codeatelier-focus {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    margin: 0;
+    padding: 1.25rem clamp(1rem, 4vw, 3rem);
+    background: #fff;
+    overflow: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    grid-template-rows: 100%;
+    gap: 0 1.75rem;
+    align-items: stretch;
+}
+
+.qtype_codeatelier.codeatelier-focus .codeatelier-pane {
+    max-height: 100%;
+    overflow: auto;
+    padding-right: 0.5rem;
+}
+
+.qtype_codeatelier.codeatelier-focus .cm-editor {
+    max-height: 60vh;
+}
+
+@media (max-width: 720px) {
+    .qtype_codeatelier.codeatelier-focus {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+        gap: 1rem 0;
+    }
+
+    .qtype_codeatelier.codeatelier-focus .codeatelier-pane {
+        max-height: none;
+    }
+}

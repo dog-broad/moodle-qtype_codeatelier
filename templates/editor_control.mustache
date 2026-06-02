@@ -1,0 +1,93 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template qtype_codeatelier/editor_control
+
+    Renders the question text, the code editor (a textarea enhanced by CodeMirror),
+    a run/check control, and a results area.
+
+    Context variables required for this template:
+    * questiontext string - the rendered question text (already safe HTML)
+    * wrapperid string - unique id for the wrapper element
+    * answername string - the qt field name for the student's code
+    * answerid string - the textarea id
+    * answervalue string - the current/submitted code
+    * answerlabel string - accessible label for the editor
+    * scorename string - the qt field name for the browser-computed score
+    * scorevalue string - the current score
+    * runlabel string - the run button label
+    * focuslabel string - the focus-mode toggle button label
+    * outputtabslabel string - accessible label for the output/tests tablist
+    * practicenote string - a note that this runs in the browser for practice
+    * readonly bool - whether the question is being reviewed (no editing/running)
+    * hasvalidationerror bool - whether to show the validation message
+    * validationerror string - the validation message
+}}
+<div class="qtype_codeatelier" id="{{wrapperid}}">
+    <div class="codeatelier-pane codeatelier-pane-problem" data-role="pane-problem">
+        <div class="qtext">{{{questiontext}}}</div>
+        <div class="codeatelier-schema" data-role="schema"></div>
+        <div class="codeatelier-examples" data-role="examples"></div>
+    </div>
+    <div class="codeatelier-pane codeatelier-pane-work" data-role="pane-work">
+        <div class="codeatelier-editor">
+            <label class="sr-only" for="{{answerid}}">{{answerlabel}}</label>
+            <div class="codeatelier-skeleton" data-role="skeleton" aria-hidden="true">
+                <span class="codeatelier-skeleton-label">{{loadingeditor}}</span>
+            </div>
+            <textarea class="codeatelier-answer" data-role="answer" name="{{answername}}" id="{{answerid}}"
+                rows="12" cols="80" spellcheck="false" {{#readonly}}readonly="readonly"{{/readonly}}>{{answervalue}}</textarea>
+            <noscript>
+                <style>.qtype_codeatelier .codeatelier-answer{display:block}.qtype_codeatelier .codeatelier-skeleton{display:none}</style>
+            </noscript>
+        </div>
+        {{^readonly}}
+        <div class="codeatelier-scratch" data-role="scratchwrap" style="display: none;">
+            <label class="codeatelier-block-label" data-role="scratchlabel" for="{{answerid}}_scratch"></label>
+            <textarea class="codeatelier-scratch-input" data-role="scratch" id="{{answerid}}_scratch"
+                rows="2" cols="80" spellcheck="false"></textarea>
+        </div>
+        <div class="codeatelier-actions">
+            <button type="button" class="btn btn-secondary" data-role="run">{{runlabel}}</button>
+            <button type="button" class="btn btn-primary" data-role="check">{{checklabel}}</button>
+            <button type="button" class="btn btn-secondary" data-role="stop" style="display: none;">{{stoplabel}}</button>
+            <span class="codeatelier-status" data-role="status" role="status" aria-live="polite"></span>
+            <button type="button" class="btn btn-link codeatelier-focus-toggle" data-role="focus"
+                aria-pressed="false">{{focuslabel}}</button>
+        </div>
+        <p class="codeatelier-practicenote small text-muted">{{practicenote}}</p>
+        <div class="codeatelier-tabs" role="tablist" aria-label="{{outputtabslabel}}">
+            <button type="button" class="codeatelier-tab" role="tab" id="{{wrapperid}}_tab_console"
+                aria-controls="{{wrapperid}}_panel_console" aria-selected="false" tabindex="-1"
+                data-role="tab" data-tab="console">{{consolelabel}}</button>
+            <button type="button" class="codeatelier-tab" role="tab" id="{{wrapperid}}_tab_tests"
+                aria-controls="{{wrapperid}}_panel_tests" aria-selected="true"
+                data-role="tab" data-tab="tests">{{testslabel}}</button>
+        </div>
+        {{/readonly}}
+        <input type="hidden" data-role="score" name="{{scorename}}" value="{{scorevalue}}">
+        <div class="codeatelier-console" id="{{wrapperid}}_panel_console" role="tabpanel"
+            aria-labelledby="{{wrapperid}}_tab_console" tabindex="0"
+            data-role="console" data-tabpanel="console" aria-live="polite"></div>
+        <div class="codeatelier-results" id="{{wrapperid}}_panel_tests" role="tabpanel"
+            aria-labelledby="{{wrapperid}}_tab_tests" tabindex="0"
+            data-role="results" data-tabpanel="tests" aria-live="polite"></div>
+        {{#hasvalidationerror}}
+        <div class="validationerror">{{validationerror}}</div>
+        {{/hasvalidationerror}}
+    </div>
+</div>

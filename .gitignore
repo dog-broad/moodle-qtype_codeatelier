@@ -1,9 +1,9 @@
-# Build output
-/amd/build/
+# Built AMD modules are committed so the plugin installs from a clone or zip
+# without a Node build step (Moodle does not build JS at install time).
 node_modules/
 vendor/
 
-# Dependency lockfiles are kept; build artifacts are not.
+# Dependency lockfiles are kept.
 
 # Local config / env
 .env
