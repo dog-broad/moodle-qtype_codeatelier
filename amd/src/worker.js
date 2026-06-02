@@ -56,6 +56,47 @@ const runJavascript = (code, input) => {
     }
 };
 
+/**
+ * Execute one function-style case: call the named entry point with the case's
+ * arguments (a JSON array) and capture its return value.
+ *
+ * @param {String} code the student source (defines the entry-point function)
+ * @param {String} entrypoint the function name to call
+ * @param {String} input the arguments as a JSON array
+ * @return {Object} {stdout, returnvalue} or {stdout, error}
+ */
+const runFunction = (code, entrypoint, input) => {
+    const lines = [];
+    const sandboxconsole = {
+        log: function() {
+            lines.push(Array.prototype.slice.call(arguments).join(' '));
+        },
+    };
+
+    let args;
+    try {
+        args = input ? JSON.parse(input) : [];
+    } catch (err) {
+        return {stdout: '', error: 'Invalid arguments JSON: ' + String(err)};
+    }
+    if (!Array.isArray(args)) {
+        args = [args];
+    }
+
+    try {
+        // eslint-disable-next-line no-new-func
+        const factory = new Function('console', code + '\n; return ' + entrypoint + ';');
+        const fn = factory(sandboxconsole);
+        if (typeof fn !== 'function') {
+            return {stdout: lines.join('\n'), error: 'Function "' + entrypoint + '" is not defined'};
+        }
+        const returnvalue = fn.apply(null, args);
+        return {stdout: lines.join('\n'), returnvalue: returnvalue};
+    } catch (err) {
+        return {stdout: lines.join('\n'), error: String(err)};
+    }
+};
+
 self.onmessage = (event) => {
     const message = event.data;
     if (!message || message.type !== 'run') {
@@ -71,7 +112,11 @@ self.onmessage = (event) => {
         return;
     }
 
+    const scenario = message.scenario || 'stdinstdout';
     const results = message.cases.map((testcase) => {
+        if (scenario === 'function') {
+            return runFunction(message.code, message.entrypoint, testcase.input || '');
+        }
         return runJavascript(message.code, testcase.input || '');
     });
     self.postMessage({type: 'result', results: results});

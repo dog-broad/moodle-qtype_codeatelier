@@ -48,11 +48,12 @@ const workerUrl = () => {
  * @param {String} code the student source
  * @param {String} language python, sql or javascript
  * @param {Array} cases the test cases, each at least {input}
- * @param {Object} limits optional, e.g. {timeoutMs}
+ * @param {Object} options optional, e.g. {timeoutMs, scenario, entrypoint}
  * @return {Promise<Object>} resolves to {results: [...]} or {timedout|error, results}
  */
-const run = (code, language, cases, limits) => {
-    const timeoutMs = (limits && limits.timeoutMs) || DEFAULT_TIMEOUT_MS;
+const run = (code, language, cases, options) => {
+    const opts = options || {};
+    const timeoutMs = opts.timeoutMs || DEFAULT_TIMEOUT_MS;
     const jobcases = (cases && cases.length) ? cases : [{input: ''}];
 
     return new Promise((resolve) => {
@@ -83,7 +84,14 @@ const run = (code, language, cases, limits) => {
             finish({error: event.message || 'workererror', results: []});
         };
 
-        worker.postMessage({type: 'run', language: language, code: code, cases: jobcases});
+        worker.postMessage({
+            type: 'run',
+            language: language,
+            scenario: opts.scenario || 'stdinstdout',
+            entrypoint: opts.entrypoint || null,
+            code: code,
+            cases: jobcases,
+        });
     });
 };
 
