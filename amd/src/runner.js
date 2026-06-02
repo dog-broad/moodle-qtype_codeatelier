@@ -16,49 +16,77 @@
 /**
  * The practice-tier runner seam for qtype_codeatelier.
  *
- * This is the single abstraction both tiers sit behind: run(code, language,
- * cases, limits) -> results. The practice tier (this module) executes the code
- * in a terminable Web Worker so the UI thread never blocks and runaway code can
- * be killed. The judge tier (M2) will be a second implementation of the same
- * shape that calls a server sandbox instead.
+ * The single abstraction both tiers sit behind: run(code, language, cases,
+ * options) -> results. The practice tier (this module) executes in a terminable
+ * ES-module Web Worker so the UI thread never blocks and runaway code can be
+ * killed. One worker is kept per language and reused across runs and across
+ * same-language questions on the page, so a heavy runtime (Pyodide) downloads
+ * and initialises only once. Runs serialise per language.
  *
  * @module qtype_codeatelier/runner
  */
 
-/** @var {number} default per-run wall-clock limit. */
+/** @var {number} default per-run execution limit (excludes runtime load time). */
 const DEFAULT_TIMEOUT_MS = 5000;
 
+/** @var {number} ceiling for first-run runtime download + initialisation. */
+const INIT_TIMEOUT_MS = 60000;
+
+/** @var {Object} live workers keyed by language. */
+const workers = {};
+
+/** @var {Object} per-language promise chains that serialise runs. */
+const queues = {};
+
 /**
- * URL of the built worker script, served as a static file by Moodle.
- *
- * @return {String}
+ * @return {String} URL of the built worker script (served statically by Moodle).
  */
 const workerUrl = () => {
     return M.cfg.wwwroot + '/question/type/codeatelier/amd/build/worker.min.js';
 };
 
 /**
- * Run student code against a set of cases in a terminable Web Worker.
+ * Get (creating if needed) the reusable module worker for a language.
  *
- * The worker runs one job then is discarded. A host-side timer is the runaway
- * guard: a worker stuck in an infinite loop cannot process its own messages, so
- * the host terminates it and reports a timeout. Execution only — comparing
- * output against expected values is the grader's job, not the runner's.
- *
- * @param {String} code the student source
- * @param {String} language python, sql or javascript
- * @param {Array} cases the test cases, each at least {input}
- * @param {Object} options optional, e.g. {timeoutMs, scenario, entrypoint}
- * @return {Promise<Object>} resolves to {results: [...]} or {timedout|error, results}
+ * @param {String} language
+ * @return {Worker}
  */
-const run = (code, language, cases, options) => {
-    const opts = options || {};
-    const timeoutMs = opts.timeoutMs || DEFAULT_TIMEOUT_MS;
-    const jobcases = (cases && cases.length) ? cases : [{input: ''}];
+const getWorker = (language) => {
+    if (!workers[language]) {
+        workers[language] = new Worker(workerUrl(), {type: 'module'});
+    }
+    return workers[language];
+};
+
+/**
+ * Terminate and forget a language's worker (recreated on the next run). Used
+ * after a timeout or error, since a killed worker also loses its loaded runtime.
+ *
+ * @param {String} language
+ */
+const dropWorker = (language) => {
+    if (workers[language]) {
+        workers[language].terminate();
+        delete workers[language];
+    }
+};
+
+/**
+ * Run one job on the (reused) worker for its language.
+ *
+ * @param {String} code
+ * @param {String} language
+ * @param {Array} jobcases
+ * @param {Object} opts
+ * @return {Promise<Object>}
+ */
+const runOnce = (code, language, jobcases, opts) => {
+    const execTimeout = opts.timeoutMs || DEFAULT_TIMEOUT_MS;
 
     return new Promise((resolve) => {
-        const worker = new Worker(workerUrl());
+        const worker = getWorker(language);
         let settled = false;
+        let timer = window.setTimeout(onInitTimeout, INIT_TIMEOUT_MS);
 
         const finish = (value) => {
             if (settled) {
@@ -66,22 +94,38 @@ const run = (code, language, cases, options) => {
             }
             settled = true;
             window.clearTimeout(timer);
-            worker.terminate();
+            worker.onmessage = null;
+            worker.onerror = null;
             resolve(value);
         };
 
-        const timer = window.setTimeout(() => {
-            finish({
-                timedout: true,
-                results: jobcases.map(() => ({timedout: true})),
-            });
-        }, timeoutMs);
+        function onInitTimeout() {
+            dropWorker(language);
+            finish({error: 'runtimeloadtimeout', results: []});
+        }
 
         worker.onmessage = (event) => {
-            finish(event.data);
+            const data = event.data;
+            if (data && data.type === 'status') {
+                if (data.state === 'running') {
+                    // Runtime is ready; only now arm the execution timeout.
+                    window.clearTimeout(timer);
+                    timer = window.setTimeout(() => {
+                        dropWorker(language);
+                        finish({timedout: true, results: jobcases.map(() => ({timedout: true}))});
+                    }, execTimeout);
+                }
+                if (typeof opts.onStatus === 'function') {
+                    opts.onStatus(data.state);
+                }
+                return;
+            }
+            finish(data);
         };
-        worker.onerror = (event) => {
-            finish({error: event.message || 'workererror', results: []});
+
+        worker.onerror = () => {
+            dropWorker(language);
+            finish({error: 'workererror', results: []});
         };
 
         worker.postMessage({
@@ -89,10 +133,32 @@ const run = (code, language, cases, options) => {
             language: language,
             scenario: opts.scenario || 'stdinstdout',
             entrypoint: opts.entrypoint || null,
+            pyodideBaseUrl: opts.pyodideBaseUrl || null,
             code: code,
             cases: jobcases,
         });
     });
+};
+
+/**
+ * Run student code against a set of cases.
+ *
+ * Execution only — comparing output against expected values is the grader's job.
+ * Runs of the same language serialise (one worker, one job at a time).
+ *
+ * @param {String} code the student source
+ * @param {String} language python, sql or javascript
+ * @param {Array} cases the test cases, each at least {input}
+ * @param {Object} options optional {timeoutMs, scenario, entrypoint, pyodideBaseUrl, onStatus}
+ * @return {Promise<Object>} resolves to {results: [...]} or {timedout|error, results}
+ */
+const run = (code, language, cases, options) => {
+    const opts = options || {};
+    const jobcases = (cases && cases.length) ? cases : [{input: ''}];
+    const previous = queues[language] || Promise.resolve();
+    const next = previous.catch(() => {}).then(() => runOnce(code, language, jobcases, opts));
+    queues[language] = next;
+    return next;
 };
 
 export {run};
