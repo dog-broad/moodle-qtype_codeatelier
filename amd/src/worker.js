@@ -105,6 +105,38 @@ const jsErrorLine = (err) => {
     return (line >= 1) ? line : null;
 };
 
+// Worker globals shadowed (bound to undefined) when running student JavaScript.
+// This is best-effort containment for the PRACTICE tier, not a security sandbox:
+// it stops casual/accidental access to the network (which would carry the user's
+// same-origin Moodle session), to importScripts, and to the worker's own message
+// channel (which could otherwise forge a result). Combined with strict mode the
+// global object can't be reached via `this`. A determined escape is still
+// possible (e.g. via eval/Function) — authoritative isolation is the judge tier.
+const SHADOWED_GLOBALS = [
+    'self', 'globalThis', 'postMessage', 'importScripts', 'close',
+    'fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'Request',
+    'indexedDB', 'caches', 'Worker', 'SharedWorker', 'navigator', 'location',
+    'Notification', 'addEventListener', 'removeEventListener',
+];
+
+/**
+ * Build a Function for student JS with the dangerous worker globals shadowed and
+ * strict mode forced. Caller-supplied leading params (e.g. input, console) come
+ * first; the shadowed globals follow and are left unset (undefined) at call time.
+ *
+ * The `'use strict';` directive is concatenated without a newline so student line
+ * numbers (used for editor error markers) are unchanged.
+ *
+ * @param {Array} leadingparams parameter names the caller will pass
+ * @param {String} body the function body source
+ * @return {Function}
+ */
+const sandboxedFunction = (leadingparams, body) => {
+    const params = leadingparams.concat(SHADOWED_GLOBALS);
+    // eslint-disable-next-line no-new-func
+    return new Function(...params, "'use strict';" + body);
+};
+
 /**
  * Execute one stdin/stdout JavaScript case, capturing console.log as stdout.
  *
@@ -120,8 +152,7 @@ const runJavascript = (code, input) => {
         },
     };
     try {
-        // eslint-disable-next-line no-new-func
-        const fn = new Function('input', 'console', code);
+        const fn = sandboxedFunction(['input', 'console'], code);
         const returnvalue = fn(input, sandboxconsole);
         return {
             stdout: lines.join('\n'),
@@ -157,8 +188,7 @@ const runJavascriptFunction = (code, entrypoint, input) => {
         args = [args];
     }
     try {
-        // eslint-disable-next-line no-new-func
-        const factory = new Function('console', code + '\n; return ' + entrypoint + ';');
+        const factory = sandboxedFunction(['console'], code + '\n; return ' + entrypoint + ';');
         const fn = factory(sandboxconsole);
         if (typeof fn !== 'function') {
             return {stdout: lines.join('\n'), error: 'Function "' + entrypoint + '" is not defined'};
