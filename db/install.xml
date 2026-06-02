@@ -31,6 +31,7 @@
         <FIELD NAME="weight" TYPE="number" LENGTH="12" DECIMALS="7" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Relative weight of this test case for partial credit."/>
         <FIELD NAME="visibility" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="1 shown to students, 0 hidden (polite-hidden in the practice tier)."/>
         <FIELD NAME="checkerquery" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="SQL scenario: query run after the student's statements to verify a mutation; empty means compare the student query's own result set."/>
+        <FIELD NAME="feedback" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Optional teacher feedback shown for this test case (visible tests only)."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>

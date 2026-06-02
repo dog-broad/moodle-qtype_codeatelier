@@ -85,5 +85,15 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026060500, 'qtype', 'codeatelier');
     }
 
+    if ($oldversion < 2026060900) {
+        // Optional per-test teacher feedback.
+        $teststable = new xmldb_table('qtype_codeatelier_tests');
+        $feedback = new xmldb_field('feedback', XMLDB_TYPE_TEXT, null, null, null, null, null, 'checkerquery');
+        if (!$dbman->field_exists($teststable, $feedback)) {
+            $dbman->add_field($teststable, $feedback);
+        }
+        upgrade_plugin_savepoint(true, 2026060900, 'qtype', 'codeatelier');
+    }
+
     return true;
 }

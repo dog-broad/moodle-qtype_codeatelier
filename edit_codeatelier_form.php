@@ -91,6 +91,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 get_string('visibility', 'qtype_codeatelier'), $this->visibility_options());
         $repeated[] = $mform->createElement('textarea', 'checkerquery',
                 get_string('checkerquery', 'qtype_codeatelier'), array('rows' => 2, 'cols' => 60));
+        $repeated[] = $mform->createElement('textarea', 'testfeedback',
+                get_string('testfeedback', 'qtype_codeatelier'), array('rows' => 2, 'cols' => 60));
 
         // Note: do not set a 'default' for the matchmode/testweight/testvisibility
         // elements here. For repeated elements a default overrides the values
@@ -107,6 +109,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $repeatedoptions['testvisibility']['type'] = PARAM_INT;
         $repeatedoptions['checkerquery']['type'] = PARAM_RAW;
         $repeatedoptions['checkerquery']['hideif'] = array('scenario', 'neq', 'sql');
+        $repeatedoptions['testfeedback']['type'] = PARAM_RAW;
 
         if (!empty($this->question->options->tests)) {
             $repeats = count($this->question->options->tests);
@@ -179,6 +182,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $question->testweight = array();
         $question->testvisibility = array();
         $question->checkerquery = array();
+        $question->testfeedback = array();
 
         foreach (array_values($question->options->tests) as $i => $test) {
             $question->testinput[$i] = $test->input;
@@ -188,6 +192,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             $question->testweight[$i] = 0 + $test->weight;
             $question->testvisibility[$i] = $test->visibility;
             $question->checkerquery[$i] = $test->checkerquery;
+            $question->testfeedback[$i] = $test->feedback;
         }
 
         return $question;

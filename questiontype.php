@@ -87,6 +87,7 @@ class qtype_codeatelier extends question_type {
             $record->weight = $question->testweight[$key];
             $record->visibility = $question->testvisibility[$key];
             $record->checkerquery = isset($question->checkerquery[$key]) ? $question->checkerquery[$key] : null;
+            $record->feedback = isset($question->testfeedback[$key]) ? $question->testfeedback[$key] : null;
 
             $existing = array_shift($oldtests);
             if ($existing) {
