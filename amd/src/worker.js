@@ -46,6 +46,31 @@ const loadPyodideRuntime = (baseurl) => {
     return pyodidePromise;
 };
 
+let sqlPromise = null;
+
+/**
+ * Lazily load sql.js (SQLite) once, from the given base URL. The loader is a UMD
+ * module imported for its side effect (it defines self.initSqlJs).
+ *
+ * @param {String} baseurl the sql.js dist base URL (trailing slash)
+ * @return {Promise<Object>} the SQL namespace (with .Database)
+ */
+const loadSqlRuntime = (baseurl) => {
+    if (!sqlPromise) {
+        // sql.js ships a UMD loader that does not attach initSqlJs to the worker
+        // global when imported as a module, so fetch and evaluate it to capture
+        // the factory (eval is permitted in the worker, as for JS execution).
+        sqlPromise = fetch(baseurl + 'sql-wasm.js')
+            .then((response) => response.text())
+            .then((code) => {
+                // eslint-disable-next-line no-new-func
+                const initSqlJs = new Function(code + '\nreturn initSqlJs;')();
+                return initSqlJs({locateFile: (file) => baseurl + file});
+            });
+    }
+    return sqlPromise;
+};
+
 /**
  * Execute one stdin/stdout JavaScript case, capturing console.log as stdout.
  *
@@ -182,9 +207,99 @@ const runPython = (pyodide, scenario, code, entrypoint, input) => {
     return {stdout: stdout};
 };
 
+/**
+ * Run one SQL case: load the schema + seed into a fresh database, then run the
+ * student query (or, for a mutation, the student statements followed by the
+ * checker query) and return the result set.
+ *
+ * @param {Object} sql the SQL namespace
+ * @param {String} schemasql the schema + seed
+ * @param {String} code the student SQL
+ * @param {String} checkerquery optional verification query for mutations
+ * @return {Object} {columns, rows} or {error}
+ */
+const runSql = (sql, schemasql, code, checkerquery) => {
+    const db = new sql.Database();
+    try {
+        if (schemasql) {
+            db.run(schemasql);
+        }
+        let res;
+        if (checkerquery && checkerquery.trim() !== '') {
+            db.run(code);
+            res = db.exec(checkerquery);
+        } else {
+            res = db.exec(code);
+        }
+        const last = res.length ? res[res.length - 1] : {columns: [], values: []};
+        return {columns: last.columns, rows: last.values};
+    } catch (err) {
+        return {error: String(err.message || err)};
+    } finally {
+        db.close();
+    }
+};
+
+/**
+ * Introspect the schema for the student-facing viewer: tables, their columns,
+ * and a few sample rows each.
+ *
+ * @param {Object} sql the SQL namespace
+ * @param {String} schemasql the schema + seed
+ * @return {Object} {tables: [...]} or {error}
+ */
+const describeSchema = (sql, schemasql) => {
+    const db = new sql.Database();
+    try {
+        if (schemasql) {
+            db.run(schemasql);
+        }
+        const tres = db.exec(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
+        const names = tres.length ? tres[0].values.map((row) => String(row[0])) : [];
+        const tables = names.map((name) => {
+            const quoted = '"' + name.replace(/"/g, '""') + '"';
+            const colres = db.exec('PRAGMA table_info(' + quoted + ')');
+            const columns = colres.length
+                ? colres[0].values.map((row) => ({name: row[1], type: row[2]}))
+                : [];
+            const sample = db.exec('SELECT * FROM ' + quoted + ' LIMIT 5');
+            return {
+                name: name,
+                columns: columns,
+                sampleColumns: sample.length ? sample[0].columns : columns.map((col) => col.name),
+                sampleRows: sample.length ? sample[0].values : [],
+            };
+        });
+        return {tables: tables};
+    } catch (err) {
+        return {error: String(err.message || err)};
+    } finally {
+        db.close();
+    }
+};
+
 self.onmessage = async (event) => {
     const message = event.data;
-    if (!message || message.type !== 'run') {
+    if (!message) {
+        return;
+    }
+
+    if (message.type === 'describe') {
+        if (!message.sqljsBaseUrl) {
+            self.postMessage({type: 'describe', error: 'nosqljsurl'});
+            return;
+        }
+        try {
+            const sql = await loadSqlRuntime(message.sqljsBaseUrl);
+            self.postMessage(Object.assign({type: 'describe'}, describeSchema(sql, message.schemasql)));
+        } catch (err) {
+            self.postMessage({type: 'describe', error: 'sqljsloadfailed: ' + String(err)});
+        }
+        return;
+    }
+
+    if (message.type !== 'run') {
         return;
     }
     const scenario = message.scenario || 'stdinstdout';
@@ -216,6 +331,27 @@ self.onmessage = async (event) => {
         self.postMessage({type: 'status', state: 'running'});
         const results = message.cases.map((testcase) => {
             return runPython(pyodide, scenario, message.code, message.entrypoint, testcase.input || '');
+        });
+        self.postMessage({type: 'result', results: results});
+        return;
+    }
+
+    if (message.language === 'sql') {
+        if (!message.sqljsBaseUrl) {
+            self.postMessage({error: 'nosqljsurl', results: []});
+            return;
+        }
+        self.postMessage({type: 'status', state: 'loading'});
+        let sql;
+        try {
+            sql = await loadSqlRuntime(message.sqljsBaseUrl);
+        } catch (err) {
+            self.postMessage({error: 'sqljsloadfailed: ' + String(err), results: []});
+            return;
+        }
+        self.postMessage({type: 'status', state: 'running'});
+        const results = message.cases.map((testcase) => {
+            return runSql(sql, message.schemasql, message.code, testcase.checkerquery);
         });
         self.postMessage({type: 'result', results: results});
         return;
