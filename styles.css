@@ -328,6 +328,19 @@
     border-radius: 0.375rem;
 }
 
+/* Authoring: the live-preview pane (the real student workbench, rendered in the edit form). */
+.codeatelier-preview {
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem;
+    border: 1px dashed #ced4da;
+    border-radius: 0.375rem;
+    background: #fcfcfd;
+}
+
+.codeatelier-preview:empty {
+    display: none;
+}
+
 /*
  * Focus mode: an opt-in split-pane overlay. The default (inline) layout leaves
  * the two panes as ordinary stacked blocks, so the vertical order is unchanged.

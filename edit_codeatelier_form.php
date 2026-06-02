@@ -65,7 +65,46 @@ class qtype_codeatelier_edit_form extends question_edit_form {
 
         $this->add_test_case_fields($mform);
 
+        $this->add_preview_section($mform);
+
         $this->add_interactive_settings();
+    }
+
+    /**
+     * Add the live-preview section: a refresh button and the pane the JS renders
+     * the real student workbench into.
+     *
+     * @param MoodleQuickForm $mform the form being built
+     */
+    protected function add_preview_section($mform) {
+        global $PAGE;
+
+        $mform->addElement('header', 'previewheader', get_string('preview', 'qtype_codeatelier'));
+        $mform->setExpanded('previewheader', false);
+
+        $previewid = 'codeatelier_preview';
+        $button = html_writer::tag('button', get_string('previewrefresh', 'qtype_codeatelier'),
+                array('type' => 'button', 'class' => 'btn btn-secondary', 'id' => $previewid . '_btn'));
+        $pane = html_writer::div('', 'codeatelier-preview', array('id' => $previewid));
+        $mform->addElement('static', 'codeatelier_previewarea', '',
+                html_writer::tag('p', get_string('previewintro', 'qtype_codeatelier'), array('class' => 'text-muted'))
+                . $button . $pane);
+
+        $PAGE->requires->js_call_amd('qtype_codeatelier/author', 'init', array(array(
+            'languageid' => 'id_language',
+            'scenarioid' => 'id_scenario',
+            'entrypointid' => 'id_entrypoint',
+            'startercodeid' => 'id_startercode',
+            'schemasqlid' => 'id_schemasql',
+            'questiontextid' => 'id_questiontext',
+            'previewbtnid' => $previewid . '_btn',
+            'previewid' => $previewid,
+            'previewcontext' => qtype_codeatelier::ui_labels(),
+            'strings' => qtype_codeatelier::ui_strings(),
+            'pyodidebaseurl' => get_config('qtype_codeatelier', 'pyodidebaseurl'),
+            'sqljsbaseurl' => get_config('qtype_codeatelier', 'sqljsbaseurl'),
+            'timeoutms' => 5000,
+        )));
     }
 
     /**

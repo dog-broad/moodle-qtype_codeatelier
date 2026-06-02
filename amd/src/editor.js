@@ -102,6 +102,14 @@ export const create = (textarea, language, options) => {
 
     return {
         getValue: () => view.state.doc.toString(),
+        /**
+         * Tear the editor down and reveal the backing textarea again. Used when
+         * an editor must be re-created for a different language.
+         */
+        destroy: () => {
+            view.destroy();
+            textarea.style.display = '';
+        },
         clearErrors: clearErrors,
         /**
          * Mark a runtime error on a 1-based line (gutter + inline + hover).

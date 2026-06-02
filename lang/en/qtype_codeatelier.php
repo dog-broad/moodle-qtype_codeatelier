@@ -94,6 +94,11 @@ $string['entrypoint_help'] = 'The name of the function the student must define. 
 $string['startercode'] = 'Starter code';
 $string['startercode_help'] = 'Optional code pre-filled in the student\'s editor — for example a function signature to complete.';
 
+// Authoring: live preview.
+$string['preview'] = 'Preview';
+$string['previewrefresh'] = 'Refresh preview';
+$string['previewintro'] = 'See exactly what students will see. Click refresh after changing the question, code or test cases.';
+
 // Authoring: test cases.
 $string['testcases'] = 'Test cases';
 $string['testcaseno'] = 'Test case {$a}';

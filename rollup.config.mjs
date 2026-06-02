@@ -39,6 +39,14 @@ export default [
         plugins: [nodeResolve(), terser()],
     },
     {
+        // The authoring helper reuses the editor and the workbench controller as
+        // AMD modules and renders the student template via core/templates.
+        input: 'amd/src/author.js',
+        external: (id) => id.startsWith('qtype_codeatelier/') || id.startsWith('core/'),
+        output: {file: 'amd/build/author.min.js', format: 'amd', sourcemap: true, sourcemapExcludeSources: true},
+        plugins: [nodeResolve(), terser()],
+    },
+    {
         // The execution worker is a module worker (new Worker(url, {type:'module'}))
         // so it can dynamically import the Pyodide ES module at runtime.
         input: 'amd/src/worker.js',
