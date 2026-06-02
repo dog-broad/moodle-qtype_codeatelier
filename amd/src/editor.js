@@ -144,6 +144,12 @@ export const create = (textarea, language, options) => {
     const opts = options || {};
     const extensions = [basicSetup, lintGutter()];
 
+    // Give the contenteditable an accessible name: the backing textarea (which
+    // carries the visible label) is hidden, so a screen reader needs it here.
+    extensions.push(EditorView.contentAttributes.of({
+        'aria-label': opts.ariaLabel || 'Code editor',
+    }));
+
     const langext = languageExtension(language);
     if (langext) {
         extensions.push(langext);

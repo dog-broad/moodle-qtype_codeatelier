@@ -47,6 +47,7 @@ $string['checklabel'] = 'Check';
 $string['stoplabel'] = 'Stop';
 $string['consolelabel'] = 'Output';
 $string['testslabel'] = 'Tests';
+$string['outputtabs'] = 'Output and test results';
 $string['scratchargs'] = 'Arguments (JSON array)';
 $string['output'] = 'Output';
 $string['stopped'] = 'Stopped.';

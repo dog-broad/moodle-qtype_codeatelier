@@ -436,10 +436,12 @@ export const init = (config) => {
         renderExamples(examplesel, config, strings);
     }
 
+    const editorlabel = root.querySelector('.codeatelier-editor label');
     let editor;
     try {
         editor = create(textarea, config.language, {
             readonly: config.readonly,
+            ariaLabel: editorlabel ? editorlabel.textContent : null,
             onChange: () => {
                 if (scoreinput) {
                     scoreinput.value = '';
@@ -486,7 +488,7 @@ export const init = (config) => {
         }
     }
 
-    // Console | Tests tabs.
+    // Console | Tests tabs (WAI-ARIA tabs: roving tabindex + arrow-key navigation).
     const tabs = Array.prototype.slice.call(root.querySelectorAll('[data-role="tab"]'));
     const setTab = (name) => {
         if (consoleel) {
@@ -494,11 +496,31 @@ export const init = (config) => {
         }
         resultsel.style.display = (name === 'tests') ? '' : 'none';
         tabs.forEach((tab) => {
-            tab.classList.toggle('codeatelier-tab-active', tab.getAttribute('data-tab') === name);
+            const selected = tab.getAttribute('data-tab') === name;
+            tab.classList.toggle('codeatelier-tab-active', selected);
+            tab.setAttribute('aria-selected', selected ? 'true' : 'false');
+            tab.tabIndex = selected ? 0 : -1;
         });
     };
-    tabs.forEach((tab) => {
+    tabs.forEach((tab, index) => {
         tab.addEventListener('click', () => setTab(tab.getAttribute('data-tab')));
+        tab.addEventListener('keydown', (e) => {
+            let target = null;
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                target = tabs[(index + 1) % tabs.length];
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                target = tabs[(index - 1 + tabs.length) % tabs.length];
+            } else if (e.key === 'Home') {
+                target = tabs[0];
+            } else if (e.key === 'End') {
+                target = tabs[tabs.length - 1];
+            }
+            if (target) {
+                e.preventDefault();
+                setTab(target.getAttribute('data-tab'));
+                target.focus();
+            }
+        });
     });
     setTab('tests');
 

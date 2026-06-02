@@ -180,6 +180,7 @@ class qtype_codeatelier extends question_type {
             'stoplabel' => get_string('stoplabel', 'qtype_codeatelier'),
             'consolelabel' => get_string('consolelabel', 'qtype_codeatelier'),
             'testslabel' => get_string('testslabel', 'qtype_codeatelier'),
+            'outputtabslabel' => get_string('outputtabs', 'qtype_codeatelier'),
             'practicenote' => get_string('practicenote', 'qtype_codeatelier'),
         );
     }

@@ -31,6 +31,7 @@
     * scorevalue string - the current score
     * runlabel string - the run button label
     * focuslabel string - the focus-mode toggle button label
+    * outputtabslabel string - accessible label for the output/tests tablist
     * practicenote string - a note that this runs in the browser for practice
     * readonly bool - whether the question is being reviewed (no editing/running)
     * hasvalidationerror bool - whether to show the validation message
@@ -69,14 +70,22 @@
                 aria-pressed="false">{{focuslabel}}</button>
         </div>
         <p class="codeatelier-practicenote small text-muted">{{practicenote}}</p>
-        <div class="codeatelier-tabs" role="tablist">
-            <button type="button" class="codeatelier-tab" data-role="tab" data-tab="console">{{consolelabel}}</button>
-            <button type="button" class="codeatelier-tab" data-role="tab" data-tab="tests">{{testslabel}}</button>
+        <div class="codeatelier-tabs" role="tablist" aria-label="{{outputtabslabel}}">
+            <button type="button" class="codeatelier-tab" role="tab" id="{{wrapperid}}_tab_console"
+                aria-controls="{{wrapperid}}_panel_console" aria-selected="false" tabindex="-1"
+                data-role="tab" data-tab="console">{{consolelabel}}</button>
+            <button type="button" class="codeatelier-tab" role="tab" id="{{wrapperid}}_tab_tests"
+                aria-controls="{{wrapperid}}_panel_tests" aria-selected="true"
+                data-role="tab" data-tab="tests">{{testslabel}}</button>
         </div>
         {{/readonly}}
         <input type="hidden" data-role="score" name="{{scorename}}" value="{{scorevalue}}">
-        <div class="codeatelier-console" data-role="console" data-tabpanel="console" aria-live="polite"></div>
-        <div class="codeatelier-results" data-role="results" data-tabpanel="tests" aria-live="polite"></div>
+        <div class="codeatelier-console" id="{{wrapperid}}_panel_console" role="tabpanel"
+            aria-labelledby="{{wrapperid}}_tab_console" tabindex="0"
+            data-role="console" data-tabpanel="console" aria-live="polite"></div>
+        <div class="codeatelier-results" id="{{wrapperid}}_panel_tests" role="tabpanel"
+            aria-labelledby="{{wrapperid}}_tab_tests" tabindex="0"
+            data-role="results" data-tabpanel="tests" aria-live="polite"></div>
         {{#hasvalidationerror}}
         <div class="validationerror">{{validationerror}}</div>
         {{/hasvalidationerror}}
