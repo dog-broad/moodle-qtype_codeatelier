@@ -69,6 +69,8 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'weight' => $test->weight,
                 'visibility' => (int) $test->visibility,
                 'checkerquery' => $test->checkerquery,
+                // Ship teacher feedback only for visible tests (hidden reveals nothing client-side).
+                'feedback' => ((int) $test->visibility === 1) ? $test->feedback : null,
             );
         }
 
@@ -123,6 +125,9 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'output' => get_string('output', 'qtype_codeatelier'),
                 'stopped' => get_string('stopped', 'qtype_codeatelier'),
                 'noresult' => get_string('noresult', 'qtype_codeatelier'),
+                'teacherfeedback' => get_string('result_feedback', 'qtype_codeatelier'),
+                'stale' => get_string('stale', 'qtype_codeatelier'),
+                'degraded' => get_string('degraded', 'qtype_codeatelier'),
             ),
         )));
 

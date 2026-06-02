@@ -42,6 +42,22 @@ const parseJson = (value) => {
 };
 
 /**
+ * Turn a raw error into a student-facing message; runtime-load failures get a
+ * friendly "degraded" message rather than an internal code.
+ *
+ * @param {String} detail
+ * @param {Object} strings
+ * @return {Object} {degraded, message}
+ */
+const friendlyError = (detail, strings) => {
+    const text = String(detail);
+    if (/loadfailed|nopyodideurl|nosqljsurl|runtimeloadtimeout/i.test(text)) {
+        return {degraded: true, message: strings.degraded || 'The code runtime could not be loaded. Check your connection, or ask your teacher.'};
+    }
+    return {degraded: false, message: text};
+};
+
+/**
  * Build a <pre> showing one side of a diff: equal tokens plus the kept change
  * type (del for the expected side, ins for the actual side) highlighted.
  *
@@ -299,6 +315,10 @@ const renderFeedback = (element, graded, results, config, strings) => {
         } else if (!tr.passed) {
             renderMismatch(body, config, config.tests[index], result, strings);
         }
+        const test = config.tests[index];
+        if (test && test.feedback) {
+            addBlock(body, strings.teacherfeedback || 'Feedback', String(test.feedback));
+        }
         details.appendChild(body);
         element.appendChild(details);
     });
@@ -362,7 +382,7 @@ const renderConsole = (element, result, config, strings) => {
         return;
     }
     if (result.error) {
-        addBlock(element, strings.runerror || 'Error', String(result.error));
+        addBlock(element, strings.runerror || 'Error', friendlyError(result.error, strings).message);
         return;
     }
     if (config.scenario === 'sql') {
@@ -421,8 +441,14 @@ export const init = (config) => {
                 if (scoreinput) {
                     scoreinput.value = '';
                 }
-                if (resultsel) {
+                if (resultsel && resultsel.textContent.trim()) {
+                    // Stale: the shown results no longer match the edited code.
                     resultsel.textContent = '';
+                    const note = document.createElement('p');
+                    note.className = 'codeatelier-stale';
+                    note.textContent = strings.stale
+                        || 'You have edited your code since the last check — Run or Check again.';
+                    resultsel.appendChild(note);
                 }
             },
         });
@@ -502,7 +528,14 @@ export const init = (config) => {
         if (scoreinput) {
             scoreinput.value = '';
         }
-        resultsel.textContent = (strings.runerror || 'Could not run your code') + ' (' + detail + ')';
+        const info = friendlyError(detail, strings);
+        resultsel.textContent = '';
+        const para = document.createElement('p');
+        para.className = info.degraded ? 'codeatelier-degraded' : 'codeatelier-runerror';
+        para.textContent = info.degraded
+            ? info.message
+            : ((strings.runerror || 'Could not run your code') + ' (' + info.message + ')');
+        resultsel.appendChild(para);
     };
 
     // Mark the first errored result's line in the editor (gutter + inline).
