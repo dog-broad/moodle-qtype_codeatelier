@@ -51,7 +51,9 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
         $currentcode = $qa->get_last_qt_var('answer', '');
         if ($currentcode === '') {
-            $currentcode = $this->starter_code($language);
+            $currentcode = ($question->startercode !== null && $question->startercode !== '')
+                ? $question->startercode
+                : $this->starter_code($language);
         }
         $currentscore = $qa->get_last_qt_var('score', '');
 
@@ -88,6 +90,8 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         $PAGE->requires->js_call_amd('qtype_codeatelier/control', 'init', array(array(
             'wrapperid' => $wrapperid,
             'language' => $language,
+            'scenario' => !empty($question->scenario) ? $question->scenario : 'stdinstdout',
+            'entrypoint' => $question->entrypoint,
             'tests' => $tests,
             'timeoutms' => 5000,
             'readonly' => (bool) $options->readonly,

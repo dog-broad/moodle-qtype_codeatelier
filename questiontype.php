@@ -41,7 +41,7 @@ require_once($CFG->libdir . '/questionlib.php');
 class qtype_codeatelier extends question_type {
 
     public function extra_question_fields() {
-        return array('qtype_codeatelier_options', 'language');
+        return array('qtype_codeatelier_options', 'language', 'scenario', 'entrypoint', 'startercode');
     }
 
     public function get_question_options($question) {

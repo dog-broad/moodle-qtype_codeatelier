@@ -45,6 +45,15 @@ class qtype_codeatelier_question extends question_graded_automatically {
     /** @var string the practice-tier language: python, sql or javascript. */
     public $language;
 
+    /** @var string the scenario: stdinstdout, function or sql. */
+    public $scenario;
+
+    /** @var string|null the function name to call for the function scenario. */
+    public $entrypoint;
+
+    /** @var string|null starter code shown in the editor. */
+    public $startercode;
+
     /** @var array the test cases (rows from qtype_codeatelier_tests). */
     public $tests = array();
 

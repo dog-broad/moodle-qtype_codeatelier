@@ -99,7 +99,11 @@ export const init = (config) => {
         statusel.textContent = strings.running || 'Running...';
         resultsel.textContent = '';
 
-        run(editor.getValue(), config.language, config.tests, {timeoutMs: config.timeoutms})
+        run(editor.getValue(), config.language, config.tests, {
+            timeoutMs: config.timeoutms,
+            scenario: config.scenario,
+            entrypoint: config.entrypoint,
+        })
             .then((result) => {
                 statusel.textContent = '';
                 if (result.error) {
