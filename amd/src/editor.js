@@ -25,6 +25,8 @@
 
 import {EditorView, basicSetup} from 'codemirror';
 import {EditorState} from '@codemirror/state';
+import {keymap} from '@codemirror/view';
+import {indentWithTab} from '@codemirror/commands';
 import {python} from '@codemirror/lang-python';
 import {sql} from '@codemirror/lang-sql';
 import {javascript} from '@codemirror/lang-javascript';
@@ -72,6 +74,9 @@ export const create = (textarea, language, options) => {
         extensions.push(EditorView.editable.of(false));
         extensions.push(EditorState.readOnly.of(true));
     } else {
+        // Make Tab indent in the editor instead of moving focus. Accessibility
+        // escape hatch: press Escape, then Tab, to leave the editor.
+        extensions.push(keymap.of([indentWithTab]));
         extensions.push(EditorView.updateListener.of((update) => {
             if (update.docChanged) {
                 textarea.value = update.state.doc.toString();

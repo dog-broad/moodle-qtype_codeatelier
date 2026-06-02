@@ -1,0 +1,86 @@
+/* CodeAtelier question type styles. */
+
+.qtype_codeatelier .codeatelier-editor {
+    margin: 0.5rem 0;
+}
+
+/*
+ * The raw textarea is the form field shown until CodeMirror enhances it. Style
+ * it as a code box so there is no flash of a plain text input before the editor
+ * mounts; CodeMirror hides it once ready.
+ */
+.qtype_codeatelier .codeatelier-answer {
+    width: 100%;
+    min-height: 14rem;
+    box-sizing: border-box;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    tab-size: 4;
+    white-space: pre;
+    overflow: auto;
+    background: #fff;
+    color: #1f2933;
+}
+
+/* CodeMirror editor frame. */
+.qtype_codeatelier .cm-editor {
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    font-size: 0.9rem;
+    max-height: 30rem;
+}
+
+.qtype_codeatelier .cm-editor.cm-focused {
+    outline: 2px solid #0f6cbf;
+    outline-offset: -1px;
+}
+
+.qtype_codeatelier .cm-scroller {
+    overflow: auto;
+}
+
+/* Run / status / results. */
+.qtype_codeatelier .codeatelier-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.5rem 0;
+}
+
+.qtype_codeatelier .codeatelier-status {
+    color: #5c6770;
+    font-style: italic;
+}
+
+.qtype_codeatelier .codeatelier-results {
+    margin-top: 0.5rem;
+}
+
+.qtype_codeatelier .codeatelier-score {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.qtype_codeatelier .codeatelier-testlist {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.qtype_codeatelier .codeatelier-testlist li {
+    padding: 0.1rem 0;
+}
+
+.qtype_codeatelier .codeatelier-pass::before {
+    content: "\2713\00a0";
+    color: #1f7a3d;
+}
+
+.qtype_codeatelier .codeatelier-fail::before {
+    content: "\2717\00a0";
+    color: #b02a37;
+}
