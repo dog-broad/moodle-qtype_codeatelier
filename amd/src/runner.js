@@ -38,6 +38,9 @@ const workers = {};
 /** @var {Object} per-language promise chains that serialise runs. */
 const queues = {};
 
+/** @var {Object} the in-flight run's resolver per language, for stop(). */
+const pending = {};
+
 /**
  * @return {String} URL of the built worker script (served statically by Moodle).
  */
@@ -93,11 +96,13 @@ const runOnce = (code, language, jobcases, opts) => {
                 return;
             }
             settled = true;
+            delete pending[language];
             window.clearTimeout(timer);
             worker.onmessage = null;
             worker.onerror = null;
             resolve(value);
         };
+        pending[language] = finish;
 
         function onInitTimeout() {
             dropWorker(language);
@@ -201,4 +206,18 @@ const describe = (sqljsBaseUrl, schemasql) => {
     });
 };
 
-export {run, describe};
+/**
+ * Cancel the in-flight run for a language: terminate the worker (runaway guard,
+ * user-driven) and resolve the pending run as aborted. The runtime reloads on
+ * the next run.
+ *
+ * @param {String} language
+ */
+const stop = (language) => {
+    dropWorker(language);
+    if (pending[language]) {
+        pending[language]({aborted: true, results: []});
+    }
+};
+
+export {run, describe, stop};
