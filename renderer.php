@@ -83,6 +83,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'scorename' => $scorename,
             'scorevalue' => $currentscore,
             'runlabel' => get_string('runlabel', 'qtype_codeatelier'),
+            'checklabel' => get_string('checklabel', 'qtype_codeatelier'),
+            'stoplabel' => get_string('stoplabel', 'qtype_codeatelier'),
+            'consolelabel' => get_string('consolelabel', 'qtype_codeatelier'),
+            'testslabel' => get_string('testslabel', 'qtype_codeatelier'),
             'practicenote' => get_string('practicenote', 'qtype_codeatelier'),
             'readonly' => $options->readonly,
             'hasvalidationerror' => $qa->get_state() == question_state::$invalid,
@@ -115,6 +119,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'expected' => get_string('expected', 'qtype_codeatelier'),
                 'call' => get_string('result_call', 'qtype_codeatelier'),
                 'got' => get_string('result_got', 'qtype_codeatelier'),
+                'argslabel' => get_string('scratchargs', 'qtype_codeatelier'),
+                'output' => get_string('output', 'qtype_codeatelier'),
+                'stopped' => get_string('stopped', 'qtype_codeatelier'),
+                'noresult' => get_string('noresult', 'qtype_codeatelier'),
             ),
         )));
 

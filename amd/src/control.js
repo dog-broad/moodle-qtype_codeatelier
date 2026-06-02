@@ -25,7 +25,7 @@
  */
 
 import {create} from 'qtype_codeatelier/editor';
-import {run, describe} from 'qtype_codeatelier/runner';
+import {run, describe, stop} from 'qtype_codeatelier/runner';
 import {grade} from 'qtype_codeatelier/grader';
 import {tokenDiff} from 'qtype_codeatelier/diff';
 
@@ -345,6 +345,45 @@ const renderMismatch = (body, config, test, result, strings) => {
 };
 
 /**
+ * Render a single scratch-Run result into the Console.
+ *
+ * @param {HTMLElement} element
+ * @param {Object} result a single run result (or {aborted}/{error})
+ * @param {Object} config
+ * @param {Object} strings
+ */
+const renderConsole = (element, result, config, strings) => {
+    element.textContent = '';
+    if (!result) {
+        return;
+    }
+    if (result.aborted) {
+        addBlock(element, strings.output || 'Output', strings.stopped || 'Stopped.');
+        return;
+    }
+    if (result.error) {
+        addBlock(element, strings.runerror || 'Error', String(result.error));
+        return;
+    }
+    if (config.scenario === 'sql') {
+        const rows = result.rows || [];
+        if (rows.length || (result.columns && result.columns.length)) {
+            addBlock(element, strings.output || 'Output', resultSetTable(result.columns, rows, null));
+        } else {
+            addBlock(element, strings.output || 'Output', strings.noresult || '(no rows)');
+        }
+        return;
+    }
+    let text;
+    if (config.scenario === 'function') {
+        text = (result.returnvalue === undefined || result.returnvalue === null) ? '' : String(result.returnvalue);
+    } else {
+        text = (result.stdout === undefined || result.stdout === null) ? '' : String(result.stdout);
+    }
+    addBlock(element, strings.output || 'Output', text);
+};
+
+/**
  * Initialise a CodeAtelier question.
  *
  * @param {Object} config
@@ -358,10 +397,16 @@ export const init = (config) => {
     const textarea = root.querySelector('[data-role="answer"]');
     const scoreinput = root.querySelector('[data-role="score"]');
     const runbutton = root.querySelector('[data-role="run"]');
+    const checkbutton = root.querySelector('[data-role="check"]');
+    const stopbutton = root.querySelector('[data-role="stop"]');
     const statusel = root.querySelector('[data-role="status"]');
     const resultsel = root.querySelector('[data-role="results"]');
+    const consoleel = root.querySelector('[data-role="console"]');
     const skeleton = root.querySelector('[data-role="skeleton"]');
     const examplesel = root.querySelector('[data-role="examples"]');
+    const scratchwrap = root.querySelector('[data-role="scratchwrap"]');
+    const scratchinput = root.querySelector('[data-role="scratch"]');
+    const scratchlabel = root.querySelector('[data-role="scratchlabel"]');
     const strings = config.strings || {};
 
     if (examplesel) {
@@ -396,9 +441,62 @@ export const init = (config) => {
         });
     }
 
-    if (config.readonly || !runbutton) {
+    if (config.readonly || !checkbutton) {
         return;
     }
+
+    // Scenario-shaped scratch input for Run.
+    if (scratchwrap) {
+        if (config.scenario === 'sql') {
+            scratchwrap.style.display = 'none';
+        } else {
+            scratchwrap.style.display = '';
+            scratchlabel.textContent = (config.scenario === 'function')
+                ? (strings.argslabel || 'Arguments (JSON)')
+                : (strings.input || 'Input');
+        }
+    }
+
+    // Console | Tests tabs.
+    const tabs = Array.prototype.slice.call(root.querySelectorAll('[data-role="tab"]'));
+    const setTab = (name) => {
+        if (consoleel) {
+            consoleel.style.display = (name === 'console') ? '' : 'none';
+        }
+        resultsel.style.display = (name === 'tests') ? '' : 'none';
+        tabs.forEach((tab) => {
+            tab.classList.toggle('codeatelier-tab-active', tab.getAttribute('data-tab') === name);
+        });
+    };
+    tabs.forEach((tab) => {
+        tab.addEventListener('click', () => setTab(tab.getAttribute('data-tab')));
+    });
+    setTab('tests');
+
+    const runOptions = () => ({
+        timeoutMs: config.timeoutms,
+        scenario: config.scenario,
+        entrypoint: config.entrypoint,
+        pyodideBaseUrl: config.pyodidebaseurl,
+        sqljsBaseUrl: config.sqljsbaseurl,
+        schemasql: config.schemasql,
+        onStatus: (state) => {
+            statusel.textContent = (state === 'loading')
+                ? (strings.loading || 'Preparing…')
+                : (strings.running || 'Running…');
+        },
+    });
+
+    const setRunning = (running) => {
+        runbutton.disabled = running;
+        checkbutton.disabled = running;
+        if (stopbutton) {
+            stopbutton.style.display = running ? '' : 'none';
+        }
+        if (!running) {
+            statusel.textContent = '';
+        }
+    };
 
     const showError = (detail) => {
         if (scoreinput) {
@@ -407,26 +505,17 @@ export const init = (config) => {
         resultsel.textContent = (strings.runerror || 'Could not run your code') + ' (' + detail + ')';
     };
 
-    runbutton.addEventListener('click', () => {
-        runbutton.disabled = true;
-        statusel.textContent = strings.running || 'Running...';
+    // Check: grade against the test cases.
+    checkbutton.addEventListener('click', () => {
+        setRunning(true);
+        statusel.textContent = strings.running || 'Running…';
         resultsel.textContent = '';
-
-        run(editor.getValue(), config.language, config.tests, {
-            timeoutMs: config.timeoutms,
-            scenario: config.scenario,
-            entrypoint: config.entrypoint,
-            pyodideBaseUrl: config.pyodidebaseurl,
-            sqljsBaseUrl: config.sqljsbaseurl,
-            schemasql: config.schemasql,
-            onStatus: (state) => {
-                statusel.textContent = (state === 'loading')
-                    ? (strings.loading || 'Preparing…')
-                    : (strings.running || 'Running…');
-            },
-        })
+        setTab('tests');
+        run(editor.getValue(), config.language, config.tests, runOptions())
             .then((result) => {
-                statusel.textContent = '';
+                if (result.aborted) {
+                    return;
+                }
                 if (result.error) {
                     showError(result.error);
                     return;
@@ -438,11 +527,39 @@ export const init = (config) => {
                 renderFeedback(resultsel, graded, result.results, config, strings);
             })
             .catch((err) => {
-                statusel.textContent = '';
                 showError(err);
             })
             .then(() => {
-                runbutton.disabled = false;
+                setRunning(false);
             });
     });
+
+    // Run: execute once with the scratch input, no grading.
+    runbutton.addEventListener('click', () => {
+        setRunning(true);
+        statusel.textContent = strings.running || 'Running…';
+        if (consoleel) {
+            consoleel.textContent = '';
+        }
+        setTab('console');
+        const scratch = scratchinput ? scratchinput.value : '';
+        run(editor.getValue(), config.language, [{input: scratch}], runOptions())
+            .then((result) => {
+                const single = (result.results && result.results.length) ? result.results[0] : result;
+                renderConsole(consoleel, result.aborted ? result : single, config, strings);
+            })
+            .catch((err) => {
+                renderConsole(consoleel, {error: String(err)}, config, strings);
+            })
+            .then(() => {
+                setRunning(false);
+            });
+    });
+
+    // Stop: cancel an in-flight run.
+    if (stopbutton) {
+        stopbutton.addEventListener('click', () => {
+            stop(config.language);
+        });
+    }
 };

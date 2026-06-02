@@ -42,7 +42,15 @@ $string['schematables'] = 'Tables and sample data';
 // Student attempt UI.
 $string['answerlabel'] = 'Your code';
 $string['loadingeditor'] = 'Loading editor…';
-$string['runlabel'] = 'Run / Check';
+$string['runlabel'] = 'Run';
+$string['checklabel'] = 'Check';
+$string['stoplabel'] = 'Stop';
+$string['consolelabel'] = 'Output';
+$string['testslabel'] = 'Tests';
+$string['scratchargs'] = 'Arguments (JSON array)';
+$string['output'] = 'Output';
+$string['stopped'] = 'Stopped.';
+$string['noresult'] = 'No rows returned.';
 $string['practicenote'] = 'Your code runs in your browser for instant practice feedback. This is not a secure exam mode.';
 $string['running'] = 'Running…';
 $string['preparingruntime'] = 'Preparing the runtime… (first run only)';
