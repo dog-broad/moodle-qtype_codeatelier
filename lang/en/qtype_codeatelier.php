@@ -98,6 +98,12 @@ $string['startercode_help'] = 'Optional code pre-filled in the student\'s editor
 $string['preview'] = 'Preview';
 $string['previewrefresh'] = 'Refresh preview';
 $string['previewintro'] = 'See exactly what students will see. Click refresh after changing the question, code or test cases.';
+$string['captureexpected'] = 'Capture expected outputs';
+$string['captureexpected_help'] = 'Write a correct solution in the preview editor, then capture its output for every test case into the Expected fields. Review them before saving.';
+$string['capturepreviewfirst'] = 'Refresh the preview and write a solution in its editor first.';
+$string['capturenotests'] = 'Add at least one test case with an input first.';
+$string['capturedone'] = 'Captured expected output for {$a} test case(s) — review them before saving.';
+$string['captureerrors'] = 'Captured {$a->ok} of {$a->total} — {$a->failed} case(s) errored and were left unchanged.';
 
 // Authoring: test cases.
 $string['testcases'] = 'Test cases';

@@ -22,6 +22,7 @@
 
 import {create as createEditor} from 'qtype_codeatelier/editor';
 import {init as initControl} from 'qtype_codeatelier/control';
+import {run as runCode} from 'qtype_codeatelier/runner';
 import {render as renderTemplate} from 'core/templates';
 
 const byId = (id) => document.getElementById(id);
@@ -63,6 +64,53 @@ const gatherTests = () => {
         });
     });
     return tests;
+};
+
+/**
+ * The non-blank test rows with their form elements, for run-to-capture.
+ *
+ * @return {Array} {input, checkerquery, expectedEl}
+ */
+const activeRows = () => {
+    const rows = [];
+    document.querySelectorAll('textarea[name^="testinput["]').forEach((ta) => {
+        const match = ta.name.match(/\[(\d+)\]/);
+        if (!match) {
+            return;
+        }
+        const i = match[1];
+        const expectedEl = document.querySelector('[name="testexpected[' + i + ']"]');
+        const checkerEl = document.querySelector('[name="checkerquery[' + i + ']"]');
+        const input = ta.value;
+        const expected = expectedEl ? expectedEl.value : '';
+        if (input.trim() === '' && expected.trim() === '') {
+            return;
+        }
+        rows.push({input: input, checkerquery: checkerEl ? checkerEl.value : '', expectedEl: expectedEl});
+    });
+    return rows;
+};
+
+/**
+ * Turn one run result into the text written into a test's Expected field.
+ *
+ * @param {Object} result a single runner result
+ * @param {String} scenario stdinstdout | function | sql
+ * @return {String|null} the expected text, or null if the run errored
+ */
+const capturedExpected = (result, scenario) => {
+    if (!result || result.error) {
+        return null;
+    }
+    if (scenario === 'sql') {
+        return JSON.stringify(result.rows || []);
+    }
+    if (scenario === 'function') {
+        const value = result.returnvalue;
+        // Python returns JSON already; JavaScript returns the raw value.
+        return (typeof value === 'string') ? value : JSON.stringify(value);
+    }
+    return (result.stdout === undefined || result.stdout === null) ? '' : String(result.stdout);
 };
 
 /**
@@ -151,4 +199,68 @@ export const init = (config) => {
             container.textContent = config.strings.runerror || 'Preview could not be rendered.';
         });
     });
+
+    // Run-to-capture: run the solution written in the preview editor against every
+    // test input and write the captured output into the Expected fields.
+    const captureBtn = byId(config.captureid);
+    const statusEl = byId(config.statusid);
+    const strings = config.strings || {};
+    const setStatus = (text) => {
+        if (statusEl) {
+            statusEl.textContent = text;
+        }
+    };
+    if (captureBtn) {
+        captureBtn.addEventListener('click', () => {
+            const refTa = container.querySelector('[data-role="answer"]');
+            if (!refTa) {
+                setStatus(strings.capturepreviewfirst || 'Refresh the preview and write a solution first.');
+                return;
+            }
+            const rows = activeRows();
+            if (!rows.length) {
+                setStatus(strings.capturenotests || 'Add at least one test case first.');
+                return;
+            }
+            const scenario = scenSel ? scenSel.value : 'stdinstdout';
+            const cases = rows.map((row) => ({input: row.input, checkerquery: row.checkerquery}));
+            setStatus(strings.running || 'Running…');
+            captureBtn.disabled = true;
+            runCode(refTa.value, langSel ? langSel.value : 'python', cases, {
+                scenario: scenario,
+                entrypoint: byId(config.entrypointid) ? byId(config.entrypointid).value : '',
+                schemasql: schemaTa ? schemaTa.value : '',
+                pyodideBaseUrl: config.pyodidebaseurl,
+                sqljsBaseUrl: config.sqljsbaseurl,
+                timeoutMs: config.timeoutms,
+            }).then((res) => {
+                const results = res.results || [];
+                let ok = 0;
+                let failed = 0;
+                rows.forEach((row, k) => {
+                    const expected = capturedExpected(results[k], scenario);
+                    if (expected === null || !row.expectedEl) {
+                        failed++;
+                        return;
+                    }
+                    row.expectedEl.value = expected;
+                    row.expectedEl.dispatchEvent(new Event('change', {bubbles: true}));
+                    ok++;
+                });
+                if (failed === 0) {
+                    setStatus((strings.capturedone || 'Captured {$a} test(s).').replace('{$a}', String(ok)));
+                } else {
+                    const tmpl = strings.captureerrors || 'Captured {$a->ok} of {$a->total}; {$a->failed} errored.';
+                    setStatus(tmpl.replace('{$a->ok}', String(ok))
+                        .replace('{$a->total}', String(rows.length))
+                        .replace('{$a->failed}', String(failed)));
+                }
+                return null;
+            }).catch((err) => {
+                setStatus((strings.runerror || 'Could not run') + ': ' + String(err));
+            }).then(() => {
+                captureBtn.disabled = false;
+            });
+        });
+    }
 };

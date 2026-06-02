@@ -83,12 +83,18 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->setExpanded('previewheader', false);
 
         $previewid = 'codeatelier_preview';
-        $button = html_writer::tag('button', get_string('previewrefresh', 'qtype_codeatelier'),
+        $refresh = html_writer::tag('button', get_string('previewrefresh', 'qtype_codeatelier'),
                 array('type' => 'button', 'class' => 'btn btn-secondary', 'id' => $previewid . '_btn'));
+        $capture = html_writer::tag('button', get_string('captureexpected', 'qtype_codeatelier'),
+                array('type' => 'button', 'class' => 'btn btn-secondary ml-2', 'id' => $previewid . '_capture'));
+        $status = html_writer::tag('span', '', array('class' => 'codeatelier-status ml-2',
+                'id' => $previewid . '_status', 'role' => 'status', 'aria-live' => 'polite'));
         $pane = html_writer::div('', 'codeatelier-preview', array('id' => $previewid));
         $mform->addElement('static', 'codeatelier_previewarea', '',
                 html_writer::tag('p', get_string('previewintro', 'qtype_codeatelier'), array('class' => 'text-muted'))
-                . $button . $pane);
+                . html_writer::tag('p', get_string('captureexpected_help', 'qtype_codeatelier'),
+                        array('class' => 'text-muted'))
+                . $refresh . $capture . $status . $pane);
 
         $PAGE->requires->js_call_amd('qtype_codeatelier/author', 'init', array(array(
             'languageid' => 'id_language',
@@ -98,6 +104,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'schemasqlid' => 'id_schemasql',
             'questiontextid' => 'id_questiontext',
             'previewbtnid' => $previewid . '_btn',
+            'captureid' => $previewid . '_capture',
+            'statusid' => $previewid . '_status',
             'previewid' => $previewid,
             'previewcontext' => qtype_codeatelier::ui_labels(),
             'strings' => qtype_codeatelier::ui_strings(),
