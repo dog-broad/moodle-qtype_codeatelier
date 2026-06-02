@@ -103,6 +103,12 @@ export const init = (config) => {
             timeoutMs: config.timeoutms,
             scenario: config.scenario,
             entrypoint: config.entrypoint,
+            pyodideBaseUrl: config.pyodidebaseurl,
+            onStatus: (state) => {
+                statusel.textContent = (state === 'loading')
+                    ? (strings.loading || 'Preparing…')
+                    : (strings.running || 'Running…');
+            },
         })
             .then((result) => {
                 statusel.textContent = '';

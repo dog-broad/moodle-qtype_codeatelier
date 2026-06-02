@@ -92,11 +92,13 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'language' => $language,
             'scenario' => !empty($question->scenario) ? $question->scenario : 'stdinstdout',
             'entrypoint' => $question->entrypoint,
+            'pyodidebaseurl' => get_config('qtype_codeatelier', 'pyodidebaseurl'),
             'tests' => $tests,
             'timeoutms' => 5000,
             'readonly' => (bool) $options->readonly,
             'strings' => array(
                 'running' => get_string('running', 'qtype_codeatelier'),
+                'loading' => get_string('preparingruntime', 'qtype_codeatelier'),
                 'runerror' => get_string('runerror', 'qtype_codeatelier'),
                 'pass' => get_string('result_pass', 'qtype_codeatelier'),
                 'fail' => get_string('result_fail', 'qtype_codeatelier'),
