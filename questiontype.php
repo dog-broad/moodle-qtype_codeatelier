@@ -121,4 +121,66 @@ class qtype_codeatelier extends question_type {
         // random-guess baseline to report.
         return null;
     }
+
+    /**
+     * The JS string bundle passed to the workbench controller.
+     *
+     * Shared by the question renderer and the authoring form's live preview so
+     * both drive the identical student UI from one source of truth.
+     *
+     * @return array string key => localised text
+     */
+    public static function ui_strings() {
+        $keys = array(
+            'running' => 'running',
+            'loading' => 'preparingruntime',
+            'runerror' => 'runerror',
+            'pass' => 'result_pass',
+            'fail' => 'result_fail',
+            'test' => 'result_test',
+            'hidden' => 'result_hidden',
+            'score' => 'result_score',
+            'schematables' => 'schematables',
+            'examples' => 'examples',
+            'input' => 'input',
+            'expected' => 'expected',
+            'call' => 'result_call',
+            'got' => 'result_got',
+            'argslabel' => 'scratchargs',
+            'output' => 'output',
+            'stopped' => 'stopped',
+            'noresult' => 'noresult',
+            'teacherfeedback' => 'result_feedback',
+            'stale' => 'stale',
+            'degraded' => 'degraded',
+            'focus' => 'focus',
+            'exitfocus' => 'exitfocus',
+            'focusmode' => 'focusmode',
+        );
+        $strings = array();
+        foreach ($keys as $jskey => $stringid) {
+            $strings[$jskey] = get_string($stringid, 'qtype_codeatelier');
+        }
+        return $strings;
+    }
+
+    /**
+     * The static label fields of the workbench template context (everything that
+     * does not depend on a specific question's saved data).
+     *
+     * @return array template variable => localised text
+     */
+    public static function ui_labels() {
+        return array(
+            'answerlabel' => get_string('answerlabel', 'qtype_codeatelier'),
+            'loadingeditor' => get_string('loadingeditor', 'qtype_codeatelier'),
+            'runlabel' => get_string('runlabel', 'qtype_codeatelier'),
+            'focuslabel' => get_string('focus', 'qtype_codeatelier'),
+            'checklabel' => get_string('checklabel', 'qtype_codeatelier'),
+            'stoplabel' => get_string('stoplabel', 'qtype_codeatelier'),
+            'consolelabel' => get_string('consolelabel', 'qtype_codeatelier'),
+            'testslabel' => get_string('testslabel', 'qtype_codeatelier'),
+            'practicenote' => get_string('practicenote', 'qtype_codeatelier'),
+        );
+    }
 }
