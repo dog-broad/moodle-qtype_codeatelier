@@ -12,17 +12,17 @@ import terser from '@rollup/plugin-terser';
 export default [
     {
         input: 'amd/src/editor.js',
-        output: {file: 'amd/build/editor.min.js', format: 'amd', sourcemap: false},
+        output: {file: 'amd/build/editor.min.js', format: 'amd', sourcemap: true, sourcemapExcludeSources: true},
         plugins: [nodeResolve(), terser()],
     },
     {
         input: 'amd/src/runner.js',
-        output: {file: 'amd/build/runner.min.js', format: 'amd', sourcemap: false},
+        output: {file: 'amd/build/runner.min.js', format: 'amd', sourcemap: true, sourcemapExcludeSources: true},
         plugins: [nodeResolve(), terser()],
     },
     {
         input: 'amd/src/grader.js',
-        output: {file: 'amd/build/grader.min.js', format: 'amd', sourcemap: false},
+        output: {file: 'amd/build/grader.min.js', format: 'amd', sourcemap: true, sourcemapExcludeSources: true},
         plugins: [nodeResolve(), terser()],
     },
     {
@@ -30,14 +30,14 @@ export default [
         // (kept external so CodeMirror is not duplicated into this bundle).
         input: 'amd/src/control.js',
         external: (id) => id.startsWith('qtype_codeatelier/'),
-        output: {file: 'amd/build/control.min.js', format: 'amd', sourcemap: false},
+        output: {file: 'amd/build/control.min.js', format: 'amd', sourcemap: true, sourcemapExcludeSources: true},
         plugins: [nodeResolve(), terser()],
     },
     {
         // The execution worker is a module worker (new Worker(url, {type:'module'}))
         // so it can dynamically import the Pyodide ES module at runtime.
         input: 'amd/src/worker.js',
-        output: {file: 'amd/build/worker.min.js', format: 'es', sourcemap: false},
+        output: {file: 'amd/build/worker.min.js', format: 'es', sourcemap: true, sourcemapExcludeSources: true},
         plugins: [nodeResolve(), terser()],
     },
 ];
