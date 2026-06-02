@@ -40,6 +40,34 @@ const normalise = (value) => {
 };
 
 /**
+ * Structural deep equality for JSON-shaped values (primitives, arrays, objects).
+ *
+ * @param {*} a
+ * @param {*} b
+ * @return {Boolean}
+ */
+const deepEqual = (a, b) => {
+    if (a === b) {
+        return true;
+    }
+    if (typeof a !== typeof b || a === null || b === null || typeof a !== 'object') {
+        return false;
+    }
+    if (Array.isArray(a) || Array.isArray(b)) {
+        if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) {
+            return false;
+        }
+        return a.every((item, i) => deepEqual(item, b[i]));
+    }
+    const akeys = Object.keys(a);
+    const bkeys = Object.keys(b);
+    if (akeys.length !== bkeys.length) {
+        return false;
+    }
+    return akeys.every((key) => Object.prototype.hasOwnProperty.call(b, key) && deepEqual(a[key], b[key]));
+};
+
+/**
  * Decide whether an actual output matches the expected value under a rule.
  *
  * @param {String} actual the produced output
@@ -67,6 +95,23 @@ const matches = (actual, expected, mode, tolerance) => {
                 return false;
             }
             return Math.abs(a - b) <= (tolerance || 0);
+        }
+        case 'structured': {
+            let expectedval;
+            try {
+                expectedval = JSON.parse(expected);
+            } catch (e) {
+                return false;
+            }
+            let actualval = actual;
+            if (typeof actual === 'string') {
+                try {
+                    actualval = JSON.parse(actual);
+                } catch (e) {
+                    actualval = actual;
+                }
+            }
+            return deepEqual(actualval, expectedval);
         }
         default:
             return normalise(actual) === normalise(expected);
@@ -116,8 +161,11 @@ const grade = (results, tests) => {
         } else if (result.error) {
             status = 'error';
         } else {
-            passed = matches(actualOutput(result), test.expected, test.matchmode,
-                    parseFloat(test.tolerance));
+            // Structured comparison uses the raw return value; text modes use stdout.
+            const actual = (test.matchmode === 'structured')
+                ? result.returnvalue
+                : actualOutput(result);
+            passed = matches(actual, test.expected, test.matchmode, parseFloat(test.tolerance));
             status = passed ? 'pass' : 'fail';
         }
 
