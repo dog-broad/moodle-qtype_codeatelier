@@ -46,6 +46,31 @@ final class judge_question_test extends \advanced_testcase {
         return $question;
     }
 
+    public function test_judge_expects_a_proctor_log_field(): void {
+        $this->resetAfterTest();
+        $question = $this->judge_question(new qtype_codeatelier_stub_runner(array()));
+        $expected = $question->get_expected_data();
+        $this->assertArrayHasKey('proctorlog', $expected);
+
+        // A practice question carries no proctor log.
+        $practice = test_question_maker::make_question('codeatelier', 'function');
+        $this->assertArrayNotHasKey('proctorlog', $practice->get_expected_data());
+    }
+
+    public function test_proctor_log_does_not_affect_the_grade(): void {
+        $this->resetAfterTest();
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+            qtype_codeatelier_stub_runner::row('ran', "30\n"),
+        ));
+        $question = $this->judge_question($runner);
+        list($fraction) = $question->grade_response(array(
+            'answer' => 'correct',
+            'proctorlog' => '[{"type":"focusaway","t":3}]',
+        ));
+        $this->assertEquals(1.0, $fraction);
+    }
+
     public function test_is_complete_response_uses_code_not_score(): void {
         $this->resetAfterTest();
         $question = $this->judge_question(new qtype_codeatelier_stub_runner(array()));
