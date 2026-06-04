@@ -33,6 +33,11 @@ defined('MOODLE_INTERNAL') || die();
 class qtype_codeatelier_edit_form extends question_edit_form {
 
     protected function definition_inner($mform) {
+        $mform->addElement('select', 'tier', get_string('tier', 'qtype_codeatelier'),
+                $this->tier_options());
+        $mform->addHelpButton('tier', 'tier', 'qtype_codeatelier');
+        $mform->setDefault('tier', $this->get_default_value('tier', 'practice'));
+
         $mform->addElement('select', 'language', get_string('language', 'qtype_codeatelier'),
                 $this->language_options());
         $mform->addHelpButton('language', 'language', 'qtype_codeatelier');
@@ -42,6 +47,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 $this->scenario_options());
         $mform->addHelpButton('scenario', 'scenario', 'qtype_codeatelier');
         $mform->setDefault('scenario', $this->get_default_value('scenario', 'stdinstdout'));
+        // The judge tier is always the stdin/stdout shape — see the question type.
+        $mform->hideIf('scenario', 'tier', 'eq', 'judge');
 
         $mform->addElement('text', 'entrypoint', get_string('entrypoint', 'qtype_codeatelier'),
                 array('size' => 40));
@@ -180,6 +187,20 @@ class qtype_codeatelier_edit_form extends question_edit_form {
     }
 
     /**
+     * @return array tier code => display name
+     */
+    protected function tier_options() {
+        return array(
+            'practice' => get_string('tier_practice', 'qtype_codeatelier'),
+            'judge' => get_string('tier_judge', 'qtype_codeatelier'),
+        );
+    }
+
+    /**
+     * The full language set. Practice supports python/sql/javascript; judge
+     * supports c/cpp/java/python/javascript. The chosen tier/language pair is
+     * checked in {@see validation()}.
+     *
      * @return array language code => display name
      */
     protected function language_options() {
@@ -187,8 +208,17 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'python' => get_string('lang_python', 'qtype_codeatelier'),
             'sql' => get_string('lang_sql', 'qtype_codeatelier'),
             'javascript' => get_string('lang_javascript', 'qtype_codeatelier'),
+            'c' => get_string('lang_c', 'qtype_codeatelier'),
+            'cpp' => get_string('lang_cpp', 'qtype_codeatelier'),
+            'java' => get_string('lang_java', 'qtype_codeatelier'),
         );
     }
+
+    /** @var array languages that run in the browser (practice tier). */
+    const PRACTICE_LANGUAGES = array('python', 'sql', 'javascript');
+
+    /** @var array languages that run in the server sandbox (judge tier). */
+    const JUDGE_LANGUAGES = array('c', 'cpp', 'java', 'python', 'javascript');
 
     /**
      * @return array matching-mode code => display name
@@ -248,7 +278,17 @@ class qtype_codeatelier_edit_form extends question_edit_form {
     public function validation($data, $files) {
         $errors = parent::validation($data, $files);
 
-        if ($data['scenario'] === 'function' && trim($data['entrypoint']) === '') {
+        $tier = isset($data['tier']) ? $data['tier'] : 'practice';
+        if ($tier === 'judge' && !in_array($data['language'], self::JUDGE_LANGUAGES, true)) {
+            $errors['language'] = get_string('languagenotjudge', 'qtype_codeatelier');
+        }
+        if ($tier === 'practice' && !in_array($data['language'], self::PRACTICE_LANGUAGES, true)) {
+            $errors['language'] = get_string('languagenotpractice', 'qtype_codeatelier');
+        }
+
+        // The judge tier is always stdin/stdout, so the entrypoint is only
+        // required for a practice-tier function question.
+        if ($tier !== 'judge' && $data['scenario'] === 'function' && trim($data['entrypoint']) === '') {
             $errors['entrypoint'] = get_string('entrypointrequired', 'qtype_codeatelier');
         }
 

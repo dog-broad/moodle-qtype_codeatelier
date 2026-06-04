@@ -77,13 +77,37 @@ $string['result_hidden'] = 'Hidden test';
 $string['result_pass'] = 'passed';
 $string['result_fail'] = 'failed';
 $string['pleaserun'] = 'Please run your code before submitting.';
+$string['pleasewritecode'] = 'Please write some code before submitting.';
+
+// Judge-tier student UI.
+$string['judgenote'] = 'This question is graded on the server against hidden tests when you submit. The editor is for writing and reviewing your code.';
+$string['judgeverdict'] = 'Verdict:';
+$string['judgenoresult'] = 'No graded result is available for this attempt.';
+$string['verdict_AC'] = 'Accepted';
+$string['verdict_WA'] = 'Wrong answer';
+$string['verdict_TLE'] = 'Time limit exceeded';
+$string['verdict_RE'] = 'Runtime error';
+$string['verdict_CE'] = 'Compile error';
+
+// Authoring: tier.
+$string['tier'] = 'Grading tier';
+$string['tier_help'] = 'Where the student\'s code runs and how it is graded.
+
+**Practice (in-browser)**: code runs in the student\'s browser for instant feedback. Test cases are sent to the browser, so a determined student can read them — this tier is for formative practice, never secure assessment.
+
+**Judge (server sandbox)**: code is compiled and run on the server with enforced time and memory limits, and graded against tests that never leave the server. This is the authoritative, secure grading path; it adds compiled languages (C, C++, Java) and is always the standard input/output shape. Requires a configured Judge0 endpoint.';
+$string['tier_practice'] = 'Practice (in-browser, formative)';
+$string['tier_judge'] = 'Judge (server sandbox, authoritative)';
 
 // Authoring: language.
 $string['language'] = 'Language';
-$string['language_help'] = 'The language the student writes in. In the practice tier this selects the in-browser runtime and the editor\'s syntax highlighting: Python (Pyodide), SQL (sql.js) or JavaScript.';
+$string['language_help'] = 'The language the student writes in. Practice tier: Python (Pyodide), SQL (sql.js) or JavaScript, run in the browser. Judge tier: C, C++, Java, Python or JavaScript, run in the server sandbox.';
 $string['lang_python'] = 'Python';
 $string['lang_sql'] = 'SQL';
 $string['lang_javascript'] = 'JavaScript';
+$string['lang_c'] = 'C';
+$string['lang_cpp'] = 'C++';
+$string['lang_java'] = 'Java';
 
 // Authoring: scenario.
 $string['scenario'] = 'Scenario';
@@ -137,3 +161,5 @@ $string['weightnumeric'] = 'The weight must be a number.';
 $string['tolerancenumeric'] = 'A numeric tolerance is required when the matching rule is numeric.';
 $string['notenoughtests'] = 'You must provide at least one test case.';
 $string['entrypointrequired'] = 'Enter the function name for a function question.';
+$string['languagenotjudge'] = 'The judge tier supports C, C++, Java, Python and JavaScript. SQL is a practice-tier language.';
+$string['languagenotpractice'] = 'The practice tier supports Python, SQL and JavaScript. C, C++ and Java require the judge tier.';
