@@ -139,61 +139,72 @@ class judge0_runner {
         return self::LANGUAGE_IDS[$language] ?? null;
     }
 
+    /** @var int how long to poll a batch for completion before giving up (seconds). */
+    const POLL_TIMEOUT = 90;
+
+    /** @var int milliseconds between batch status polls. */
+    const POLL_INTERVAL_MS = 500;
+
     /**
      * Run student code against a set of cases.
      *
-     * Execution only — comparing output against the expected value is the grader's
-     * job, from the same declarative spec the browser grader uses.
+     * All cases are submitted to Judge0 in a single BATCH and run in parallel
+     * across its workers, then polled to completion — far faster and far kinder to
+     * the sandbox than one blocking submission per case. Execution only: comparing
+     * output against the expected value is the grader's job.
      *
      * @param string $code the student source
      * @param string $language a CodeAtelier language key (c, cpp, java, python, javascript)
      * @param array $cases the test cases, each at least ['input' => stdin]
-     * @return array per-case results aligned by index (see run_case())
+     * @return array per-case results aligned by index ({outcome, stdout, stderr,
+     *   compileoutput, time, memory, statusid, statusdesc}; outcome is one of
+     *   ran | ce | tle | mle | re | internal)
      */
     public function run(string $code, string $language, array $cases): array {
         $languageid = self::language_id($language);
         if ($languageid === null) {
             throw new \coding_exception("Unsupported judge-tier language: {$language}");
         }
-        $results = [];
+        $cases = array_values($cases);
+        if (!$cases) {
+            return [];
+        }
+
+        $submissions = [];
         foreach ($cases as $case) {
             $stdin = isset($case['input']) ? (string) $case['input'] : '';
-            $results[] = $this->run_case($code, $languageid, $stdin);
+            $submissions[] = [
+                'source_code' => base64_encode($code),
+                'language_id' => $languageid,
+                'stdin' => base64_encode($stdin),
+                'cpu_time_limit' => $this->cputimelimit,
+                'memory_limit' => $this->memorylimit,
+            ];
+        }
+
+        $responses = $this->submit_batch($submissions);
+        if (isset($responses['_error'])) {
+            // An infrastructure failure applies to every case; the grader routes
+            // this to needs-grading rather than a faked zero.
+            return array_fill(0, count($cases), self::internal_result($responses['_error']));
+        }
+
+        $results = [];
+        foreach ($cases as $i => $case) {
+            $results[] = (isset($responses[$i]) && is_array($responses[$i]))
+                ? $this->map_response($responses[$i])
+                : self::internal_result('judge0 returned no result for a case');
         }
         return $results;
     }
 
     /**
-     * Submit one case to Judge0 synchronously and map the response.
+     * Map a single Judge0 submission response to a per-case result.
      *
-     * @param string $code the student source
-     * @param int $languageid the Judge0 language id
-     * @param string $stdin standard input for the run
+     * @param array $response one decoded Judge0 submission
      * @return array {outcome, stdout, stderr, compileoutput, time, memory, statusid, statusdesc}
-     *   where outcome is one of: ran | ce | tle | mle | re | internal
      */
-    public function run_case(string $code, int $languageid, string $stdin): array {
-        $response = $this->submit([
-            'source_code' => base64_encode($code),
-            'language_id' => $languageid,
-            'stdin' => base64_encode($stdin),
-            'cpu_time_limit' => $this->cputimelimit,
-            'memory_limit' => $this->memorylimit,
-        ]);
-
-        if (isset($response['_error'])) {
-            return [
-                'outcome' => 'internal',
-                'stdout' => '',
-                'stderr' => '',
-                'compileoutput' => '',
-                'time' => null,
-                'memory' => null,
-                'statusid' => 0,
-                'statusdesc' => $response['_error'],
-            ];
-        }
-
+    private function map_response(array $response): array {
         $statusid = (int) ($response['status']['id'] ?? 0);
         $memory = isset($response['memory']) ? (int) $response['memory'] : null;
         return [
@@ -205,6 +216,19 @@ class judge0_runner {
             'memory' => $memory,
             'statusid' => $statusid,
             'statusdesc' => (string) ($response['status']['description'] ?? ''),
+        ];
+    }
+
+    /**
+     * A result row for an infrastructure failure (sandbox unreachable / internal).
+     *
+     * @param string $message the failure detail
+     * @return array
+     */
+    private static function internal_result(string $message): array {
+        return [
+            'outcome' => 'internal', 'stdout' => '', 'stderr' => '', 'compileoutput' => '',
+            'time' => null, 'memory' => null, 'statusid' => 0, 'statusdesc' => $message,
         ];
     }
 
@@ -254,12 +278,75 @@ class judge0_runner {
     }
 
     /**
-     * POST a submission to Judge0 and wait for the result.
+     * Submit a batch of cases (async) and poll until all have finished.
      *
-     * @param array $payload the submission body
-     * @return array the decoded Judge0 response, or ['_error' => message] on failure
+     * @param array $submissions the per-case submission payloads
+     * @return array the decoded submissions aligned by index, or ['_error' => message]
      */
-    private function submit(array $payload): array {
+    private function submit_batch(array $submissions): array {
+        $created = $this->request('POST', '/submissions/batch?base64_encoded=true&wait=false',
+                json_encode(['submissions' => $submissions]));
+        if (isset($created['_error'])) {
+            return $created;
+        }
+        if (!is_array($created) || count($created) !== count($submissions)) {
+            return ['_error' => 'judge0 batch returned an unexpected response'];
+        }
+        $tokens = [];
+        foreach ($created as $entry) {
+            if (!is_array($entry) || empty($entry['token'])) {
+                return ['_error' => 'judge0 batch did not return a token for every case'];
+            }
+            $tokens[] = $entry['token'];
+        }
+        return $this->poll_batch($tokens);
+    }
+
+    /**
+     * Poll a batch of tokens until every submission has finished (status > 2).
+     *
+     * @param array $tokens the submission tokens, in case order
+     * @return array the finished submissions aligned by index, or ['_error' => message]
+     */
+    private function poll_batch(array $tokens): array {
+        $query = '/submissions/batch?base64_encoded=true&tokens=' . implode(',', $tokens)
+                . '&fields=token,status,stdout,stderr,compile_output,time,memory';
+        $deadline = time() + self::POLL_TIMEOUT;
+        do {
+            $decoded = $this->request('GET', $query, null);
+            if (isset($decoded['_error'])) {
+                return $decoded;
+            }
+            $subs = $decoded['submissions'] ?? null;
+            if (!is_array($subs) || count($subs) !== count($tokens)) {
+                return ['_error' => 'judge0 batch poll returned an unexpected response'];
+            }
+            $pending = false;
+            foreach ($subs as $sub) {
+                // 1 In Queue, 2 Processing — still running.
+                if ((int) ($sub['status']['id'] ?? 0) <= 2) {
+                    $pending = true;
+                    break;
+                }
+            }
+            if (!$pending) {
+                return $subs;
+            }
+            usleep(self::POLL_INTERVAL_MS * 1000);
+        } while (time() < $deadline);
+
+        return ['_error' => 'judge0 batch timed out'];
+    }
+
+    /**
+     * Make one JSON request to Judge0.
+     *
+     * @param string $method GET or POST
+     * @param string $path the path + query relative to the base URL
+     * @param string|null $body the request body for POST
+     * @return array the decoded JSON, or ['_error' => message] on failure
+     */
+    private function request(string $method, string $path, ?string $body): array {
         global $CFG;
         require_once($CFG->libdir . '/filelib.php');
 
@@ -277,14 +364,13 @@ class judge0_runner {
         $curl->setHeader($headers);
         $curl->setopt(['CURLOPT_TIMEOUT' => 30, 'CURLOPT_CONNECTTIMEOUT' => 10]);
 
-        $url = $this->baseurl . '/submissions?base64_encoded=true&wait=true';
-        $raw = $curl->post($url, json_encode($payload));
+        $url = $this->baseurl . $path;
+        $raw = ($method === 'POST') ? $curl->post($url, $body) : $curl->get($url);
 
         if ($curl->get_errno()) {
             return ['_error' => 'judge0 connection failed: ' . $curl->error];
         }
-        $info = $curl->get_info();
-        $httpcode = (int) ($info['http_code'] ?? 0);
+        $httpcode = (int) ($curl->get_info()['http_code'] ?? 0);
         if ($httpcode < 200 || $httpcode >= 300) {
             return ['_error' => "judge0 http {$httpcode}"];
         }
