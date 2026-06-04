@@ -95,6 +95,8 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $form->testvisibility = array(1, 0);
         $form->checkerquery = array('', '');
         $form->testfeedback = array('Add the two numbers.', '');
+        $form->cputimelimit = '';
+        $form->memorylimit = '';
         return $form;
     }
 
@@ -156,6 +158,8 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $form->testvisibility = array(1, 0);
         $form->checkerquery = array('', '');
         $form->testfeedback = array('', '');
+        $form->cputimelimit = '';
+        $form->memorylimit = '';
         return $form;
     }
 }

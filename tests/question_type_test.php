@@ -88,6 +88,30 @@ final class question_type_test extends \advanced_testcase {
         $this->assertCount(2, $data->options->tests);
     }
 
+    public function test_per_question_limits_round_trip(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        // Explicit per-question limits are stored.
+        $q1 = $qgen->create_question('codeatelier', 'judge', array(
+            'category' => $cat->id, 'cputimelimit' => '1.5', 'memorylimit' => '64000'));
+        $d1 = question_bank::load_question_data($q1->id);
+        $this->assertEquals(1.5, (float) $d1->options->cputimelimit);
+        $this->assertEquals(64000, (int) $d1->options->memorylimit);
+
+        // Blank limits are stored as null (use the site default).
+        $q2 = $qgen->create_question('codeatelier', 'judge', array('category' => $cat->id));
+        $d2 = question_bank::load_question_data($q2->id);
+        $this->assertNull($d2->options->cputimelimit);
+        $this->assertNull($d2->options->memorylimit);
+    }
+
     public function test_resultset_ordered_matchmode_round_trips(): void {
         // Regression: 'resultset_ordered' is 17 chars and overflowed the original
         // char(16) matchmode column (a DB error on PostgreSQL, truncation on MySQL).

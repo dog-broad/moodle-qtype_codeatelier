@@ -17,6 +17,7 @@
 namespace qtype_codeatelier;
 
 use qtype_codeatelier\judge\judge_grader;
+use qtype_codeatelier\judge\result_cache;
 use qtype_codeatelier_stub_runner;
 
 defined('MOODLE_INTERNAL') || die();
@@ -49,6 +50,17 @@ final class judge_grader_test extends \advanced_testcase {
             (object) array('input' => "10 20\n", 'expected' => '30', 'matchmode' => 'trimmed',
                 'tolerance' => null, 'weight' => 1, 'visibility' => 0),
         );
+    }
+
+    public function test_cache_key_depends_on_limits(): void {
+        // Changing a per-question limit must change the memo key, so an answer is
+        // re-graded under the new limit rather than served a stale result.
+        $tests = $this->sum_tests();
+        $a = result_cache::key('cpp', 'code', $tests, array('cputime' => 2.0, 'memory' => 128000));
+        $b = result_cache::key('cpp', 'code', $tests, array('cputime' => 1.0, 'memory' => 128000));
+        $c = result_cache::key('cpp', 'code', $tests, array('cputime' => 2.0, 'memory' => 64000));
+        $this->assertNotEquals($a, $b);
+        $this->assertNotEquals($a, $c);
     }
 
     public function test_all_correct_is_ac(): void {
