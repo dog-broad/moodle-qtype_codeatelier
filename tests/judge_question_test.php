@@ -64,6 +64,7 @@ final class judge_question_test extends \advanced_testcase {
             qtype_codeatelier_stub_runner::row('ran', "30\n"),
         ));
         $question = $this->judge_question($runner);
+        $question->get_judge_result('correct');
         list($fraction) = $question->grade_response(array(
             'answer' => 'correct',
             'proctorlog' => '[{"type":"focusaway","t":3}]',
@@ -105,7 +106,13 @@ final class judge_question_test extends \advanced_testcase {
         ));
         $question = $this->judge_question($runner);
 
-        // A lying client score of 0 must not lower the server-computed grade.
+        // Grading is off-request: the first grade leaves the response awaiting grading.
+        list(, $state) = $question->grade_response(array('answer' => 'correct', 'score' => '0'));
+        $this->assertEquals(question_state::$needsgrading, $state);
+
+        // The scheduled task computes and memoises the result; the regrade then
+        // records the real, server-computed grade (a lying client score of 0 is ignored).
+        $question->get_judge_result('correct');
         list($fraction, $state) = $question->grade_response(array('answer' => 'correct', 'score' => '0'));
         $this->assertEquals(1.0, $fraction);
         $this->assertEquals(question_state::$gradedright, $state);
@@ -119,6 +126,7 @@ final class judge_question_test extends \advanced_testcase {
         ));
         $question = $this->judge_question($runner);
 
+        $question->get_judge_result('half');
         list($fraction, $state) = $question->grade_response(array('answer' => 'half'));
         $this->assertEquals(0.5, $fraction);
         $this->assertEquals(question_state::$gradedpartial, $state);
@@ -132,7 +140,11 @@ final class judge_question_test extends \advanced_testcase {
         ));
         $question = $this->judge_question($runner);
 
-        list($fraction, $state) = $question->grade_response(array('answer' => 'code'));
+        // The task runs the sandbox but it is unreachable, so nothing is memoised...
+        $result = $question->get_judge_result('code');
+        $this->assertTrue($result['infrastructure']);
+        // ...and the response stays awaiting grading rather than becoming a faked zero.
+        list(, $state) = $question->grade_response(array('answer' => 'code'));
         $this->assertEquals(question_state::$needsgrading, $state);
     }
 
@@ -144,12 +156,12 @@ final class judge_question_test extends \advanced_testcase {
         ));
         $question = $this->judge_question($runner);
 
-        $question->grade_response(array('answer' => 'same code'));
-        $question->grade_response(array('answer' => 'same code'));
-        // The second grade is served from the memo, so the sandbox ran only once.
+        $question->get_judge_result('same code');
+        $question->get_judge_result('same code');
+        // The second run is served from the memo, so the sandbox ran only once.
         $this->assertEquals(1, $runner->call_count());
 
-        // The cached result is readable without re-running the sandbox (review path).
+        // The cached result is readable without re-running the sandbox (review + grade paths).
         $cached = $question->cached_judge_result('same code');
         $this->assertNotNull($cached);
         $this->assertSame('AC', $cached['verdict']);
