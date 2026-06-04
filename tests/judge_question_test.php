@@ -71,6 +71,23 @@ final class judge_question_test extends \advanced_testcase {
         $this->assertEquals(1.0, $fraction);
     }
 
+    public function test_run_examples_runs_visible_tests_only(): void {
+        $this->resetAfterTest();
+        // The judge fixture has one visible and one hidden test. A formative run
+        // must execute only the visible one, so the stub returns a single result.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+        ));
+        $question = $this->judge_question($runner);
+
+        $result = $question->run_examples('some code');
+        $this->assertCount(1, $result['testresults']);
+        $this->assertSame(1, $result['testresults'][0]['visibility']);
+        // A visible example carries its diagnostics for display.
+        $this->assertArrayHasKey('expected', $result['testresults'][0]);
+        $this->assertTrue($result['testresults'][0]['passed']);
+    }
+
     public function test_is_complete_response_uses_code_not_score(): void {
         $this->resetAfterTest();
         $question = $this->judge_question(new qtype_codeatelier_stub_runner(array()));
