@@ -86,8 +86,11 @@ $string['judgenoresult'] = 'No graded result is available for this attempt.';
 $string['verdict_AC'] = 'Accepted';
 $string['verdict_WA'] = 'Wrong answer';
 $string['verdict_TLE'] = 'Time limit exceeded';
+$string['verdict_MLE'] = 'Memory limit exceeded';
 $string['verdict_RE'] = 'Runtime error';
 $string['verdict_CE'] = 'Compile error';
+$string['judgetime'] = '{$a} ms';
+$string['judgememory'] = '{$a}';
 
 // Authoring: tier.
 $string['tier'] = 'Grading tier';

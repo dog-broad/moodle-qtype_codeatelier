@@ -142,9 +142,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
         $verdict = isset($result['verdict']) ? (string) $result['verdict'] : 'WA';
         $out = html_writer::div(
-                get_string('judgeverdict', 'qtype_codeatelier') . ' '
-                . html_writer::tag('span', $this->verdict_label($verdict),
-                        array('class' => 'codeatelier-verdict codeatelier-verdict-' . $verdict)),
+                html_writer::span(get_string('judgeverdict', 'qtype_codeatelier'),
+                        'codeatelier-judge-verdict-label') . ' '
+                . html_writer::span($this->verdict_label($verdict),
+                        'codeatelier-verdict codeatelier-verdict-' . $verdict),
                 'codeatelier-judge-verdict');
 
         if ($verdict === 'CE' && !empty($result['compileoutput'])) {
@@ -154,22 +155,103 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
         $items = '';
         foreach ($result['testresults'] as $tr) {
-            $visible = (int) $tr['visibility'] === 1;
-            $label = $visible
-                ? get_string('result_test', 'qtype_codeatelier', $tr['index'] + 1)
-                : get_string('result_hidden', 'qtype_codeatelier');
-            $status = !empty($tr['passed'])
-                ? get_string('result_pass', 'qtype_codeatelier')
-                : $this->status_label((string) $tr['status']);
-            $cls = !empty($tr['passed']) ? 'codeatelier-pass' : 'codeatelier-fail';
-            $items .= html_writer::tag('li',
-                    html_writer::span(s($label), 'codeatelier-test-label') . ' '
-                    . html_writer::span(s($status), 'codeatelier-test-status'),
-                    array('class' => $cls));
+            $items .= $this->render_judge_test_row($tr);
         }
         $out .= html_writer::tag('ul', $items, array('class' => 'codeatelier-judge-tests'));
 
         return html_writer::div($out, 'codeatelier-judge-review');
+    }
+
+    /**
+     * One per-test row: a status badge with time/memory, and for a failed VISIBLE
+     * test the error output or an expected-vs-actual diff. Hidden tests show only
+     * a pass/fail badge — they carry no diagnostics in the result.
+     *
+     * @param array $tr a per-test result
+     * @return string HTML
+     */
+    protected function render_judge_test_row(array $tr) {
+        $visible = (int) $tr['visibility'] === 1;
+        $passed = !empty($tr['passed']);
+        $status = (string) $tr['status'];
+
+        $label = $visible
+            ? get_string('result_test', 'qtype_codeatelier', $tr['index'] + 1)
+            : get_string('result_hidden', 'qtype_codeatelier');
+        $statuslabel = $passed
+            ? get_string('result_pass', 'qtype_codeatelier')
+            : $this->status_label($status);
+
+        $head = html_writer::span(s($label), 'codeatelier-test-label')
+            . ' '
+            . html_writer::span(s($statuslabel),
+                    'codeatelier-test-status codeatelier-status-' . ($passed ? 'pass' : $status))
+            . $this->render_test_meta($tr);
+
+        $detail = '';
+        if ($visible && !$passed) {
+            if (($status === 're' || $status === 'mle') && !empty($tr['stderr'])) {
+                $detail = html_writer::tag('pre', s($tr['stderr']), array('class' => 'codeatelier-test-error'));
+            } else if ($status === 'fail') {
+                $detail = $this->render_test_diff($tr);
+            }
+        }
+
+        $cls = 'codeatelier-judge-test ' . ($passed ? 'codeatelier-pass' : 'codeatelier-fail');
+        return html_writer::tag('li', $head . $detail, array('class' => $cls));
+    }
+
+    /**
+     * The time/memory meta for a test row, when measured.
+     *
+     * @param array $tr a per-test result
+     * @return string HTML (empty when no measurements)
+     */
+    protected function render_test_meta(array $tr) {
+        $parts = array();
+        if (isset($tr['time']) && $tr['time'] !== null) {
+            $parts[] = get_string('judgetime', 'qtype_codeatelier', format_float($tr['time'] * 1000, 0));
+        }
+        if (isset($tr['memory']) && $tr['memory'] !== null) {
+            $parts[] = get_string('judgememory', 'qtype_codeatelier', display_size((int) $tr['memory'] * 1024));
+        }
+        if (!$parts) {
+            return '';
+        }
+        return html_writer::span(implode(' · ', $parts), 'codeatelier-test-meta');
+    }
+
+    /**
+     * An input / expected / got diff for a failed visible test.
+     *
+     * @param array $tr a per-test result
+     * @return string HTML
+     */
+    protected function render_test_diff(array $tr) {
+        $rows = '';
+        if (isset($tr['input']) && trim((string) $tr['input']) !== '') {
+            $rows .= $this->diff_line(get_string('input', 'qtype_codeatelier'), $tr['input'], 'input');
+        }
+        $rows .= $this->diff_line(get_string('expected', 'qtype_codeatelier'),
+                isset($tr['expected']) ? $tr['expected'] : '', 'expected');
+        $rows .= $this->diff_line(get_string('result_got', 'qtype_codeatelier'),
+                isset($tr['actual']) ? $tr['actual'] : '', 'got');
+        return html_writer::div($rows, 'codeatelier-test-diff');
+    }
+
+    /**
+     * One labelled line of a diff.
+     *
+     * @param string $label the row label
+     * @param string $value the (verbatim) value
+     * @param string $which input | expected | got (for styling)
+     * @return string HTML
+     */
+    protected function diff_line($label, $value, $which) {
+        return html_writer::div(
+                html_writer::span(s($label), 'codeatelier-diff-label')
+                . html_writer::tag('pre', s((string) $value), array('class' => 'codeatelier-diff-value')),
+                'codeatelier-diff-row codeatelier-diff-' . $which);
     }
 
     /**
@@ -179,7 +261,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      * @return string
      */
     protected function verdict_label($verdict) {
-        $known = array('AC', 'WA', 'TLE', 'RE', 'CE');
+        $known = array('AC', 'WA', 'TLE', 'MLE', 'RE', 'CE');
         if (in_array($verdict, $known, true)) {
             return get_string('verdict_' . $verdict, 'qtype_codeatelier');
         }
@@ -200,6 +282,8 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 return get_string('verdict_RE', 'qtype_codeatelier');
             case 'tle':
                 return get_string('verdict_TLE', 'qtype_codeatelier');
+            case 'mle':
+                return get_string('verdict_MLE', 'qtype_codeatelier');
             case 'ce':
                 return get_string('verdict_CE', 'qtype_codeatelier');
             case 'fail':
