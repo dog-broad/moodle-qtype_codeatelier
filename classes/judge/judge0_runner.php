@@ -73,18 +73,46 @@ class judge0_runner {
         $this->memorylimit = $memorylimit;
     }
 
+    /** @var float the built-in fallback CPU-time limit in seconds. */
+    const DEFAULT_CPU_TIME_LIMIT = 2.0;
+
+    /** @var int the built-in fallback memory limit in kilobytes. */
+    const DEFAULT_MEMORY_LIMIT = 128000;
+
     /**
-     * Build a runner from the plugin's admin settings.
+     * Build a runner from the plugin's admin settings, optionally with
+     * per-question limit overrides (null falls back to the site default, which
+     * itself falls back to the built-in default).
      *
+     * @param float|null $cputimelimit per-question CPU-time limit in seconds, or null
+     * @param int|null $memorylimit per-question memory limit in kilobytes, or null
      * @return self|null the configured runner, or null if no base URL is set
      */
-    public static function from_config(): ?self {
+    public static function from_config(?float $cputimelimit = null, ?int $memorylimit = null): ?self {
         $baseurl = get_config('qtype_codeatelier', 'judge0baseurl');
         if (empty($baseurl)) {
             return null;
         }
         $apikey = get_config('qtype_codeatelier', 'judge0apikey');
-        return new self($baseurl, $apikey !== false && $apikey !== '' ? $apikey : null);
+        $cpu = $cputimelimit ?? self::default_cpu_time_limit();
+        $memory = $memorylimit ?? self::default_memory_limit();
+        return new self($baseurl, $apikey !== false && $apikey !== '' ? $apikey : null, $cpu, $memory);
+    }
+
+    /**
+     * @return float the site-default CPU-time limit (admin setting, or built-in)
+     */
+    public static function default_cpu_time_limit(): float {
+        $value = get_config('qtype_codeatelier', 'judge0cputimelimit');
+        return ($value !== false && $value !== '') ? (float) $value : self::DEFAULT_CPU_TIME_LIMIT;
+    }
+
+    /**
+     * @return int the site-default memory limit in kilobytes (admin setting, or built-in)
+     */
+    public static function default_memory_limit(): int {
+        $value = get_config('qtype_codeatelier', 'judge0memorylimit');
+        return ($value !== false && $value !== '') ? (int) $value : self::DEFAULT_MEMORY_LIMIT;
     }
 
     /**

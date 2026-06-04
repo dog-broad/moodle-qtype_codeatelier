@@ -41,7 +41,8 @@ require_once($CFG->libdir . '/questionlib.php');
 class qtype_codeatelier extends question_type {
 
     public function extra_question_fields() {
-        return array('qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint', 'startercode', 'schemasql');
+        return array('qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint',
+                'startercode', 'schemasql', 'cputimelimit', 'memorylimit');
     }
 
     public function get_question_options($question) {
@@ -60,6 +61,12 @@ class qtype_codeatelier extends question_type {
         if (isset($question->tier) && $question->tier === 'judge') {
             $question->scenario = 'stdinstdout';
         }
+
+        // A blank per-question limit means "use the site default" — store null.
+        $question->cputimelimit = (isset($question->cputimelimit) && trim((string) $question->cputimelimit) !== '')
+                ? (float) $question->cputimelimit : null;
+        $question->memorylimit = (isset($question->memorylimit) && trim((string) $question->memorylimit) !== '')
+                ? (int) $question->memorylimit : null;
 
         // Saves the language/tier/scenario options into qtype_codeatelier_options.
         parent::save_question_options($question);

@@ -133,5 +133,19 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026061800, 'qtype', 'codeatelier');
     }
 
+    if ($oldversion < 2026062000) {
+        // Per-question judge limits (null = use the site default).
+        $table = new xmldb_table('qtype_codeatelier_options');
+        $cputime = new xmldb_field('cputimelimit', XMLDB_TYPE_NUMBER, '10, 3', null, null, null, null, 'schemasql');
+        if (!$dbman->field_exists($table, $cputime)) {
+            $dbman->add_field($table, $cputime);
+        }
+        $memory = new xmldb_field('memorylimit', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'cputimelimit');
+        if (!$dbman->field_exists($table, $memory)) {
+            $dbman->add_field($table, $memory);
+        }
+        upgrade_plugin_savepoint(true, 2026062000, 'qtype', 'codeatelier');
+    }
+
     return true;
 }

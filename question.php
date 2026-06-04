@@ -60,6 +60,12 @@ class qtype_codeatelier_question extends question_graded_automatically {
     /** @var string the execution tier: practice (in-browser) or judge (server sandbox). */
     public $tier = 'practice';
 
+    /** @var float|null per-question judge CPU-time limit in seconds; null uses the site default. */
+    public $cputimelimit = null;
+
+    /** @var int|null per-question judge memory limit in kilobytes; null uses the site default. */
+    public $memorylimit = null;
+
     /** @var array the test cases (rows from qtype_codeatelier_tests). */
     public $tests = array();
 
@@ -186,20 +192,28 @@ class qtype_codeatelier_question extends question_graded_automatically {
         if ($this->judgerunner !== null) {
             return $this->judgerunner;
         }
-        return \qtype_codeatelier\judge\judge0_runner::from_config();
+        return \qtype_codeatelier\judge\judge0_runner::from_config(
+                $this->cputimelimit !== null ? (float) $this->cputimelimit : null,
+                $this->memorylimit !== null ? (int) $this->memorylimit : null);
     }
 
     /**
-     * The runner limits that take part in the result-cache key.
+     * The effective judge limits that take part in the result-cache key: the
+     * per-question values when set, otherwise the site defaults.
      *
      * @param \qtype_codeatelier\judge\judge0_runner|null $runner
      * @return array ['cputime' => float, 'memory' => int]
      */
     protected function judge_limits($runner) {
-        if ($runner === null) {
-            return array('cputime' => 2.0, 'memory' => 128000);
+        if ($runner !== null) {
+            return array('cputime' => $runner->get_cpu_time_limit(), 'memory' => $runner->get_memory_limit());
         }
-        return array('cputime' => $runner->get_cpu_time_limit(), 'memory' => $runner->get_memory_limit());
+        return array(
+            'cputime' => $this->cputimelimit !== null ? (float) $this->cputimelimit
+                    : \qtype_codeatelier\judge\judge0_runner::default_cpu_time_limit(),
+            'memory' => $this->memorylimit !== null ? (int) $this->memorylimit
+                    : \qtype_codeatelier\judge\judge0_runner::default_memory_limit(),
+        );
     }
 
     /**

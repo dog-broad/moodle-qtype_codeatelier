@@ -61,4 +61,20 @@ if ($ADMIN->fulltree) {
         get_string('judge0apikey_desc', 'qtype_codeatelier'),
         ''
     ));
+
+    $settings->add(new admin_setting_configtext(
+        'qtype_codeatelier/judge0cputimelimit',
+        get_string('judge0cputimelimit', 'qtype_codeatelier'),
+        get_string('judge0cputimelimit_desc', 'qtype_codeatelier'),
+        '2',
+        PARAM_FLOAT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'qtype_codeatelier/judge0memorylimit',
+        get_string('judge0memorylimit', 'qtype_codeatelier'),
+        get_string('judge0memorylimit_desc', 'qtype_codeatelier'),
+        '128000',
+        PARAM_INT
+    ));
 }

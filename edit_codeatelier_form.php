@@ -67,6 +67,19 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->addHelpButton('schemasql', 'schemasql', 'qtype_codeatelier');
         $mform->hideIf('schemasql', 'scenario', 'neq', 'sql');
 
+        // Per-question judge limits (blank = site default). Judge tier only.
+        $mform->addElement('text', 'cputimelimit', get_string('cputimelimit', 'qtype_codeatelier'),
+                array('size' => 10));
+        $mform->setType('cputimelimit', PARAM_RAW_TRIMMED);
+        $mform->addHelpButton('cputimelimit', 'cputimelimit', 'qtype_codeatelier');
+        $mform->hideIf('cputimelimit', 'tier', 'neq', 'judge');
+
+        $mform->addElement('text', 'memorylimit', get_string('memorylimit', 'qtype_codeatelier'),
+                array('size' => 10));
+        $mform->setType('memorylimit', PARAM_RAW_TRIMMED);
+        $mform->addHelpButton('memorylimit', 'memorylimit', 'qtype_codeatelier');
+        $mform->hideIf('memorylimit', 'tier', 'neq', 'judge');
+
         $mform->addElement('header', 'testcasesheader', get_string('testcases', 'qtype_codeatelier'));
         $mform->setExpanded('testcasesheader');
 
@@ -290,6 +303,14 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // required for a practice-tier function question.
         if ($tier !== 'judge' && $data['scenario'] === 'function' && trim($data['entrypoint']) === '') {
             $errors['entrypoint'] = get_string('entrypointrequired', 'qtype_codeatelier');
+        }
+
+        // Per-question limits, when given, must be positive numbers.
+        foreach (array('cputimelimit', 'memorylimit') as $limit) {
+            $value = isset($data[$limit]) ? trim($data[$limit]) : '';
+            if ($value !== '' && (!is_numeric($value) || (float) $value <= 0)) {
+                $errors[$limit] = get_string('limitpositive', 'qtype_codeatelier');
+            }
         }
 
         $count = 0;

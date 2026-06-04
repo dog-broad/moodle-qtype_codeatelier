@@ -44,6 +44,10 @@ $string['judge0baseurl'] = 'Judge0 base URL';
 $string['judge0baseurl_desc'] = 'Base URL of the Judge0 instance the server submits code to, for example http://judge.example.org:2358. Judge0 must run on a host configured for cgroup v1. Leave empty until a Judge0 instance is available.';
 $string['judge0apikey'] = 'Judge0 auth token';
 $string['judge0apikey_desc'] = 'Optional authentication token sent with each submission (a self-hosted Judge0 auth token, or a hosted-gateway API key). Leave empty if the instance needs no authentication.';
+$string['judge0cputimelimit'] = 'Default CPU-time limit (seconds)';
+$string['judge0cputimelimit_desc'] = 'The default per-run CPU-time limit for judge-tier questions, in seconds. Individual questions may override this.';
+$string['judge0memorylimit'] = 'Default memory limit (KB)';
+$string['judge0memorylimit_desc'] = 'The default per-run memory limit for judge-tier questions, in kilobytes. Individual questions may override this.';
 
 // Student attempt UI.
 $string['answerlabel'] = 'Your code';
@@ -138,6 +142,10 @@ $string['entrypoint'] = 'Function name';
 $string['entrypoint_help'] = 'The name of the function the student must define. Each test\'s Input is a **JSON array of the arguments** passed to the call: `[2, 3]` calls `f(2, 3)`, while a function taking a single list needs it wrapped, `[[1, 2, 3]]`, to call `f([1, 2, 3])`. The function\'s return value is compared with Expected.';
 $string['startercode'] = 'Starter code';
 $string['startercode_help'] = 'Optional code pre-filled in the student\'s editor — for example a function signature to complete.';
+$string['cputimelimit'] = 'CPU-time limit (seconds)';
+$string['cputimelimit_help'] = 'Judge tier only. The CPU-time limit for each run of this question, in seconds. Leave blank to use the site default.';
+$string['memorylimit'] = 'Memory limit (KB)';
+$string['memorylimit_help'] = 'Judge tier only. The memory limit for each run of this question, in kilobytes. Leave blank to use the site default.';
 
 // Authoring: live preview.
 $string['preview'] = 'Preview';
@@ -175,5 +183,6 @@ $string['weightnumeric'] = 'The weight must be a number.';
 $string['tolerancenumeric'] = 'A numeric tolerance is required when the matching rule is numeric.';
 $string['notenoughtests'] = 'You must provide at least one test case.';
 $string['entrypointrequired'] = 'Enter the function name for a function question.';
+$string['limitpositive'] = 'Enter a positive number, or leave blank for the site default.';
 $string['languagenotjudge'] = 'The judge tier supports C, C++, Java, Python and JavaScript. SQL is a practice-tier language.';
 $string['languagenotpractice'] = 'The practice tier supports Python, SQL and JavaScript. C, C++ and Java require the judge tier.';
