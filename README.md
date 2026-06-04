@@ -11,9 +11,19 @@ CodeAtelier runs a question in one of two tiers:
 | Tier | Where code runs | Languages | Best for |
 |---|---|---|---|
 | **Practice** | the student's browser (WebAssembly) | Python, SQL, JavaScript | instant practice and formative feedback, with **no server to deploy** |
-| **Judge** | a server sandbox | Python, SQL, JavaScript, C, C++, Java, … | authoritative grading with real time/memory limits and secret tests |
+| **Judge** | a server sandbox | Python, JavaScript, C, C++, Java | authoritative grading with real time/memory limits and secret tests |
 
 **The practice tier is for practice.** Because the test cases are sent to the browser to run the code, a determined student can read them — so the in-browser tier is never used for real grading. Graded assessment runs on the judge tier, where tests stay on the server and the result is computed where it can't be tampered with.
+
+## Academic integrity & exam lockdown
+
+Integrity is layered, and the layers map onto the tiers:
+
+- **Authoritative grading (the real guarantee).** Judge-tier results are computed on the server against tests the student never receives, so a grade cannot be faked even if the editor is tampered with. Summative assessment runs on the judge tier.
+- **Soft deterrents (detection, not prevention).** On graded (judge-tier) questions the editor blocks paste / copy / cut / right-click and records tab- or window-switches and paste attempts, summarised for the teacher on review. A web page cannot lock down a machine — the value here is the log and the friction, not a lock.
+- **True lockdown — Safe Exam Browser (inherited, not reinvented).** Moodle integrates **Safe Exam Browser (SEB)** as a **quiz access rule** (core since Moodle 3.9). Configure SEB once in the quiz settings (*Quiz → Settings → Safe Exam Browser*); a quiz run under SEB locks the workstation, and every CodeAtelier question inside that quiz inherits the lockdown with no extra setup in the plugin. CodeAtelier deliberately does **not** reimplement operating-system lockdown — it leans on the platform's.
+
+For a high-stakes exam: put judge-tier CodeAtelier questions in a quiz, enable Safe Exam Browser on that quiz, and rely on the server-side grade as the source of truth.
 
 ## Why it exists
 
@@ -21,7 +31,12 @@ The established option for code questions in Moodle is powerful but shows its ag
 
 ## Status
 
-Early development. The first release is the **practice tier**: a modern in-browser code question (Python, SQL, JavaScript) with instant feedback and no execution server. Authoritative server-side grading, compiled languages, and full judge verdicts (Accepted / Wrong Answer / Time Limit Exceeded / Memory Limit Exceeded / Runtime Error / Compile Error) follow on the judge tier.
+Active development. Both tiers are implemented:
+
+- **Practice tier** — a modern in-browser code question (Python, SQL, JavaScript) with instant feedback and no execution server.
+- **Judge tier** — authoritative server-side grading through a sandbox (Judge0): compiled languages (C, C++, Java) alongside Python and JavaScript, real time and memory limits, secret server-side tests, the full verdict taxonomy (Accepted / Wrong Answer / Time Limit Exceeded / Memory Limit Exceeded / Runtime Error / Compile Error), per-test diffs, and a formative "run against examples" loop.
+
+In progress: scaling for large cohorts (asynchronous grading) and a more flexible model — student language choice, per-question limits, and secure server-side SQL.
 
 ## Editor
 

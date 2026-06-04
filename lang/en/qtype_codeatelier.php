@@ -38,6 +38,12 @@ $string['pyodidebaseurl_desc'] = 'Where the browser loads the Python (Pyodide) r
 $string['sqljsbaseurl'] = 'sql.js base URL';
 $string['sqljsbaseurl_desc'] = 'Where the browser loads the SQL (sql.js / SQLite) runtime from for practice-tier SQL questions. The default is a pinned public CDN; point it at a local mirror for offline or locked-down sites. Must end with a trailing slash.';
 $string['schematables'] = 'Tables and sample data';
+$string['judgeheading'] = 'Judge tier (server-side grading)';
+$string['judgeheading_desc'] = 'The judge tier runs and grades submissions in a server sandbox (Judge0) with enforced time and memory limits and hidden tests that never reach the browser. This is the authoritative, secure grading path. Leave the base URL empty to disable it.';
+$string['judge0baseurl'] = 'Judge0 base URL';
+$string['judge0baseurl_desc'] = 'Base URL of the Judge0 instance the server submits code to, for example http://judge.example.org:2358. Judge0 must run on a host configured for cgroup v1. Leave empty until a Judge0 instance is available.';
+$string['judge0apikey'] = 'Judge0 auth token';
+$string['judge0apikey_desc'] = 'Optional authentication token sent with each submission (a self-hosted Judge0 auth token, or a hosted-gateway API key). Leave empty if the instance needs no authentication.';
 
 // Student attempt UI.
 $string['answerlabel'] = 'Your code';
@@ -71,17 +77,55 @@ $string['result_hidden'] = 'Hidden test';
 $string['result_pass'] = 'passed';
 $string['result_fail'] = 'failed';
 $string['pleaserun'] = 'Please run your code before submitting.';
+$string['pleasewritecode'] = 'Please write some code before submitting.';
+
+// Judge-tier student UI.
+$string['judgenote'] = 'This question is graded on the server against hidden tests when you submit. The editor is for writing and reviewing your code.';
+$string['judgeverdict'] = 'Verdict:';
+$string['judgenoresult'] = 'No graded result is available for this attempt.';
+$string['verdict_AC'] = 'Accepted';
+$string['verdict_WA'] = 'Wrong answer';
+$string['verdict_TLE'] = 'Time limit exceeded';
+$string['verdict_MLE'] = 'Memory limit exceeded';
+$string['verdict_RE'] = 'Runtime error';
+$string['verdict_CE'] = 'Compile error';
+$string['judgetime'] = '{$a} ms';
+$string['judgememory'] = '{$a}';
+
+// Judge-tier "run against examples".
+$string['runexamples'] = 'Run examples';
+$string['notjudgequestion'] = 'This is not a judge-tier CodeAtelier question.';
+$string['judgenotconfigured'] = 'No judge endpoint is configured. Ask your administrator to set the Judge0 base URL.';
+
+// Soft anti-cheat (judge tier).
+$string['proctornote'] = 'Switching away from this question and paste attempts are recorded for your teacher.';
+$string['proctorsummary'] = 'Activity flags';
+$string['proctor_focusaway'] = 'Switched away from the question';
+$string['proctor_paste'] = 'Paste blocked';
+
+// Authoring: tier.
+$string['tier'] = 'Grading tier';
+$string['tier_help'] = 'Where the student\'s code runs and how it is graded.
+
+**Practice (in-browser)**: code runs in the student\'s browser for instant feedback. Test cases are sent to the browser, so a determined student can read them — this tier is for formative practice, never secure assessment.
+
+**Judge (server sandbox)**: code is compiled and run on the server with enforced time and memory limits, and graded against tests that never leave the server. This is the authoritative, secure grading path; it adds compiled languages (C, C++, Java) and is always the standard input/output shape. Requires a configured Judge0 endpoint.';
+$string['tier_practice'] = 'Practice (in-browser, formative)';
+$string['tier_judge'] = 'Judge (server sandbox, authoritative)';
 
 // Authoring: language.
 $string['language'] = 'Language';
-$string['language_help'] = 'The language the student writes in. In the practice tier this selects the in-browser runtime and the editor\'s syntax highlighting: Python (Pyodide), SQL (sql.js) or JavaScript.';
+$string['language_help'] = 'The language the student writes in. Practice tier: Python (Pyodide), SQL (sql.js) or JavaScript, run in the browser. Judge tier: C, C++, Java, Python or JavaScript, run in the server sandbox.';
 $string['lang_python'] = 'Python';
 $string['lang_sql'] = 'SQL';
 $string['lang_javascript'] = 'JavaScript';
+$string['lang_c'] = 'C';
+$string['lang_cpp'] = 'C++';
+$string['lang_java'] = 'Java';
 
 // Authoring: scenario.
 $string['scenario'] = 'Scenario';
-$string['scenario_help'] = 'How the student\'s code is run and graded. **Standard input/output**: the code reads input and prints output, compared as text. **Function**: the student writes a named function; each test calls it with arguments and checks the return value.';
+$string['scenario_help'] = 'How the student\'s code is run and graded. **Standard input/output**: the code reads input and prints output, compared as text. **Function**: the student writes a named function; each test\'s Input is a JSON array of the call arguments (so a function taking one list needs that list wrapped, e.g. `[[1,2,3]]`), and the returned value is compared with Expected.';
 $string['scenario_stdinstdout'] = 'Standard input / output';
 $string['scenario_function'] = 'Function (call and check the return value)';
 $string['scenario_sql'] = 'SQL (query a database)';
@@ -91,7 +135,7 @@ $string['checkerquery'] = 'Checker query (SQL)';
 $string['checkerquery_help'] = 'For questions that change data (INSERT/UPDATE/DELETE): a SELECT run after the student\'s statements; its result set is compared with the expected result. Leave empty to compare the student query\'s own result set.';
 $string['testfeedback'] = 'Feedback (shown for this test)';
 $string['entrypoint'] = 'Function name';
-$string['entrypoint_help'] = 'The name of the function the student must define. Each test case calls this function with the arguments given in its Input field.';
+$string['entrypoint_help'] = 'The name of the function the student must define. Each test\'s Input is a **JSON array of the arguments** passed to the call: `[2, 3]` calls `f(2, 3)`, while a function taking a single list needs it wrapped, `[[1, 2, 3]]`, to call `f([1, 2, 3])`. The function\'s return value is compared with Expected.';
 $string['startercode'] = 'Starter code';
 $string['startercode_help'] = 'Optional code pre-filled in the student\'s editor — for example a function signature to complete.';
 
@@ -131,3 +175,5 @@ $string['weightnumeric'] = 'The weight must be a number.';
 $string['tolerancenumeric'] = 'A numeric tolerance is required when the matching rule is numeric.';
 $string['notenoughtests'] = 'You must provide at least one test case.';
 $string['entrypointrequired'] = 'Enter the function name for a function question.';
+$string['languagenotjudge'] = 'The judge tier supports C, C++, Java, Python and JavaScript. SQL is a practice-tier language.';
+$string['languagenotpractice'] = 'The practice tier supports Python, SQL and JavaScript. C, C++ and Java require the judge tier.';

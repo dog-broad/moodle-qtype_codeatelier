@@ -89,6 +89,41 @@ final class backup_test extends \advanced_testcase {
         $this->assertEquals(0, (int) $tests[1]->visibility);
     }
 
+    public function test_judge_tier_survives_backup_and_restore(): void {
+        global $DB, $USER;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $qgen->create_question('codeatelier', 'judge', array('category' => $cat->id));
+
+        $bc = new backup_controller(backup::TYPE_1COURSE, $course->id, backup::FORMAT_MOODLE,
+                backup::INTERACTIVE_NO, backup::MODE_IMPORT, $USER->id);
+        $backupid = $bc->get_backupid();
+        $bc->execute_plan();
+        $bc->destroy();
+
+        $newcourse = $generator->create_course();
+        $rc = new restore_controller($backupid, $newcourse->id, backup::INTERACTIVE_NO,
+                backup::MODE_IMPORT, $USER->id, backup::TARGET_NEW_COURSE);
+        $this->assertTrue($rc->execute_precheck());
+        $rc->execute_plan();
+        $rc->destroy();
+
+        $newcontext = \context_course::instance($newcourse->id);
+        $restored = $this->find_restored_options($newcontext->id);
+        $this->assertNotNull($restored);
+        // The tier must survive: otherwise a secure judge question silently becomes
+        // an in-browser practice question after a course copy.
+        $this->assertEquals('judge', $restored->tier);
+        $this->assertEquals('python', $restored->language);
+    }
+
     /**
      * Find the CodeAtelier options row whose question lives in the given context.
      *

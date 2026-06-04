@@ -45,7 +45,7 @@ class backup_qtype_codeatelier_plugin extends backup_qtype_plugin {
         $plugin->add_child($pluginwrapper);
 
         $options = new backup_nested_element('codeatelier_options', array('id'), array(
-            'language', 'scenario', 'entrypoint', 'startercode', 'schemasql'));
+            'language', 'tier', 'scenario', 'entrypoint', 'startercode', 'schemasql'));
         $pluginwrapper->add_child($options);
         $options->set_source_table('qtype_codeatelier_options',
                 array('questionid' => backup::VAR_PARENTID));

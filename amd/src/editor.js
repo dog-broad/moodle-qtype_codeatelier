@@ -31,12 +31,14 @@ import {lintGutter, setDiagnostics} from '@codemirror/lint';
 import {python} from '@codemirror/lang-python';
 import {sql} from '@codemirror/lang-sql';
 import {javascript} from '@codemirror/lang-javascript';
+import {cpp} from '@codemirror/lang-cpp';
+import {java} from '@codemirror/lang-java';
 import {highlightTree, classHighlighter} from '@lezer/highlight';
 
 /**
  * Resolve the CodeMirror language extension for a CodeAtelier language code.
  *
- * @param {String} language python, sql or javascript
+ * @param {String} language python, sql, javascript, c, cpp or java
  * @return {Object|null} the language extension, or null for plain text
  */
 const languageExtension = (language) => {
@@ -47,6 +49,11 @@ const languageExtension = (language) => {
             return javascript();
         case 'python':
             return python();
+        case 'c':
+        case 'cpp':
+            return cpp();
+        case 'java':
+            return java();
         default:
             return null;
     }

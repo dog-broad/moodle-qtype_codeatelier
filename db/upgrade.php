@@ -95,5 +95,43 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026060900, 'qtype', 'codeatelier');
     }
 
+    if ($oldversion < 2026061400) {
+        // Per-question execution tier: practice (in-browser) or judge (server sandbox).
+        $optionstable = new xmldb_table('qtype_codeatelier_options');
+        $tier = new xmldb_field('tier', XMLDB_TYPE_CHAR, '16', null,
+                XMLDB_NOTNULL, null, 'practice', 'language');
+        if (!$dbman->field_exists($optionstable, $tier)) {
+            $dbman->add_field($optionstable, $tier);
+        }
+
+        // Memoised judge-tier grading results (deterministic sandbox runs).
+        $cache = new xmldb_table('qtype_codeatelier_judgecache');
+        if (!$dbman->table_exists($cache)) {
+            $cache->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $cache->add_field('contenthash', XMLDB_TYPE_CHAR, '40', null, XMLDB_NOTNULL, null, null);
+            $cache->add_field('fraction', XMLDB_TYPE_NUMBER, '12, 7', null, XMLDB_NOTNULL, null, '0');
+            $cache->add_field('verdict', XMLDB_TYPE_CHAR, '16', null, XMLDB_NOTNULL, null, 'WA');
+            $cache->add_field('resultblob', XMLDB_TYPE_TEXT, null, null, XMLDB_NOTNULL, null, null);
+            $cache->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $cache->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $cache->add_index('contenthash', XMLDB_INDEX_UNIQUE, ['contenthash']);
+            $dbman->create_table($cache);
+        }
+
+        upgrade_plugin_savepoint(true, 2026061400, 'qtype', 'codeatelier');
+    }
+
+    if ($oldversion < 2026061800) {
+        // Widen matchmode: 'resultset_ordered' is 17 chars and overflowed char(16),
+        // which errored on PostgreSQL (and silently truncated on MySQL).
+        $table = new xmldb_table('qtype_codeatelier_tests');
+        $field = new xmldb_field('matchmode', XMLDB_TYPE_CHAR, '32', null,
+                XMLDB_NOTNULL, null, 'trimmed', 'expected');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->change_field_precision($table, $field);
+        }
+        upgrade_plugin_savepoint(true, 2026061800, 'qtype', 'codeatelier');
+    }
+
     return true;
 }

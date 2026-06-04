@@ -41,7 +41,7 @@ require_once($CFG->libdir . '/questionlib.php');
 class qtype_codeatelier extends question_type {
 
     public function extra_question_fields() {
-        return array('qtype_codeatelier_options', 'language', 'scenario', 'entrypoint', 'startercode', 'schemasql');
+        return array('qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint', 'startercode', 'schemasql');
     }
 
     public function get_question_options($question) {
@@ -55,7 +55,13 @@ class qtype_codeatelier extends question_type {
     public function save_question_options($question) {
         global $DB;
 
-        // Saves the language option into qtype_codeatelier_options.
+        // The judge tier is always the stdin/stdout shape, whatever the (hidden)
+        // scenario field last held in the form.
+        if (isset($question->tier) && $question->tier === 'judge') {
+            $question->scenario = 'stdinstdout';
+        }
+
+        // Saves the language/tier/scenario options into qtype_codeatelier_options.
         parent::save_question_options($question);
 
         $oldtests = $DB->get_records('qtype_codeatelier_tests',

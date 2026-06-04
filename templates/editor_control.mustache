@@ -56,6 +56,7 @@
             </noscript>
         </div>
         {{^readonly}}
+        {{^isjudge}}
         <div class="codeatelier-scratch" data-role="scratchwrap" style="display: none;">
             <label class="codeatelier-block-label" data-role="scratchlabel" for="{{answerid}}_scratch"></label>
             <textarea class="codeatelier-scratch-input" data-role="scratch" id="{{answerid}}_scratch"
@@ -78,14 +79,31 @@
                 aria-controls="{{wrapperid}}_panel_tests" aria-selected="true"
                 data-role="tab" data-tab="tests">{{testslabel}}</button>
         </div>
+        {{/isjudge}}
+        {{#isjudge}}
+        <p class="codeatelier-judgenote small text-muted">{{judgenote}}</p>
+        {{#canrunexamples}}
+        <div class="codeatelier-actions">
+            <button type="button" class="btn btn-secondary" data-role="runexamples">{{runexampleslabel}}</button>
+        </div>
+        <div class="codeatelier-runresults" data-role="runresults" aria-live="polite"></div>
+        {{/canrunexamples}}
+        {{#proctornote}}<p class="codeatelier-proctornote small text-muted">{{proctornote}}</p>{{/proctornote}}
+        <input type="hidden" data-role="proctorlog" name="{{proctorname}}" value="{{proctorvalue}}">
+        {{/isjudge}}
         {{/readonly}}
         <input type="hidden" data-role="score" name="{{scorename}}" value="{{scorevalue}}">
+        {{^isjudge}}
         <div class="codeatelier-console" id="{{wrapperid}}_panel_console" role="tabpanel"
             aria-labelledby="{{wrapperid}}_tab_console" tabindex="0"
             data-role="console" data-tabpanel="console" aria-live="polite"></div>
         <div class="codeatelier-results" id="{{wrapperid}}_panel_tests" role="tabpanel"
             aria-labelledby="{{wrapperid}}_tab_tests" tabindex="0"
             data-role="results" data-tabpanel="tests" aria-live="polite"></div>
+        {{/isjudge}}
+        {{#isjudge}}
+        <div class="codeatelier-judge-results" data-role="judge-results">{{{judgereviewhtml}}}</div>
+        {{/isjudge}}
         {{#hasvalidationerror}}
         <div class="validationerror">{{validationerror}}</div>
         {{/hasvalidationerror}}

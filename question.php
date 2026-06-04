@@ -57,11 +57,33 @@ class qtype_codeatelier_question extends question_graded_automatically {
     /** @var string|null SQL scenario schema + seed run before the student query. */
     public $schemasql;
 
+    /** @var string the execution tier: practice (in-browser) or judge (server sandbox). */
+    public $tier = 'practice';
+
     /** @var array the test cases (rows from qtype_codeatelier_tests). */
     public $tests = array();
 
+    /** @var \qtype_codeatelier\judge\judge0_runner|null injected runner; null means build from config. */
+    public $judgerunner = null;
+
     public function get_expected_data() {
-        return array('answer' => PARAM_RAW, 'score' => PARAM_RAW_TRIMMED);
+        $expected = array('answer' => PARAM_RAW, 'score' => PARAM_RAW_TRIMMED);
+        if ($this->is_judge()) {
+            // The soft anti-cheat log travels as a response variable; it is stored
+            // with the attempt and never affects the grade.
+            $expected['proctorlog'] = PARAM_RAW;
+        }
+        return $expected;
+    }
+
+    /**
+     * Whether this question grades authoritatively on the server (judge tier)
+     * rather than in the browser (practice tier).
+     *
+     * @return bool
+     */
+    public function is_judge() {
+        return $this->tier === 'judge';
     }
 
     public function get_correct_response() {
@@ -70,7 +92,11 @@ class qtype_codeatelier_question extends question_graded_automatically {
     }
 
     public function is_complete_response(array $response) {
-        // The student must run their code (which sets the score) to submit.
+        if ($this->is_judge()) {
+            // The grade is computed on the server, so any non-empty code is gradable.
+            return array_key_exists('answer', $response) && trim((string) $response['answer']) !== '';
+        }
+        // Practice tier: the student must run their code (which sets the score) to submit.
         return array_key_exists('score', $response) && $response['score'] !== ''
                 && is_numeric($response['score']);
     }
@@ -83,10 +109,18 @@ class qtype_codeatelier_question extends question_graded_automatically {
         if ($this->is_gradable_response($response)) {
             return '';
         }
-        return get_string('pleaserun', 'qtype_codeatelier');
+        return $this->is_judge()
+                ? get_string('pleasewritecode', 'qtype_codeatelier')
+                : get_string('pleaserun', 'qtype_codeatelier');
     }
 
     public function is_same_response(array $prevresponse, array $newresponse) {
+        if ($this->is_judge()) {
+            // The grade derives from the code alone; a re-check that only changes
+            // the (ignored) client score is the same gradable response.
+            return question_utils::arrays_same_at_key_missing_is_blank(
+                    $prevresponse, $newresponse, 'answer');
+        }
         return question_utils::arrays_same_at_key_missing_is_blank(
                         $prevresponse, $newresponse, 'answer')
                 && question_utils::arrays_same_at_key_missing_is_blank(
@@ -101,12 +135,17 @@ class qtype_codeatelier_question extends question_graded_automatically {
     }
 
     public function grade_response(array $response) {
+        if ($this->is_judge()) {
+            return $this->grade_judge_response($response);
+        }
         $fraction = $this->fraction_from_response($response);
         return array($fraction, question_state::graded_state_for_fraction($fraction));
     }
 
     /**
      * Read the client-supplied score from the response and clamp it to [0, 1].
+     *
+     * Practice tier only. The judge tier ignores any client score entirely.
      *
      * @param array $response the response data
      * @return float the grade fraction
@@ -116,5 +155,120 @@ class qtype_codeatelier_question extends question_graded_automatically {
             return 0.0;
         }
         return max(0.0, min(1.0, (float) $response['score']));
+    }
+
+    /**
+     * Grade a judge-tier response server-side: run the code in the sandbox over
+     * every test (visible and hidden) and decide the fraction with the matching
+     * spec. The client score is ignored. If the sandbox cannot be reached the
+     * response is left for grading rather than scored zero — a grade is never
+     * faked on an infrastructure failure.
+     *
+     * @param array $response the response data
+     * @return array [fraction, question_state]
+     */
+    protected function grade_judge_response(array $response) {
+        $code = isset($response['answer']) ? (string) $response['answer'] : '';
+        $result = $this->get_judge_result($code);
+        if ($result === null || !empty($result['infrastructure'])) {
+            return array(0.0, question_state::$needsgrading);
+        }
+        $fraction = max(0.0, min(1.0, (float) $result['fraction']));
+        return array($fraction, question_state::graded_state_for_fraction($fraction));
+    }
+
+    /**
+     * The configured judge-tier runner, or the test-injected one.
+     *
+     * @return \qtype_codeatelier\judge\judge0_runner|null null if no endpoint is configured
+     */
+    protected function judge_runner() {
+        if ($this->judgerunner !== null) {
+            return $this->judgerunner;
+        }
+        return \qtype_codeatelier\judge\judge0_runner::from_config();
+    }
+
+    /**
+     * The runner limits that take part in the result-cache key.
+     *
+     * @param \qtype_codeatelier\judge\judge0_runner|null $runner
+     * @return array ['cputime' => float, 'memory' => int]
+     */
+    protected function judge_limits($runner) {
+        if ($runner === null) {
+            return array('cputime' => 2.0, 'memory' => 128000);
+        }
+        return array('cputime' => $runner->get_cpu_time_limit(), 'memory' => $runner->get_memory_limit());
+    }
+
+    /**
+     * Grade the given code on the judge tier, using the memoised result when one
+     * exists and running the sandbox (then caching) on a miss. May make a network
+     * call on a cache miss — do not call from a render path; use
+     * {@see cached_judge_result()} there.
+     *
+     * @param string $code the student submission
+     * @return array|null the grading result (see judge_grader::grade), or null if no endpoint is configured
+     */
+    public function get_judge_result($code) {
+        $runner = $this->judge_runner();
+        if ($runner === null) {
+            return null;
+        }
+        $limits = $this->judge_limits($runner);
+        $hash = \qtype_codeatelier\judge\result_cache::key(
+                $this->language, (string) $code, $this->tests, $limits);
+        $cached = \qtype_codeatelier\judge\result_cache::get($hash);
+        if ($cached !== null) {
+            return $cached;
+        }
+        $grader = new \qtype_codeatelier\judge\judge_grader($runner);
+        $result = $grader->grade((string) $code, $this->language, $this->tests);
+        if (empty($result['infrastructure'])) {
+            \qtype_codeatelier\judge\result_cache::put($hash, $result);
+        }
+        return $result;
+    }
+
+    /**
+     * Run the code against the VISIBLE example tests only and return the per-test
+     * results — a formative, non-authoritative run for the judge tier (so a
+     * compiled-language student can try their code before the real submit). Hidden
+     * tests are never executed or returned, and no grade is recorded.
+     *
+     * @param string $code the student submission
+     * @return array|null the judge_grader result over the visible tests, or null if no endpoint is configured
+     */
+    public function run_examples($code) {
+        $runner = $this->judge_runner();
+        if ($runner === null) {
+            return null;
+        }
+        $visible = array();
+        foreach ($this->tests as $test) {
+            if ((int) $test->visibility === 1) {
+                $visible[] = $test;
+            }
+        }
+        if (!$visible) {
+            return array('verdict' => 'AC', 'compileoutput' => '', 'testresults' => array());
+        }
+        $grader = new \qtype_codeatelier\judge\judge_grader($runner);
+        return $grader->grade((string) $code, $this->language, $visible);
+    }
+
+    /**
+     * The memoised judge result for the given code, or null on a cache miss.
+     * Never runs the sandbox — safe to call from a render path (review).
+     *
+     * @param string $code the student submission
+     * @return array|null
+     */
+    public function cached_judge_result($code) {
+        $limits = $this->judge_limits($this->judge_runner());
+        $hash = \qtype_codeatelier\judge\result_cache::key(
+                $this->language, (string) $code, $this->tests, $limits);
+        return \qtype_codeatelier\judge\result_cache::get($hash);
     }
 }

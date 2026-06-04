@@ -1,0 +1,159 @@
+{
+    "_comment": "Shared parity corpus for the declarative matching spec. The PHP server grader (classes/grader.php) and the in-browser JS grader (amd/src/grader.js) are each run against this file; if both satisfy every 'want', the two interpreters agree on every case. 'expected' is always a string (it is a text DB column); 'actual' is a string for text modes, a value (or JSON string) for structured, and an array of rows for result-set modes. Add a case here to pin any future cross-tier disagreement.",
+    "matches": [
+        {"name": "exact-equal", "mode": "exact", "actual": "Hello, World!", "expected": "Hello, World!", "tolerance": null, "want": true},
+        {"name": "exact-case-sensitive", "mode": "exact", "actual": "Hello", "expected": "hello", "tolerance": null, "want": false},
+        {"name": "exact-no-trim", "mode": "exact", "actual": " hi ", "expected": "hi", "tolerance": null, "want": false},
+
+        {"name": "trimmed-ends", "mode": "trimmed", "actual": "  hi  \n", "expected": "hi", "tolerance": null, "want": true},
+        {"name": "trimmed-trailing-ws-per-line", "mode": "trimmed", "actual": "a   \nb", "expected": "a\nb", "tolerance": null, "want": true},
+        {"name": "trimmed-crlf", "mode": "trimmed", "actual": "line1\r\nline2", "expected": "line1\nline2", "tolerance": null, "want": true},
+        {"name": "trimmed-differs", "mode": "trimmed", "actual": "abc", "expected": "abd", "tolerance": null, "want": false},
+
+        {"name": "regex-search", "mode": "regex", "actual": "hello world", "expected": "wor", "tolerance": null, "want": true},
+        {"name": "regex-anchored", "mode": "regex", "actual": "abc123", "expected": "^[a-z]+\\d+$", "tolerance": null, "want": true},
+        {"name": "regex-nomatch", "mode": "regex", "actual": "ABC", "expected": "^[a-z]+$", "tolerance": null, "want": false},
+        {"name": "regex-invalid-pattern", "mode": "regex", "actual": "x", "expected": "(", "tolerance": null, "want": false},
+        {"name": "regex-literal-slash", "mode": "regex", "actual": "a/b/c", "expected": "a/b", "tolerance": null, "want": true},
+
+        {"name": "float-within-tolerance", "mode": "float", "actual": "3.14159", "expected": "3.14", "tolerance": 0.01, "want": true},
+        {"name": "float-outside-tolerance", "mode": "float", "actual": "3.2", "expected": "3.14", "tolerance": 0.01, "want": false},
+        {"name": "float-multi-positional", "mode": "float", "actual": "1.0 2.0 3.0", "expected": "1 2 3", "tolerance": 0, "want": true},
+        {"name": "float-count-mismatch", "mode": "float", "actual": "1 2", "expected": "1 2 3", "tolerance": 0, "want": false},
+        {"name": "float-no-expected-number", "mode": "float", "actual": "5", "expected": "abc", "tolerance": 0, "want": false},
+        {"name": "float-scientific-negative", "mode": "float", "actual": "-1.5e2", "expected": "-150", "tolerance": 0, "want": true},
+        {"name": "float-null-tolerance-is-zero", "mode": "float", "actual": "0.5", "expected": "0.5", "tolerance": null, "want": true},
+        {"name": "float-embedded-in-text", "mode": "float", "actual": "result: 42 items", "expected": "got 42", "tolerance": 0, "want": true},
+
+        {"name": "structured-number-int-vs-float", "mode": "structured", "actual": 5.0, "expected": "5", "tolerance": null, "want": true},
+        {"name": "structured-array", "mode": "structured", "actual": [2, 3], "expected": "[2, 3]", "tolerance": null, "want": true},
+        {"name": "structured-object-key-order", "mode": "structured", "actual": {"b": 2, "a": 1}, "expected": "{\"a\": 1, \"b\": 2}", "tolerance": null, "want": true},
+        {"name": "structured-nested", "mode": "structured", "actual": [{"id": 1, "v": [1, 2]}, {"id": 2, "v": []}], "expected": "[{\"id\":1,\"v\":[1,2]},{\"id\":2,\"v\":[]}]", "tolerance": null, "want": true},
+        {"name": "structured-wrong-length", "mode": "structured", "actual": [1, 2, 3], "expected": "[1, 2]", "tolerance": null, "want": false},
+        {"name": "structured-string-actual-parsed", "mode": "structured", "actual": "[1, 2, 3]", "expected": "[1,2,3]", "tolerance": null, "want": true},
+        {"name": "structured-string-actual-unparseable-fallback", "mode": "structured", "actual": "hello", "expected": "\"hello\"", "tolerance": null, "want": true},
+        {"name": "structured-null", "mode": "structured", "actual": null, "expected": "null", "tolerance": null, "want": true},
+        {"name": "structured-bool", "mode": "structured", "actual": true, "expected": "true", "tolerance": null, "want": true},
+        {"name": "structured-number-vs-string-distinct", "mode": "structured", "actual": 5, "expected": "\"5\"", "tolerance": null, "want": false},
+
+        {"name": "resultset-unordered-match", "mode": "resultset", "actual": [{"id": 2}, {"id": 1}], "expected": "[{\"id\":1},{\"id\":2}]", "tolerance": null, "want": true},
+        {"name": "resultset-ordered-fails-on-order", "mode": "resultset_ordered", "actual": [{"id": 2}, {"id": 1}], "expected": "[{\"id\":1},{\"id\":2}]", "tolerance": null, "want": false},
+        {"name": "resultset-ordered-match", "mode": "resultset_ordered", "actual": [{"id": 1, "name": "a"}, {"id": 2, "name": "b"}], "expected": "[{\"id\":1,\"name\":\"a\"},{\"id\":2,\"name\":\"b\"}]", "tolerance": null, "want": true},
+        {"name": "resultset-count-mismatch", "mode": "resultset", "actual": [{"id": 1}], "expected": "[{\"id\":1},{\"id\":2}]", "tolerance": null, "want": false},
+        {"name": "resultset-actual-not-array", "mode": "resultset", "actual": "oops", "expected": "[]", "tolerance": null, "want": false},
+        {"name": "resultset-row-int-vs-float", "mode": "resultset", "actual": [{"n": 1.0}], "expected": "[{\"n\":1}]", "tolerance": null, "want": true},
+        {"name": "resultset-empty-both", "mode": "resultset", "actual": [], "expected": "[]", "tolerance": null, "want": true},
+
+        {"name": "default-mode-falls-back-to-normalise", "mode": "bogus", "actual": "  x  ", "expected": "x", "tolerance": null, "want": true}
+    ],
+    "grade": [
+        {
+            "name": "all-pass-AC",
+            "results": [{"stdout": "5\n"}, {"stdout": "30\n"}],
+            "tests": [
+                {"expected": "5", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 1},
+                {"expected": "30", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 0}
+            ],
+            "wantfraction": 1.0,
+            "wantverdict": "AC",
+            "wanttestresults": [
+                {"status": "pass", "passed": true, "visibility": 1},
+                {"status": "pass", "passed": true, "visibility": 0}
+            ]
+        },
+        {
+            "name": "function-partial-WA",
+            "results": [{"returnvalue": 5}, {"returnvalue": 99}],
+            "tests": [
+                {"expected": "5", "matchmode": "structured", "tolerance": null, "weight": 1, "visibility": 1},
+                {"expected": "30", "matchmode": "structured", "tolerance": null, "weight": 1, "visibility": 0}
+            ],
+            "wantfraction": 0.5,
+            "wantverdict": "WA",
+            "wanttestresults": [
+                {"status": "pass", "passed": true, "visibility": 1},
+                {"status": "fail", "passed": false, "visibility": 0}
+            ]
+        },
+        {
+            "name": "weighted-partial-WA",
+            "results": [{"stdout": "a"}, {"stdout": "wrong"}],
+            "tests": [
+                {"expected": "a", "matchmode": "exact", "tolerance": null, "weight": 2, "visibility": 1},
+                {"expected": "b", "matchmode": "exact", "tolerance": null, "weight": 1, "visibility": 1}
+            ],
+            "wantfraction": 0.6666666666666666,
+            "wantverdict": "WA",
+            "wanttestresults": [
+                {"status": "pass", "passed": true, "visibility": 1},
+                {"status": "fail", "passed": false, "visibility": 1}
+            ]
+        },
+        {
+            "name": "runtime-error-RE",
+            "results": [{"stdout": "5"}, {"error": true}],
+            "tests": [
+                {"expected": "5", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 1},
+                {"expected": "6", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 0}
+            ],
+            "wantfraction": 0.5,
+            "wantverdict": "RE",
+            "wanttestresults": [
+                {"status": "pass", "passed": true, "visibility": 1},
+                {"status": "error", "passed": false, "visibility": 0}
+            ]
+        },
+        {
+            "name": "timeout-TIMEOUT",
+            "results": [{"timedout": true}, {"stdout": "6"}],
+            "tests": [
+                {"expected": "5", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 1},
+                {"expected": "6", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 1}
+            ],
+            "wantfraction": 0.5,
+            "wantverdict": "TIMEOUT",
+            "wanttestresults": [
+                {"status": "timeout", "passed": false, "visibility": 1},
+                {"status": "pass", "passed": true, "visibility": 1}
+            ]
+        },
+        {
+            "name": "error-precedes-timeout-in-verdict",
+            "results": [{"timedout": true}, {"error": true}],
+            "tests": [
+                {"expected": "5", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 1},
+                {"expected": "6", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 1}
+            ],
+            "wantfraction": 0.0,
+            "wantverdict": "RE",
+            "wanttestresults": [
+                {"status": "timeout", "passed": false, "visibility": 1},
+                {"status": "error", "passed": false, "visibility": 1}
+            ]
+        },
+        {
+            "name": "resultset-grade-AC",
+            "results": [{"rows": [{"id": 2}, {"id": 1}]}],
+            "tests": [
+                {"expected": "[{\"id\":1},{\"id\":2}]", "matchmode": "resultset", "tolerance": null, "weight": 1, "visibility": 1}
+            ],
+            "wantfraction": 1.0,
+            "wantverdict": "AC",
+            "wanttestresults": [
+                {"status": "pass", "passed": true, "visibility": 1}
+            ]
+        },
+        {
+            "name": "zero-total-weight-is-WA",
+            "results": [{"stdout": "x"}],
+            "tests": [
+                {"expected": "x", "matchmode": "exact", "tolerance": null, "weight": 0, "visibility": 1}
+            ],
+            "wantfraction": 0.0,
+            "wantverdict": "WA",
+            "wanttestresults": [
+                {"status": "pass", "passed": true, "visibility": 1}
+            ]
+        }
+    ]
+}

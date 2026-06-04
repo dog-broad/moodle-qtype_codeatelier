@@ -43,7 +43,11 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         global $PAGE;
 
         $question = $qa->get_question();
+        $isjudge = $question->is_judge();
         $language = !empty($question->language) ? $question->language : 'python';
+        // The judge tier is always the stdin/stdout shape (see the question type).
+        $scenario = $isjudge ? 'stdinstdout'
+            : (!empty($question->scenario) ? $question->scenario : 'stdinstdout');
 
         $answername = $qa->get_qt_field_name('answer');
         $scorename = $qa->get_qt_field_name('score');
@@ -57,10 +61,15 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         }
         $currentscore = $qa->get_last_qt_var('score', '');
 
-        // Ship the test cases to the browser grader. This is the practice tier:
-        // hidden tests are only "polite-hidden" because the client must grade.
+        // Ship test cases to the browser. The JUDGE tier ships visible tests only:
+        // hidden tests stay on the server, which is the whole integrity point. The
+        // PRACTICE tier must ship all tests because the client grades them (those
+        // hidden tests are only "polite-hidden").
         $tests = array();
         foreach ($question->tests as $test) {
+            if ($isjudge && (int) $test->visibility !== 1) {
+                continue;
+            }
             $tests[] = array(
                 'input' => $test->input,
                 'expected' => $test->expected,
@@ -74,6 +83,22 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             );
         }
 
+        // On a judge-tier review, render the authoritative result from the memo
+        // (computed at submit time) — never re-run the sandbox from a render path.
+        $judgereviewhtml = '';
+        $proctorreviewhtml = '';
+        if ($isjudge && $options->readonly) {
+            $judgereviewhtml = $this->render_judge_review($question->cached_judge_result($currentcode));
+            $proctorreviewhtml = $this->render_proctor_summary($qa->get_last_qt_var('proctorlog', ''));
+        }
+
+        // A judge attempt can offer "run against examples" only when an endpoint is
+        // configured (and never on review).
+        $canrunexamples = $isjudge && !$options->readonly
+                && !empty(get_config('qtype_codeatelier', 'judge0baseurl'));
+
+        $validationresponse = $isjudge ? array('answer' => $currentcode) : array('score' => $currentscore);
+
         $context = array(
             'questiontext' => $question->format_questiontext($qa),
             'wrapperid' => $wrapperid,
@@ -83,25 +108,278 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'scorename' => $scorename,
             'scorevalue' => $currentscore,
             'readonly' => $options->readonly,
+            'isjudge' => $isjudge,
+            'judgenote' => $isjudge ? get_string('judgenote', 'qtype_codeatelier') : '',
+            'judgereviewhtml' => $judgereviewhtml . $proctorreviewhtml,
+            'proctorname' => $qa->get_qt_field_name('proctorlog'),
+            'proctorvalue' => $qa->get_last_qt_var('proctorlog', ''),
+            'proctornote' => $isjudge ? get_string('proctornote', 'qtype_codeatelier') : '',
+            'canrunexamples' => $canrunexamples,
+            'runexampleslabel' => get_string('runexamples', 'qtype_codeatelier'),
             'hasvalidationerror' => $qa->get_state() == question_state::$invalid,
-            'validationerror' => $question->get_validation_error(array('score' => $currentscore)),
+            'validationerror' => $question->get_validation_error($validationresponse),
         ) + qtype_codeatelier::ui_labels();
 
         $PAGE->requires->js_call_amd('qtype_codeatelier/control', 'init', array(array(
             'wrapperid' => $wrapperid,
             'language' => $language,
-            'scenario' => !empty($question->scenario) ? $question->scenario : 'stdinstdout',
+            'scenario' => $scenario,
             'entrypoint' => $question->entrypoint,
-            'schemasql' => $question->schemasql,
+            'schemasql' => $isjudge ? null : $question->schemasql,
             'pyodidebaseurl' => get_config('qtype_codeatelier', 'pyodidebaseurl'),
             'sqljsbaseurl' => get_config('qtype_codeatelier', 'sqljsbaseurl'),
             'tests' => $tests,
             'timeoutms' => 5000,
             'readonly' => (bool) $options->readonly,
+            'isjudge' => $isjudge,
             'strings' => qtype_codeatelier::ui_strings(),
         )));
 
+        // Soft anti-cheat runs on a live judge-tier attempt only (never on review,
+        // never on the formative practice tier).
+        if ($isjudge && !$options->readonly) {
+            $PAGE->requires->js_call_amd('qtype_codeatelier/proctor', 'init',
+                    array(array('wrapperid' => $wrapperid)));
+        }
+
+        // The formative "run against examples" loop for the judge tier.
+        if ($canrunexamples) {
+            $PAGE->requires->js_call_amd('qtype_codeatelier/judgerun', 'init', array(array(
+                'wrapperid' => $wrapperid,
+                'questionid' => (int) $question->id,
+                'strings' => array(
+                    'running' => get_string('running', 'qtype_codeatelier'),
+                    'example' => get_string('result_test', 'qtype_codeatelier'),
+                    'input' => get_string('input', 'qtype_codeatelier'),
+                    'expected' => get_string('expected', 'qtype_codeatelier'),
+                    'got' => get_string('result_got', 'qtype_codeatelier'),
+                    'pass' => get_string('result_pass', 'qtype_codeatelier'),
+                    'fail' => get_string('result_fail', 'qtype_codeatelier'),
+                    're' => get_string('verdict_RE', 'qtype_codeatelier'),
+                    'tle' => get_string('verdict_TLE', 'qtype_codeatelier'),
+                    'mle' => get_string('verdict_MLE', 'qtype_codeatelier'),
+                ),
+            )));
+        }
+
         return $this->render_from_template('qtype_codeatelier/editor_control', $context);
+    }
+
+    /**
+     * Build the server-side review block for a judge-tier attempt: the verdict,
+     * compile output on a compile error, and a per-test pass/fail list. Hidden
+     * tests are shown as pass/fail only and never reveal their expected output.
+     *
+     * @param array|null $result the memoised judge result, or null on a cache miss
+     * @return string HTML
+     */
+    protected function render_judge_review($result) {
+        if ($result === null) {
+            return html_writer::div(get_string('judgenoresult', 'qtype_codeatelier'),
+                    'codeatelier-judge-review text-muted');
+        }
+
+        $verdict = isset($result['verdict']) ? (string) $result['verdict'] : 'WA';
+        $out = html_writer::div(
+                html_writer::span(get_string('judgeverdict', 'qtype_codeatelier'),
+                        'codeatelier-judge-verdict-label') . ' '
+                . html_writer::span($this->verdict_label($verdict),
+                        'codeatelier-verdict codeatelier-verdict-' . $verdict),
+                'codeatelier-judge-verdict');
+
+        if ($verdict === 'CE' && !empty($result['compileoutput'])) {
+            $out .= html_writer::tag('pre', s($result['compileoutput']),
+                    array('class' => 'codeatelier-compileoutput'));
+        }
+
+        $items = '';
+        foreach ($result['testresults'] as $tr) {
+            $items .= $this->render_judge_test_row($tr);
+        }
+        $out .= html_writer::tag('ul', $items, array('class' => 'codeatelier-judge-tests'));
+
+        return html_writer::div($out, 'codeatelier-judge-review');
+    }
+
+    /**
+     * The soft anti-cheat activity summary for a judge-tier review: a count per
+     * flagged event type. Empty when nothing was flagged. The underlying log is a
+     * client-accumulated deterrent, not a tamper-proof record.
+     *
+     * @param string $raw the stored proctorlog JSON
+     * @return string HTML (empty when there is nothing to show)
+     */
+    protected function render_proctor_summary($raw) {
+        if (trim((string) $raw) === '') {
+            return '';
+        }
+        $events = json_decode($raw, true);
+        if (!is_array($events) || !$events) {
+            return '';
+        }
+
+        $counts = array();
+        foreach ($events as $event) {
+            $type = isset($event['type']) ? $event['type'] : 'other';
+            $counts[$type] = (isset($counts[$type]) ? $counts[$type] : 0) + 1;
+        }
+
+        $items = '';
+        foreach ($counts as $type => $count) {
+            $items .= html_writer::tag('li', s($this->proctor_label($type)) . ': ' . (int) $count);
+        }
+
+        return html_writer::div(
+                html_writer::tag('h6', get_string('proctorsummary', 'qtype_codeatelier'))
+                . html_writer::tag('ul', $items, array('class' => 'codeatelier-proctor-list')),
+                'codeatelier-proctor-summary');
+    }
+
+    /**
+     * A localised label for a flagged-event type.
+     *
+     * @param string $type focusaway | paste | other
+     * @return string
+     */
+    protected function proctor_label($type) {
+        switch ($type) {
+            case 'focusaway':
+                return get_string('proctor_focusaway', 'qtype_codeatelier');
+            case 'paste':
+                return get_string('proctor_paste', 'qtype_codeatelier');
+            default:
+                return $type;
+        }
+    }
+
+    /**
+     * One per-test row: a status badge with time/memory, and for a failed VISIBLE
+     * test the error output or an expected-vs-actual diff. Hidden tests show only
+     * a pass/fail badge — they carry no diagnostics in the result.
+     *
+     * @param array $tr a per-test result
+     * @return string HTML
+     */
+    protected function render_judge_test_row(array $tr) {
+        $visible = (int) $tr['visibility'] === 1;
+        $passed = !empty($tr['passed']);
+        $status = (string) $tr['status'];
+
+        $label = $visible
+            ? get_string('result_test', 'qtype_codeatelier', $tr['index'] + 1)
+            : get_string('result_hidden', 'qtype_codeatelier');
+        $statuslabel = $passed
+            ? get_string('result_pass', 'qtype_codeatelier')
+            : $this->status_label($status);
+
+        $head = html_writer::span(s($label), 'codeatelier-test-label')
+            . ' '
+            . html_writer::span(s($statuslabel),
+                    'codeatelier-test-status codeatelier-status-' . ($passed ? 'pass' : $status))
+            . $this->render_test_meta($tr);
+
+        $detail = '';
+        if ($visible && !$passed) {
+            if (($status === 're' || $status === 'mle') && !empty($tr['stderr'])) {
+                $detail = html_writer::tag('pre', s($tr['stderr']), array('class' => 'codeatelier-test-error'));
+            } else if ($status === 'fail') {
+                $detail = $this->render_test_diff($tr);
+            }
+        }
+
+        $cls = 'codeatelier-judge-test ' . ($passed ? 'codeatelier-pass' : 'codeatelier-fail');
+        return html_writer::tag('li', $head . $detail, array('class' => $cls));
+    }
+
+    /**
+     * The time/memory meta for a test row, when measured.
+     *
+     * @param array $tr a per-test result
+     * @return string HTML (empty when no measurements)
+     */
+    protected function render_test_meta(array $tr) {
+        $parts = array();
+        if (isset($tr['time']) && $tr['time'] !== null) {
+            $parts[] = get_string('judgetime', 'qtype_codeatelier', format_float($tr['time'] * 1000, 0));
+        }
+        if (isset($tr['memory']) && $tr['memory'] !== null) {
+            $parts[] = get_string('judgememory', 'qtype_codeatelier', display_size((int) $tr['memory'] * 1024));
+        }
+        if (!$parts) {
+            return '';
+        }
+        return html_writer::span(implode(' · ', $parts), 'codeatelier-test-meta');
+    }
+
+    /**
+     * An input / expected / got diff for a failed visible test.
+     *
+     * @param array $tr a per-test result
+     * @return string HTML
+     */
+    protected function render_test_diff(array $tr) {
+        $rows = '';
+        if (isset($tr['input']) && trim((string) $tr['input']) !== '') {
+            $rows .= $this->diff_line(get_string('input', 'qtype_codeatelier'), $tr['input'], 'input');
+        }
+        $rows .= $this->diff_line(get_string('expected', 'qtype_codeatelier'),
+                isset($tr['expected']) ? $tr['expected'] : '', 'expected');
+        $rows .= $this->diff_line(get_string('result_got', 'qtype_codeatelier'),
+                isset($tr['actual']) ? $tr['actual'] : '', 'got');
+        return html_writer::div($rows, 'codeatelier-test-diff');
+    }
+
+    /**
+     * One labelled line of a diff.
+     *
+     * @param string $label the row label
+     * @param string $value the (verbatim) value
+     * @param string $which input | expected | got (for styling)
+     * @return string HTML
+     */
+    protected function diff_line($label, $value, $which) {
+        return html_writer::div(
+                html_writer::span(s($label), 'codeatelier-diff-label')
+                . html_writer::tag('pre', s((string) $value), array('class' => 'codeatelier-diff-value')),
+                'codeatelier-diff-row codeatelier-diff-' . $which);
+    }
+
+    /**
+     * A localised label for an overall verdict.
+     *
+     * @param string $verdict AC | WA | TLE | RE | CE | INTERNAL
+     * @return string
+     */
+    protected function verdict_label($verdict) {
+        $known = array('AC', 'WA', 'TLE', 'MLE', 'RE', 'CE');
+        if (in_array($verdict, $known, true)) {
+            return get_string('verdict_' . $verdict, 'qtype_codeatelier');
+        }
+        return $verdict;
+    }
+
+    /**
+     * A localised label for a per-test status.
+     *
+     * @param string $status pass | fail | re | tle | ce
+     * @return string
+     */
+    protected function status_label($status) {
+        switch ($status) {
+            case 'pass':
+                return get_string('result_pass', 'qtype_codeatelier');
+            case 're':
+                return get_string('verdict_RE', 'qtype_codeatelier');
+            case 'tle':
+                return get_string('verdict_TLE', 'qtype_codeatelier');
+            case 'mle':
+                return get_string('verdict_MLE', 'qtype_codeatelier');
+            case 'ce':
+                return get_string('verdict_CE', 'qtype_codeatelier');
+            case 'fail':
+            default:
+                return get_string('result_fail', 'qtype_codeatelier');
+        }
     }
 
     /**
@@ -116,6 +394,14 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 return "-- Write your SQL query here\n";
             case 'javascript':
                 return "// Write your JavaScript here\n";
+            case 'c':
+                return "#include <stdio.h>\n\nint main(void) {\n    // Read input, print output\n    return 0;\n}\n";
+            case 'cpp':
+                return "#include <iostream>\nusing namespace std;\n\nint main() {\n    // Read input, print output\n    return 0;\n}\n";
+            case 'java':
+                // Judge0 compiles the public class named Main.
+                return "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n"
+                    . "        Scanner sc = new Scanner(System.in);\n        // Read input, print output\n    }\n}\n";
             case 'python':
             default:
                 return "# Write your Python code here\n";
