@@ -125,7 +125,7 @@ $string['lang_java'] = 'Java';
 
 // Authoring: scenario.
 $string['scenario'] = 'Scenario';
-$string['scenario_help'] = 'How the student\'s code is run and graded. **Standard input/output**: the code reads input and prints output, compared as text. **Function**: the student writes a named function; each test calls it with arguments and checks the return value.';
+$string['scenario_help'] = 'How the student\'s code is run and graded. **Standard input/output**: the code reads input and prints output, compared as text. **Function**: the student writes a named function; each test\'s Input is a JSON array of the call arguments (so a function taking one list needs that list wrapped, e.g. `[[1,2,3]]`), and the returned value is compared with Expected.';
 $string['scenario_stdinstdout'] = 'Standard input / output';
 $string['scenario_function'] = 'Function (call and check the return value)';
 $string['scenario_sql'] = 'SQL (query a database)';
@@ -135,7 +135,7 @@ $string['checkerquery'] = 'Checker query (SQL)';
 $string['checkerquery_help'] = 'For questions that change data (INSERT/UPDATE/DELETE): a SELECT run after the student\'s statements; its result set is compared with the expected result. Leave empty to compare the student query\'s own result set.';
 $string['testfeedback'] = 'Feedback (shown for this test)';
 $string['entrypoint'] = 'Function name';
-$string['entrypoint_help'] = 'The name of the function the student must define. Each test case calls this function with the arguments given in its Input field.';
+$string['entrypoint_help'] = 'The name of the function the student must define. Each test\'s Input is a **JSON array of the arguments** passed to the call: `[2, 3]` calls `f(2, 3)`, while a function taking a single list needs it wrapped, `[[1, 2, 3]]`, to call `f([1, 2, 3])`. The function\'s return value is compared with Expected.';
 $string['startercode'] = 'Starter code';
 $string['startercode_help'] = 'Optional code pre-filled in the student\'s editor — for example a function signature to complete.';
 
