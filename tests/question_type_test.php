@@ -43,6 +43,7 @@ final class question_type_test extends \advanced_testcase {
         $data = question_bank::load_question_data($question->id);
 
         $this->assertEquals('javascript', $data->options->language);
+        $this->assertEquals('practice', $data->options->tier);
         $this->assertEquals('function', $data->options->scenario);
         $this->assertEquals('add', $data->options->entrypoint);
         $this->assertStringContainsString('function add', $data->options->startercode);
@@ -85,5 +86,26 @@ final class question_type_test extends \advanced_testcase {
 
         $data = question_bank::load_question_data($question->id);
         $this->assertCount(2, $data->options->tests);
+    }
+
+    public function test_judge_question_round_trip(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        $question = $qgen->create_question('codeatelier', 'judge', array('category' => $cat->id));
+        $data = question_bank::load_question_data($question->id);
+
+        $this->assertEquals('judge', $data->options->tier);
+        $this->assertEquals('python', $data->options->language);
+        // The judge tier is always the stdin/stdout shape.
+        $this->assertEquals('stdinstdout', $data->options->scenario);
+        $this->assertCount(2, $data->options->tests);
+        $this->assertEquals(0, (int) array_values($data->options->tests)[1]->visibility);
     }
 }
