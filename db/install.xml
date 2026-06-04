@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="question/type/codeatelier/db" VERSION="20260602" COMMENT="XMLDB file for the CodeAtelier question type"
+<XMLDB PATH="question/type/codeatelier/db" VERSION="20260604" COMMENT="XMLDB file for the CodeAtelier question type"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
 >
@@ -8,8 +8,9 @@
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Foreign key references question.id."/>
-        <FIELD NAME="language" TYPE="char" LENGTH="32" NOTNULL="true" DEFAULT="python" SEQUENCE="false" COMMENT="Practice-tier language: python, sql or javascript."/>
-        <FIELD NAME="scenario" TYPE="char" LENGTH="32" NOTNULL="true" DEFAULT="stdinstdout" SEQUENCE="false" COMMENT="Question scenario: stdinstdout, function or sql. Selects the run harness and comparison."/>
+        <FIELD NAME="language" TYPE="char" LENGTH="32" NOTNULL="true" DEFAULT="python" SEQUENCE="false" COMMENT="Code language. Practice: python, sql or javascript. Judge: c, cpp, java, python or javascript."/>
+        <FIELD NAME="tier" TYPE="char" LENGTH="16" NOTNULL="true" DEFAULT="practice" SEQUENCE="false" COMMENT="Execution tier: practice (in-browser, formative) or judge (server sandbox, authoritative grading)."/>
+        <FIELD NAME="scenario" TYPE="char" LENGTH="32" NOTNULL="true" DEFAULT="stdinstdout" SEQUENCE="false" COMMENT="Question scenario: stdinstdout, function or sql. Selects the run harness and comparison. Judge tier is always stdinstdout."/>
         <FIELD NAME="entrypoint" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Function name to call for the function scenario."/>
         <FIELD NAME="startercode" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Starter code shown in the student editor."/>
         <FIELD NAME="schemasql" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="SQL scenario: schema + seed (DDL and INSERTs) loaded before the student query."/>
@@ -37,6 +38,22 @@
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
         <KEY NAME="questionid" TYPE="foreign" FIELDS="questionid" REFTABLE="question" REFFIELDS="id"/>
       </KEYS>
+    </TABLE>
+    <TABLE NAME="qtype_codeatelier_judgecache" COMMENT="Memoised judge-tier grading results, keyed by a hash of language+code+tests+limits. Deterministic sandbox runs, so review and regrade read this instead of re-running Judge0.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="contenthash" TYPE="char" LENGTH="40" NOTNULL="true" SEQUENCE="false" COMMENT="SHA-1 of the canonical (language, code, test set, limits) signature."/>
+        <FIELD NAME="fraction" TYPE="number" LENGTH="12" DECIMALS="7" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="The graded fraction in [0, 1]."/>
+        <FIELD NAME="verdict" TYPE="char" LENGTH="16" NOTNULL="true" DEFAULT="WA" SEQUENCE="false" COMMENT="The judge verdict: AC, WA, TLE, RE or CE."/>
+        <FIELD NAME="resultblob" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="JSON of the full grading result (per-test outcomes, compile output)."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="When this result was first computed."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="contenthash" UNIQUE="true" FIELDS="contenthash"/>
+      </INDEXES>
     </TABLE>
   </TABLES>
 </XMLDB>
