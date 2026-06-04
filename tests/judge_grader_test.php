@@ -94,6 +94,48 @@ final class judge_grader_test extends \advanced_testcase {
         $this->assertEquals(0.5, $result['fraction']);
     }
 
+    public function test_memory_limit_exceeded_is_mle(): void {
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+            qtype_codeatelier_stub_runner::row('mle', '', array('memory' => 128000)),
+        ));
+        $result = (new judge_grader($runner))->grade('code', 'python', $this->sum_tests());
+
+        $this->assertSame('MLE', $result['verdict']);
+        $this->assertSame('mle', $result['testresults'][1]['status']);
+        $this->assertEquals(0.5, $result['fraction']);
+    }
+
+    public function test_runtime_error_precedes_mle_in_verdict(): void {
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('re'),
+            qtype_codeatelier_stub_runner::row('mle'),
+        ));
+        $result = (new judge_grader($runner))->grade('code', 'python', $this->sum_tests());
+        $this->assertSame('RE', $result['verdict']);
+    }
+
+    public function test_visible_tests_carry_diagnostics_hidden_do_not(): void {
+        // Visible test fails (wrong output); hidden test passes.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "999\n"),
+            qtype_codeatelier_stub_runner::row('ran', "30\n"),
+        ));
+        $result = (new judge_grader($runner))->grade('code', 'python', $this->sum_tests());
+
+        $visible = $result['testresults'][0];
+        $hidden = $result['testresults'][1];
+        // The visible failure carries input/expected/actual for the diff.
+        $this->assertArrayHasKey('expected', $visible);
+        $this->assertArrayHasKey('actual', $visible);
+        $this->assertSame('5', $visible['expected']);
+        $this->assertSame("999\n", $visible['actual']);
+        // The hidden test never carries its input, expected or produced output.
+        $this->assertArrayNotHasKey('expected', $hidden);
+        $this->assertArrayNotHasKey('actual', $hidden);
+        $this->assertArrayNotHasKey('input', $hidden);
+    }
+
     public function test_runtime_error_is_re(): void {
         $runner = new qtype_codeatelier_stub_runner(array(
             qtype_codeatelier_stub_runner::row('re'),
