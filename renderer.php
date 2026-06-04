@@ -92,6 +92,11 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             $proctorreviewhtml = $this->render_proctor_summary($qa->get_last_qt_var('proctorlog', ''));
         }
 
+        // A judge attempt can offer "run against examples" only when an endpoint is
+        // configured (and never on review).
+        $canrunexamples = $isjudge && !$options->readonly
+                && !empty(get_config('qtype_codeatelier', 'judge0baseurl'));
+
         $validationresponse = $isjudge ? array('answer' => $currentcode) : array('score' => $currentscore);
 
         $context = array(
@@ -109,6 +114,8 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'proctorname' => $qa->get_qt_field_name('proctorlog'),
             'proctorvalue' => $qa->get_last_qt_var('proctorlog', ''),
             'proctornote' => $isjudge ? get_string('proctornote', 'qtype_codeatelier') : '',
+            'canrunexamples' => $canrunexamples,
+            'runexampleslabel' => get_string('runexamples', 'qtype_codeatelier'),
             'hasvalidationerror' => $qa->get_state() == question_state::$invalid,
             'validationerror' => $question->get_validation_error($validationresponse),
         ) + qtype_codeatelier::ui_labels();
@@ -133,6 +140,26 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         if ($isjudge && !$options->readonly) {
             $PAGE->requires->js_call_amd('qtype_codeatelier/proctor', 'init',
                     array(array('wrapperid' => $wrapperid)));
+        }
+
+        // The formative "run against examples" loop for the judge tier.
+        if ($canrunexamples) {
+            $PAGE->requires->js_call_amd('qtype_codeatelier/judgerun', 'init', array(array(
+                'wrapperid' => $wrapperid,
+                'questionid' => (int) $question->id,
+                'strings' => array(
+                    'running' => get_string('running', 'qtype_codeatelier'),
+                    'example' => get_string('result_test', 'qtype_codeatelier'),
+                    'input' => get_string('input', 'qtype_codeatelier'),
+                    'expected' => get_string('expected', 'qtype_codeatelier'),
+                    'got' => get_string('result_got', 'qtype_codeatelier'),
+                    'pass' => get_string('result_pass', 'qtype_codeatelier'),
+                    'fail' => get_string('result_fail', 'qtype_codeatelier'),
+                    're' => get_string('verdict_RE', 'qtype_codeatelier'),
+                    'tle' => get_string('verdict_TLE', 'qtype_codeatelier'),
+                    'mle' => get_string('verdict_MLE', 'qtype_codeatelier'),
+                ),
+            )));
         }
 
         return $this->render_from_template('qtype_codeatelier/editor_control', $context);
@@ -367,6 +394,14 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 return "-- Write your SQL query here\n";
             case 'javascript':
                 return "// Write your JavaScript here\n";
+            case 'c':
+                return "#include <stdio.h>\n\nint main(void) {\n    // Read input, print output\n    return 0;\n}\n";
+            case 'cpp':
+                return "#include <iostream>\nusing namespace std;\n\nint main() {\n    // Read input, print output\n    return 0;\n}\n";
+            case 'java':
+                // Judge0 compiles the public class named Main.
+                return "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n"
+                    . "        Scanner sc = new Scanner(System.in);\n        // Read input, print output\n    }\n}\n";
             case 'python':
             default:
                 return "# Write your Python code here\n";

@@ -232,6 +232,33 @@ class qtype_codeatelier_question extends question_graded_automatically {
     }
 
     /**
+     * Run the code against the VISIBLE example tests only and return the per-test
+     * results — a formative, non-authoritative run for the judge tier (so a
+     * compiled-language student can try their code before the real submit). Hidden
+     * tests are never executed or returned, and no grade is recorded.
+     *
+     * @param string $code the student submission
+     * @return array|null the judge_grader result over the visible tests, or null if no endpoint is configured
+     */
+    public function run_examples($code) {
+        $runner = $this->judge_runner();
+        if ($runner === null) {
+            return null;
+        }
+        $visible = array();
+        foreach ($this->tests as $test) {
+            if ((int) $test->visibility === 1) {
+                $visible[] = $test;
+            }
+        }
+        if (!$visible) {
+            return array('verdict' => 'AC', 'compileoutput' => '', 'testresults' => array());
+        }
+        $grader = new \qtype_codeatelier\judge\judge_grader($runner);
+        return $grader->grade((string) $code, $this->language, $visible);
+    }
+
+    /**
      * The memoised judge result for the given code, or null on a cache miss.
      * Never runs the sandbox — safe to call from a render path (review).
      *

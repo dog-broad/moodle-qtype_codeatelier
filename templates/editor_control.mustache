@@ -82,6 +82,12 @@
         {{/isjudge}}
         {{#isjudge}}
         <p class="codeatelier-judgenote small text-muted">{{judgenote}}</p>
+        {{#canrunexamples}}
+        <div class="codeatelier-actions">
+            <button type="button" class="btn btn-secondary" data-role="runexamples">{{runexampleslabel}}</button>
+        </div>
+        <div class="codeatelier-runresults" data-role="runresults" aria-live="polite"></div>
+        {{/canrunexamples}}
         {{#proctornote}}<p class="codeatelier-proctornote small text-muted">{{proctornote}}</p>{{/proctornote}}
         <input type="hidden" data-role="proctorlog" name="{{proctorname}}" value="{{proctorvalue}}">
         {{/isjudge}}

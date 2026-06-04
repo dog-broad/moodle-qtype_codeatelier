@@ -92,6 +92,11 @@ $string['verdict_CE'] = 'Compile error';
 $string['judgetime'] = '{$a} ms';
 $string['judgememory'] = '{$a}';
 
+// Judge-tier "run against examples".
+$string['runexamples'] = 'Run examples';
+$string['notjudgequestion'] = 'This is not a judge-tier CodeAtelier question.';
+$string['judgenotconfigured'] = 'No judge endpoint is configured. Ask your administrator to set the Judge0 base URL.';
+
 // Soft anti-cheat (judge tier).
 $string['proctornote'] = 'Switching away from this question and paste attempts are recorded for your teacher.';
 $string['proctorsummary'] = 'Activity flags';

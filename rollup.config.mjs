@@ -37,6 +37,13 @@ export default [
         plugins: [nodeResolve(), terser()],
     },
     {
+        // Judge-tier "run against examples": calls the server via core/ajax, kept external.
+        input: 'amd/src/judgerun.js',
+        external: (id) => id.startsWith('core/'),
+        output: {file: 'amd/build/judgerun.min.js', format: 'amd', sourcemap: true, sourcemapExcludeSources: true},
+        plugins: [nodeResolve(), terser()],
+    },
+    {
         // The controller depends on the other plugin modules as AMD modules
         // (kept external so CodeMirror is not duplicated into this bundle).
         input: 'amd/src/control.js',

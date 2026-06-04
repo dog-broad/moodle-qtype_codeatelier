@@ -577,6 +577,15 @@
     border-color: #f1c5cb;
 }
 
+/* Judge-tier formative run-against-examples output. */
+.qtype_codeatelier .codeatelier-runresults {
+    margin-top: 0.5rem;
+}
+
+.qtype_codeatelier .codeatelier-runresults:empty {
+    display: none;
+}
+
 /* Soft anti-cheat: the in-attempt note and the review activity summary. */
 .qtype_codeatelier .codeatelier-proctornote {
     color: #8a5a00;
