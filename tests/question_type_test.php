@@ -88,6 +88,27 @@ final class question_type_test extends \advanced_testcase {
         $this->assertCount(2, $data->options->tests);
     }
 
+    public function test_resultset_ordered_matchmode_round_trips(): void {
+        // Regression: 'resultset_ordered' is 17 chars and overflowed the original
+        // char(16) matchmode column (a DB error on PostgreSQL, truncation on MySQL).
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        $question = $qgen->create_question('codeatelier', 'function', array(
+            'category' => $cat->id,
+            'matchmode' => array('resultset_ordered', 'resultset_ordered'),
+        ));
+
+        $data = question_bank::load_question_data($question->id);
+        $this->assertEquals('resultset_ordered', array_values($data->options->tests)[0]->matchmode);
+    }
+
     public function test_judge_question_round_trip(): void {
         $this->resetAfterTest();
         $this->setAdminUser();

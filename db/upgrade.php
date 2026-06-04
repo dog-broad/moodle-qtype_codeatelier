@@ -121,5 +121,17 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026061400, 'qtype', 'codeatelier');
     }
 
+    if ($oldversion < 2026061800) {
+        // Widen matchmode: 'resultset_ordered' is 17 chars and overflowed char(16),
+        // which errored on PostgreSQL (and silently truncated on MySQL).
+        $table = new xmldb_table('qtype_codeatelier_tests');
+        $field = new xmldb_field('matchmode', XMLDB_TYPE_CHAR, '32', null,
+                XMLDB_NOTNULL, null, 'trimmed', 'expected');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->change_field_precision($table, $field);
+        }
+        upgrade_plugin_savepoint(true, 2026061800, 'qtype', 'codeatelier');
+    }
+
     return true;
 }
