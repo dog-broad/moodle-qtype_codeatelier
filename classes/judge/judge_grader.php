@@ -101,14 +101,15 @@ class judge_grader {
             }
         }
 
-        // Map each execution outcome into the grader's result shape: a timeout
-        // and a runtime error are signalled by flags; a clean run is compared by
-        // its stdout (the judge tier is the stdin/stdout shape).
+        // Map each execution outcome into the grader's result shape so the SHARED
+        // matcher decides the fraction (tier parity): a timeout, a runtime error
+        // and an OOM are all zero-credit failures; a clean run is compared by its
+        // stdout (the judge tier is the stdin/stdout shape).
         $graderresults = [];
         foreach ($runresults as $result) {
             if ($result['outcome'] === 'tle') {
                 $graderresults[] = ['timedout' => true];
-            } else if ($result['outcome'] === 're') {
+            } else if ($result['outcome'] === 're' || $result['outcome'] === 'mle') {
                 $graderresults[] = ['error' => true];
             } else {
                 $graderresults[] = ['stdout' => $result['stdout']];
@@ -118,27 +119,79 @@ class judge_grader {
         $graded = grader::grade($graderresults, $tests);
 
         $testresults = [];
+        $anyre = false;
+        $anymle = false;
+        $anytle = false;
         foreach ($graded['testresults'] as $tr) {
             $i = $tr['index'];
-            $testresults[] = [
+            $run = $runresults[$i];
+            $outcome = $run['outcome'];
+            $visible = (int) $tests[$i]->visibility === 1;
+
+            if ($outcome === 'mle') {
+                $status = 'mle';
+                $anymle = true;
+            } else if ($outcome === 'tle') {
+                $status = 'tle';
+                $anytle = true;
+            } else if ($outcome === 're') {
+                $status = 're';
+                $anyre = true;
+            } else {
+                $status = $tr['passed'] ? 'pass' : 'fail';
+            }
+
+            $row = [
                 'index' => $i,
-                'status' => self::display_status($tr['status']),
+                'status' => $status,
                 'passed' => $tr['passed'],
                 'visibility' => $tr['visibility'],
-                'time' => $runresults[$i]['time'] ?? null,
-                'memory' => $runresults[$i]['memory'] ?? null,
+                'time' => $run['time'] ?? null,
+                'memory' => $run['memory'] ?? null,
             ];
+            // Diagnostics for VISIBLE tests only — a hidden test never carries its
+            // input, expected output or the produced output into the result blob
+            // (the integrity boundary holds in storage as well as on the wire).
+            if ($visible) {
+                $row['input'] = (string) $tests[$i]->input;
+                $row['expected'] = (string) $tests[$i]->expected;
+                $row['actual'] = $outcome === 'ran' ? (string) $run['stdout'] : '';
+                $row['stderr'] = ($outcome === 're' || $outcome === 'mle') ? (string) $run['stderr'] : '';
+            }
+            $testresults[] = $row;
         }
 
         return [
             'infrastructure' => false,
             'fraction' => $graded['fraction'],
-            // The grader is tier-neutral and reports TIMEOUT; the judge taxonomy calls it TLE.
-            'verdict' => $graded['verdict'] === 'TIMEOUT' ? 'TLE' : $graded['verdict'],
+            'verdict' => self::verdict($graded['fraction'], $anyre, $anymle, $anytle),
             'compileoutput' => '',
             'message' => '',
             'testresults' => $testresults,
         ];
+    }
+
+    /**
+     * The overall verdict by precedence: RE > MLE > TLE > WA > AC. A compile
+     * error is handled separately as a whole-submission failure.
+     *
+     * @param float $fraction the graded fraction
+     * @param bool $anyre any runtime error
+     * @param bool $anymle any memory-limit-exceeded
+     * @param bool $anytle any time-limit-exceeded
+     * @return string AC | WA | TLE | MLE | RE
+     */
+    private static function verdict(float $fraction, bool $anyre, bool $anymle, bool $anytle): string {
+        if ($anyre) {
+            return 'RE';
+        }
+        if ($anymle) {
+            return 'MLE';
+        }
+        if ($anytle) {
+            return 'TLE';
+        }
+        return $fraction >= 1 ? 'AC' : 'WA';
     }
 
     /**
@@ -161,21 +214,5 @@ class judge_grader {
             ];
         }
         return $rows;
-    }
-
-    /**
-     * Translate a grader per-test status into the judge taxonomy used for display.
-     *
-     * @param string $status pass | fail | error | timeout
-     * @return string pass | fail | re | tle
-     */
-    private static function display_status(string $status): string {
-        if ($status === 'error') {
-            return 're';
-        }
-        if ($status === 'timeout') {
-            return 'tle';
-        }
-        return $status;
     }
 }

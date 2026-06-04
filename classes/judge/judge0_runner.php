@@ -142,7 +142,7 @@ class judge0_runner {
      * @param int $languageid the Judge0 language id
      * @param string $stdin standard input for the run
      * @return array {outcome, stdout, stderr, compileoutput, time, memory, statusid, statusdesc}
-     *   where outcome is one of: ran | ce | tle | re | internal
+     *   where outcome is one of: ran | ce | tle | mle | re | internal
      */
     public function run_case(string $code, int $languageid, string $stdin): array {
         $response = $this->submit([
@@ -167,25 +167,31 @@ class judge0_runner {
         }
 
         $statusid = (int) ($response['status']['id'] ?? 0);
+        $memory = isset($response['memory']) ? (int) $response['memory'] : null;
         return [
-            'outcome' => self::outcome_for_status($statusid),
+            'outcome' => $this->outcome_for($statusid, $memory),
             'stdout' => self::decode($response['stdout'] ?? null),
             'stderr' => self::decode($response['stderr'] ?? null),
             'compileoutput' => self::decode($response['compile_output'] ?? null),
             'time' => isset($response['time']) ? (float) $response['time'] : null,
-            'memory' => isset($response['memory']) ? (int) $response['memory'] : null,
+            'memory' => $memory,
             'statusid' => $statusid,
             'statusdesc' => (string) ($response['status']['description'] ?? ''),
         ];
     }
 
     /**
-     * Translate a Judge0 status id into an execution outcome.
+     * Translate a Judge0 status (and reported memory) into an execution outcome.
+     *
+     * Judge0 CE has no memory-limit-exceeded status: an OOM kill surfaces as a
+     * runtime error with the peak memory capped at the configured limit. So a
+     * runtime error whose memory is at the limit is reclassified as MLE.
      *
      * @param int $statusid the Judge0 submission status id
-     * @return string ran | ce | tle | re | internal
+     * @param int|null $memory the reported peak memory in kilobytes
+     * @return string ran | ce | tle | mle | re | internal
      */
-    private static function outcome_for_status(int $statusid): string {
+    private function outcome_for(int $statusid, ?int $memory): string {
         // 3 Accepted and 4 Wrong Answer both mean "ran to completion" here: we send
         // no expected_output, so output correctness is the matcher's call, not Judge0's.
         if ($statusid === 3 || $statusid === 4) {
@@ -199,6 +205,10 @@ class judge0_runner {
         }
         // 7-12: SIGSEGV / SIGXFSZ / SIGFPE / SIGABRT / NZEC / other runtime error.
         if ($statusid >= 7 && $statusid <= 12) {
+            // An OOM kill is a runtime error whose memory sits at the limit.
+            if ($memory !== null && $memory >= $this->memorylimit * 0.99) {
+                return 'mle';
+            }
             return 're';
         }
         // 1 In Queue, 2 Processing (not expected with wait=true), 13 Internal, 14 Exec Format.

@@ -34,6 +34,9 @@ defined('MOODLE_INTERNAL') || die();
  */
 class result_cache {
 
+    /** @var int the result-blob shape version; bump to invalidate older cached entries. */
+    const BLOB_VERSION = 2;
+
     /**
      * The cache key for a submission: a hash over everything that can change the
      * verdict. If the teacher edits a test the hash changes and the stale entry
@@ -57,7 +60,7 @@ class result_cache {
                 (string) $test->visibility,
             ];
         }
-        return sha1(json_encode([$language, $code, $signature, $limits]));
+        return sha1(json_encode([self::BLOB_VERSION, $language, $code, $signature, $limits]));
     }
 
     /**
