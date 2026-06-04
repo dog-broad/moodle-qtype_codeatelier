@@ -92,6 +92,12 @@ $string['verdict_CE'] = 'Compile error';
 $string['judgetime'] = '{$a} ms';
 $string['judgememory'] = '{$a}';
 
+// Soft anti-cheat (judge tier).
+$string['proctornote'] = 'Switching away from this question and paste attempts are recorded for your teacher.';
+$string['proctorsummary'] = 'Activity flags';
+$string['proctor_focusaway'] = 'Switched away from the question';
+$string['proctor_paste'] = 'Paste blocked';
+
 // Authoring: tier.
 $string['tier'] = 'Grading tier';
 $string['tier_help'] = 'Where the student\'s code runs and how it is graded.

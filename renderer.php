@@ -86,8 +86,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         // On a judge-tier review, render the authoritative result from the memo
         // (computed at submit time) — never re-run the sandbox from a render path.
         $judgereviewhtml = '';
+        $proctorreviewhtml = '';
         if ($isjudge && $options->readonly) {
             $judgereviewhtml = $this->render_judge_review($question->cached_judge_result($currentcode));
+            $proctorreviewhtml = $this->render_proctor_summary($qa->get_last_qt_var('proctorlog', ''));
         }
 
         $validationresponse = $isjudge ? array('answer' => $currentcode) : array('score' => $currentscore);
@@ -103,7 +105,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'readonly' => $options->readonly,
             'isjudge' => $isjudge,
             'judgenote' => $isjudge ? get_string('judgenote', 'qtype_codeatelier') : '',
-            'judgereviewhtml' => $judgereviewhtml,
+            'judgereviewhtml' => $judgereviewhtml . $proctorreviewhtml,
+            'proctorname' => $qa->get_qt_field_name('proctorlog'),
+            'proctorvalue' => $qa->get_last_qt_var('proctorlog', ''),
+            'proctornote' => $isjudge ? get_string('proctornote', 'qtype_codeatelier') : '',
             'hasvalidationerror' => $qa->get_state() == question_state::$invalid,
             'validationerror' => $question->get_validation_error($validationresponse),
         ) + qtype_codeatelier::ui_labels();
@@ -122,6 +127,13 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'isjudge' => $isjudge,
             'strings' => qtype_codeatelier::ui_strings(),
         )));
+
+        // Soft anti-cheat runs on a live judge-tier attempt only (never on review,
+        // never on the formative practice tier).
+        if ($isjudge && !$options->readonly) {
+            $PAGE->requires->js_call_amd('qtype_codeatelier/proctor', 'init',
+                    array(array('wrapperid' => $wrapperid)));
+        }
 
         return $this->render_from_template('qtype_codeatelier/editor_control', $context);
     }
@@ -160,6 +172,57 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         $out .= html_writer::tag('ul', $items, array('class' => 'codeatelier-judge-tests'));
 
         return html_writer::div($out, 'codeatelier-judge-review');
+    }
+
+    /**
+     * The soft anti-cheat activity summary for a judge-tier review: a count per
+     * flagged event type. Empty when nothing was flagged. The underlying log is a
+     * client-accumulated deterrent, not a tamper-proof record.
+     *
+     * @param string $raw the stored proctorlog JSON
+     * @return string HTML (empty when there is nothing to show)
+     */
+    protected function render_proctor_summary($raw) {
+        if (trim((string) $raw) === '') {
+            return '';
+        }
+        $events = json_decode($raw, true);
+        if (!is_array($events) || !$events) {
+            return '';
+        }
+
+        $counts = array();
+        foreach ($events as $event) {
+            $type = isset($event['type']) ? $event['type'] : 'other';
+            $counts[$type] = (isset($counts[$type]) ? $counts[$type] : 0) + 1;
+        }
+
+        $items = '';
+        foreach ($counts as $type => $count) {
+            $items .= html_writer::tag('li', s($this->proctor_label($type)) . ': ' . (int) $count);
+        }
+
+        return html_writer::div(
+                html_writer::tag('h6', get_string('proctorsummary', 'qtype_codeatelier'))
+                . html_writer::tag('ul', $items, array('class' => 'codeatelier-proctor-list')),
+                'codeatelier-proctor-summary');
+    }
+
+    /**
+     * A localised label for a flagged-event type.
+     *
+     * @param string $type focusaway | paste | other
+     * @return string
+     */
+    protected function proctor_label($type) {
+        switch ($type) {
+            case 'focusaway':
+                return get_string('proctor_focusaway', 'qtype_codeatelier');
+            case 'paste':
+                return get_string('proctor_paste', 'qtype_codeatelier');
+            default:
+                return $type;
+        }
     }
 
     /**

@@ -82,6 +82,8 @@
         {{/isjudge}}
         {{#isjudge}}
         <p class="codeatelier-judgenote small text-muted">{{judgenote}}</p>
+        {{#proctornote}}<p class="codeatelier-proctornote small text-muted">{{proctornote}}</p>{{/proctornote}}
+        <input type="hidden" data-role="proctorlog" name="{{proctorname}}" value="{{proctorvalue}}">
         {{/isjudge}}
         {{/readonly}}
         <input type="hidden" data-role="score" name="{{scorename}}" value="{{scorevalue}}">

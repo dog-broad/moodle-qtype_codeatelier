@@ -67,7 +67,13 @@ class qtype_codeatelier_question extends question_graded_automatically {
     public $judgerunner = null;
 
     public function get_expected_data() {
-        return array('answer' => PARAM_RAW, 'score' => PARAM_RAW_TRIMMED);
+        $expected = array('answer' => PARAM_RAW, 'score' => PARAM_RAW_TRIMMED);
+        if ($this->is_judge()) {
+            // The soft anti-cheat log travels as a response variable; it is stored
+            // with the attempt and never affects the grade.
+            $expected['proctorlog'] = PARAM_RAW;
+        }
+        return $expected;
     }
 
     /**
