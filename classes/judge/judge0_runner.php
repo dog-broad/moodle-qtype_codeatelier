@@ -88,6 +88,20 @@ class judge0_runner {
     }
 
     /**
+     * @return float the per-run CPU-time limit in seconds
+     */
+    public function get_cpu_time_limit(): float {
+        return $this->cputimelimit;
+    }
+
+    /**
+     * @return int the per-run memory limit in kilobytes
+     */
+    public function get_memory_limit(): int {
+        return $this->memorylimit;
+    }
+
+    /**
      * Map a CodeAtelier language key to a Judge0 language id.
      *
      * @param string $language a CodeAtelier language key
