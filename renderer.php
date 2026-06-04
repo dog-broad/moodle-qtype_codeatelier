@@ -88,7 +88,14 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         $judgereviewhtml = '';
         $proctorreviewhtml = '';
         if ($isjudge && $options->readonly) {
-            $judgereviewhtml = $this->render_judge_review($question->cached_judge_result($currentcode));
+            $cached = $question->cached_judge_result($currentcode);
+            if ($cached === null && $qa->get_state() == question_state::$needsgrading) {
+                // Graded off-request: the scheduled task has not reached this attempt yet.
+                $judgereviewhtml = html_writer::div(get_string('judgepending', 'qtype_codeatelier'),
+                        'codeatelier-judge-review codeatelier-judge-pending');
+            } else {
+                $judgereviewhtml = $this->render_judge_review($cached);
+            }
             $proctorreviewhtml = $this->render_proctor_summary($qa->get_last_qt_var('proctorlog', ''));
         }
 

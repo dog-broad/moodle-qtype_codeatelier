@@ -175,8 +175,13 @@ class qtype_codeatelier_question extends question_graded_automatically {
      */
     protected function grade_judge_response(array $response) {
         $code = isset($response['answer']) ? (string) $response['answer'] : '';
-        $result = $this->get_judge_result($code);
-        if ($result === null || !empty($result['infrastructure'])) {
+        // Grading runs OFF the web request so an exam-end burst of submissions does
+        // not block the server. We only read the memo here: if the scheduled judge
+        // task has already computed this answer (or it is an identical resubmission),
+        // record the grade; otherwise leave it awaiting automatic grading. The task
+        // runs the sandbox, populates the memo, and regrades the attempt.
+        $result = $this->cached_judge_result($code);
+        if ($result === null) {
             return array(0.0, question_state::$needsgrading);
         }
         $fraction = max(0.0, min(1.0, (float) $result['fraction']));
