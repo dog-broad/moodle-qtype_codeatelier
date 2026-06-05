@@ -92,7 +92,8 @@ class qtype_codeatelier extends question_type {
         $starters = array();
         if (is_array($decoded)) {
             foreach ($allowed as $lang) {
-                if (isset($decoded[$lang]) && trim((string) $decoded[$lang]) !== '') {
+                // The primary language's starter lives in startercode, not the map.
+                if ($lang !== $primary && isset($decoded[$lang]) && trim((string) $decoded[$lang]) !== '') {
                     $starters[$lang] = (string) $decoded[$lang];
                 }
             }

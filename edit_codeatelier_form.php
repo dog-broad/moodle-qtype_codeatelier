@@ -43,6 +43,12 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->addHelpButton('language', 'language', 'qtype_codeatelier');
         $mform->setDefault('language', $this->get_default_value('language', 'python'));
 
+        // The set of languages the student may choose from. Empty means
+        // single-language (just the primary Language above).
+        $mform->addElement('autocomplete', 'languages', get_string('languages', 'qtype_codeatelier'),
+                $this->language_options(), array('multiple' => true));
+        $mform->addHelpButton('languages', 'languages', 'qtype_codeatelier');
+
         $mform->addElement('select', 'scenario', get_string('scenario', 'qtype_codeatelier'),
                 $this->scenario_options());
         $mform->addHelpButton('scenario', 'scenario', 'qtype_codeatelier');
@@ -60,6 +66,19 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
         $mform->setType('startercode', PARAM_RAW);
         $mform->addHelpButton('startercode', 'startercode', 'qtype_codeatelier');
+
+        // Per-language starter code for the additional allowed languages (the
+        // primary language uses the Starter code field above). The picker + editor
+        // are driven by the authoring JS, which keeps the JSON map in the hidden
+        // 'starters' field; this section hides itself when only one language is
+        // allowed. starterlang/starteredit are UI only and are not saved.
+        $mform->addElement('select', 'starterlang', get_string('starterlang', 'qtype_codeatelier'),
+                $this->language_options());
+        $mform->addElement('textarea', 'starteredit', get_string('starterother', 'qtype_codeatelier'),
+                array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
+        $mform->setType('starteredit', PARAM_RAW);
+        $mform->addElement('hidden', 'starters');
+        $mform->setType('starters', PARAM_RAW);
 
         $mform->addElement('textarea', 'schemasql', get_string('schemasql', 'qtype_codeatelier'),
                 array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
@@ -118,6 +137,10 @@ class qtype_codeatelier_edit_form extends question_edit_form {
 
         $PAGE->requires->js_call_amd('qtype_codeatelier/author', 'init', array(array(
             'languageid' => 'id_language',
+            'languagesid' => 'id_languages',
+            'starterlangid' => 'id_starterlang',
+            'startereditid' => 'id_starteredit',
+            'startersid' => 'id_starters',
             'scenarioid' => 'id_scenario',
             'entrypointid' => 'id_entrypoint',
             'startercodeid' => 'id_startercode',
@@ -261,6 +284,11 @@ class qtype_codeatelier_edit_form extends question_edit_form {
     protected function data_preprocessing($question) {
         $question = parent::data_preprocessing($question);
 
+        // The allowed-language set is stored as a comma-separated string; the
+        // multi-select wants an array.
+        $question->languages = (isset($question->languages) && trim((string) $question->languages) !== '')
+                ? explode(',', $question->languages) : array();
+
         if (empty($question->options->tests)) {
             return $question;
         }
@@ -292,11 +320,50 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $errors = parent::validation($data, $files);
 
         $tier = isset($data['tier']) ? $data['tier'] : 'practice';
-        if ($tier === 'judge' && !in_array($data['language'], self::JUDGE_LANGUAGES, true)) {
-            $errors['language'] = get_string('languagenotjudge', 'qtype_codeatelier');
+        $scenario = isset($data['scenario']) ? $data['scenario'] : 'stdinstdout';
+        $tierlangs = $tier === 'judge' ? self::JUDGE_LANGUAGES : self::PRACTICE_LANGUAGES;
+
+        // The full allowed set: the primary language plus the multi-select choices.
+        $allowed = array($data['language']);
+        if (!empty($data['languages']) && is_array($data['languages'])) {
+            foreach ($data['languages'] as $lang) {
+                if (!in_array($lang, $allowed, true)) {
+                    $allowed[] = $lang;
+                }
+            }
         }
-        if ($tier === 'practice' && !in_array($data['language'], self::PRACTICE_LANGUAGES, true)) {
-            $errors['language'] = get_string('languagenotpractice', 'qtype_codeatelier');
+
+        // Every allowed language must belong to the chosen tier.
+        foreach ($allowed as $lang) {
+            if (!in_array($lang, $tierlangs, true)) {
+                $errors['languages'] = ($tier === 'judge')
+                    ? get_string('languagenotjudge', 'qtype_codeatelier')
+                    : get_string('languagenotpractice', 'qtype_codeatelier');
+                break;
+            }
+        }
+
+        // Scenario constraints (practice tier; the judge tier is always stdin/stdout):
+        // SQL is single-language, and the function harness only exists for Python/JS.
+        if ($tier !== 'judge' && !isset($errors['languages'])) {
+            if ($scenario === 'sql' && $allowed !== array('sql')) {
+                $errors['languages'] = get_string('sqlsinglelanguage', 'qtype_codeatelier');
+            } else if ($scenario === 'function') {
+                foreach ($allowed as $lang) {
+                    if (!in_array($lang, array('python', 'javascript'), true)) {
+                        $errors['languages'] = get_string('functionlanguageset', 'qtype_codeatelier');
+                        break;
+                    }
+                }
+            }
+        }
+
+        // The per-language starter map is JS-managed; a non-empty value must be JSON.
+        if (!empty($data['starters'])) {
+            json_decode($data['starters']);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $errors['starteredit'] = get_string('startersinvalidjson', 'qtype_codeatelier');
+            }
         }
 
         // The judge tier is always stdin/stdout, so the entrypoint is only

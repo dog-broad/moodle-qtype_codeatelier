@@ -139,6 +139,119 @@ export const init = (config) => {
         }
     }
 
+    // Per-language starter code for the ADDITIONAL allowed languages (the primary
+    // language uses the Starter code field above). One editor that swaps as the
+    // author picks a language; the JSON map is kept in a hidden field. The section
+    // hides itself when only the primary language is allowed.
+    const langsSel = byId(config.languagesid);
+    const starterLangSel = byId(config.starterlangid);
+    const starterEditTa = byId(config.startereditid);
+    const startersHidden = byId(config.startersid);
+    if (starterLangSel && starterEditTa && startersHidden) {
+        let map = {};
+        try {
+            map = JSON.parse(startersHidden.value || '{}') || {};
+        } catch (e) {
+            map = {};
+        }
+        let otherEditor = null;
+        let currentOther = null;
+
+        const primary = () => (langSel ? langSel.value : 'python');
+        const allowed = () => {
+            const set = [primary()];
+            if (langsSel) {
+                Array.prototype.slice.call(langsSel.selectedOptions || []).forEach((o) => {
+                    if (set.indexOf(o.value) === -1) {
+                        set.push(o.value);
+                    }
+                });
+            }
+            return set;
+        };
+        const others = () => allowed().filter((l) => l !== primary());
+
+        const serialize = () => {
+            const al = allowed();
+            const out = {};
+            Object.keys(map).forEach((k) => {
+                if (k !== primary() && al.indexOf(k) !== -1 && String(map[k]).trim() !== '') {
+                    out[k] = map[k];
+                }
+            });
+            startersHidden.value = Object.keys(out).length ? JSON.stringify(out) : '';
+        };
+
+        const toggle = (visible) => {
+            [config.starterlangid, config.startereditid].forEach((id) => {
+                const item = byId('fitem_' + id);
+                if (item) {
+                    item.style.display = visible ? '' : 'none';
+                }
+            });
+        };
+
+        const mountOther = (language) => {
+            if (otherEditor) {
+                otherEditor.destroy();
+                otherEditor = null;
+            }
+            starterEditTa.value = map[language] || '';
+            otherEditor = createEditor(starterEditTa, language, {
+                onChange: () => {
+                    map[language] = otherEditor.getValue();
+                    serialize();
+                },
+            });
+        };
+
+        const rebuild = () => {
+            if (otherEditor && currentOther) {
+                map[currentOther] = otherEditor.getValue();
+            }
+            const list = others();
+            starterLangSel.innerHTML = '';
+            list.forEach((l) => {
+                const opt = document.createElement('option');
+                opt.value = l;
+                opt.textContent = l;
+                starterLangSel.appendChild(opt);
+            });
+            if (!list.length) {
+                if (otherEditor) {
+                    otherEditor.destroy();
+                    otherEditor = null;
+                }
+                currentOther = null;
+                toggle(false);
+                serialize();
+                return;
+            }
+            toggle(true);
+            if (list.indexOf(currentOther) === -1) {
+                currentOther = list[0];
+            }
+            starterLangSel.value = currentOther;
+            mountOther(currentOther);
+            serialize();
+        };
+
+        starterLangSel.addEventListener('change', () => {
+            if (otherEditor && currentOther) {
+                map[currentOther] = otherEditor.getValue();
+            }
+            currentOther = starterLangSel.value;
+            mountOther(currentOther);
+        });
+        if (langSel) {
+            langSel.addEventListener('change', rebuild);
+        }
+        if (langsSel) {
+            langsSel.addEventListener('change', rebuild);
+        }
+        rebuild();
+    }
+
     // CodeMirror (SQL) on the schema field, mounted the first time SQL is active
     // (mounting while the field is hidden would give CodeMirror no layout).
     if (schemaTa) {
