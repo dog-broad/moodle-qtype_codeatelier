@@ -436,33 +436,75 @@ export const init = (config) => {
         renderExamples(examplesel, config, strings);
     }
 
+    const langselect = root.querySelector('[data-role="language-select"]');
+    const langhidden = root.querySelector('[data-role="language"]');
+    // The language in effect for this attempt; the student may change it below.
+    let currentLanguage = config.language;
+    if (langhidden && !langhidden.value) {
+        langhidden.value = currentLanguage;
+    }
+
     const editorlabel = root.querySelector('.codeatelier-editor label');
+    const markStale = () => {
+        if (scoreinput) {
+            scoreinput.value = '';
+        }
+        if (resultsel && resultsel.textContent.trim()) {
+            // Stale: the shown results no longer match the edited code.
+            resultsel.textContent = '';
+            const note = document.createElement('p');
+            note.className = 'codeatelier-stale';
+            note.textContent = strings.stale
+                || 'You have edited your code since the last check — Run or Check again.';
+            resultsel.appendChild(note);
+        }
+    };
+    const editorOptions = {
+        readonly: config.readonly,
+        ariaLabel: editorlabel ? editorlabel.textContent : null,
+        onChange: markStale,
+    };
     let editor;
     try {
-        editor = create(textarea, config.language, {
-            readonly: config.readonly,
-            ariaLabel: editorlabel ? editorlabel.textContent : null,
-            onChange: () => {
-                if (scoreinput) {
-                    scoreinput.value = '';
-                }
-                if (resultsel && resultsel.textContent.trim()) {
-                    // Stale: the shown results no longer match the edited code.
-                    resultsel.textContent = '';
-                    const note = document.createElement('p');
-                    note.className = 'codeatelier-stale';
-                    note.textContent = strings.stale
-                        || 'You have edited your code since the last check — Run or Check again.';
-                    resultsel.appendChild(note);
-                }
-            },
-        });
+        editor = create(textarea, currentLanguage, editorOptions);
     } catch (e) {
         textarea.style.display = 'block';
         editor = {getValue: () => textarea.value};
     }
     if (skeleton) {
         skeleton.style.display = 'none';
+    }
+
+    // Language picker: re-mount the editor in the chosen language and record the
+    // choice for submit / run / run-examples. The starter is only swapped when the
+    // student has not typed over it, so a language switch never discards real work.
+    if (langselect) {
+        langselect.addEventListener('change', () => {
+            const next = langselect.value;
+            if (next === currentLanguage) {
+                return;
+            }
+            const starters = config.starters || {};
+            const current = editor.getValue();
+            const untouched = current.trim() === '' || current === (starters[currentLanguage] || '');
+            const nextValue = untouched ? (starters[next] || '') : current;
+            try {
+                if (editor.destroy) {
+                    editor.destroy();
+                }
+                textarea.value = nextValue;
+                editor = create(textarea, next, editorOptions);
+            } catch (e) {
+                textarea.style.display = 'block';
+                textarea.value = nextValue;
+                editor = {getValue: () => textarea.value};
+            }
+            currentLanguage = next;
+            if (langhidden) {
+                langhidden.value = next;
+            }
+            markStale();
+        });
     }
 
     const schemael = root.querySelector('[data-role="schema"]');
@@ -664,7 +706,7 @@ export const init = (config) => {
             editor.clearErrors();
         }
         setTab('tests');
-        run(editor.getValue(), config.language, config.tests, runOptions())
+        run(editor.getValue(), currentLanguage, config.tests, runOptions())
             .then((result) => {
                 if (result.aborted) {
                     return;
@@ -700,7 +742,7 @@ export const init = (config) => {
         }
         setTab('console');
         const scratch = scratchinput ? scratchinput.value : '';
-        run(editor.getValue(), config.language, [{input: scratch}], runOptions())
+        run(editor.getValue(), currentLanguage, [{input: scratch}], runOptions())
             .then((result) => {
                 const single = (result.results && result.results.length) ? result.results[0] : result;
                 renderConsole(consoleel, result.aborted ? result : single, config, strings);
@@ -719,7 +761,7 @@ export const init = (config) => {
     // Stop: cancel an in-flight run.
     if (stopbutton) {
         stopbutton.addEventListener('click', () => {
-            stop(config.language);
+            stop(currentLanguage);
         });
     }
 };

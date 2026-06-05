@@ -44,20 +44,23 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
         $question = $qa->get_question();
         $isjudge = $question->is_judge();
-        $language = !empty($question->language) ? $question->language : 'python';
+        // The set of languages the student may choose from, and the one in effect
+        // for this attempt (the stored choice, re-validated; primary by default).
+        $allowed = $question->get_allowed_languages();
+        $chosen = $question->resolve_language($qa->get_last_qt_var('language', ''));
+        $startermap = $this->starter_map($question, $allowed);
         // The judge tier is always the stdin/stdout shape (see the question type).
         $scenario = $isjudge ? 'stdinstdout'
             : (!empty($question->scenario) ? $question->scenario : 'stdinstdout');
 
         $answername = $qa->get_qt_field_name('answer');
         $scorename = $qa->get_qt_field_name('score');
+        $languagename = $qa->get_qt_field_name('language');
         $wrapperid = $answername . '_wrapper';
 
         $currentcode = $qa->get_last_qt_var('answer', '');
         if ($currentcode === '') {
-            $currentcode = ($question->startercode !== null && $question->startercode !== '')
-                ? $question->startercode
-                : $this->starter_code($language);
+            $currentcode = isset($startermap[$chosen]) ? $startermap[$chosen] : $this->starter_code($chosen);
         }
         $currentscore = $qa->get_last_qt_var('score', '');
 
@@ -88,7 +91,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         $judgereviewhtml = '';
         $proctorreviewhtml = '';
         if ($isjudge && $options->readonly) {
-            $cached = $question->cached_judge_result($currentcode);
+            $cached = $question->cached_judge_result($currentcode, $chosen);
             if ($cached === null && $qa->get_state() == question_state::$needsgrading) {
                 // Graded off-request: the scheduled task has not reached this attempt yet.
                 $judgereviewhtml = html_writer::div(get_string('judgepending', 'qtype_codeatelier'),
@@ -106,6 +109,18 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
         $validationresponse = $isjudge ? array('answer' => $currentcode) : array('score' => $currentscore);
 
+        // The student-facing language picker shows only when there is a real choice
+        // and the attempt is live; on review we show which language was used.
+        $languagechoice = count($allowed) > 1 && !$options->readonly;
+        $languageoptions = array();
+        foreach ($allowed as $code) {
+            $languageoptions[] = array(
+                'code' => $code,
+                'label' => get_string('lang_' . $code, 'qtype_codeatelier'),
+                'selected' => ($code === $chosen),
+            );
+        }
+
         $context = array(
             'questiontext' => $question->format_questiontext($qa),
             'wrapperid' => $wrapperid,
@@ -114,6 +129,14 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'answervalue' => $currentcode,
             'scorename' => $scorename,
             'scorevalue' => $currentscore,
+            'languagename' => $languagename,
+            'languagevalue' => $chosen,
+            'languagechoice' => $languagechoice,
+            'languageoptions' => $languageoptions,
+            'languagechooselabel' => get_string('chooselanguage', 'qtype_codeatelier'),
+            'showlanguageused' => $options->readonly && count($allowed) > 1,
+            'languageusedlabel' => get_string('languageused', 'qtype_codeatelier',
+                    get_string('lang_' . $chosen, 'qtype_codeatelier')),
             'readonly' => $options->readonly,
             'isjudge' => $isjudge,
             'judgenote' => $isjudge ? get_string('judgenote', 'qtype_codeatelier') : '',
@@ -129,7 +152,9 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
         $PAGE->requires->js_call_amd('qtype_codeatelier/control', 'init', array(array(
             'wrapperid' => $wrapperid,
-            'language' => $language,
+            'language' => $chosen,
+            'languages' => array_values($allowed),
+            'starters' => $startermap,
             'scenario' => $scenario,
             'entrypoint' => $question->entrypoint,
             'schemasql' => $isjudge ? null : $question->schemasql,
@@ -154,6 +179,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             $PAGE->requires->js_call_amd('qtype_codeatelier/judgerun', 'init', array(array(
                 'wrapperid' => $wrapperid,
                 'questionid' => (int) $question->id,
+                'language' => $chosen,
                 'strings' => array(
                     'running' => get_string('running', 'qtype_codeatelier'),
                     'example' => get_string('result_test', 'qtype_codeatelier'),
@@ -387,6 +413,36 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             default:
                 return get_string('result_fail', 'qtype_codeatelier');
         }
+    }
+
+    /**
+     * The starter code for each allowed language: the teacher's per-language
+     * override when present, then the question's single startercode for the
+     * primary language, then the built-in template. Lets the editor swap starters
+     * as the student changes language without a server round-trip.
+     *
+     * @param qtype_codeatelier_question $question
+     * @param string[] $allowed the allowed language codes
+     * @return array map of language code to starter source
+     */
+    protected function starter_map($question, array $allowed) {
+        $overrides = ($question->starters !== null && trim((string) $question->starters) !== '')
+            ? json_decode((string) $question->starters, true) : null;
+        if (!is_array($overrides)) {
+            $overrides = array();
+        }
+        $map = array();
+        foreach ($allowed as $code) {
+            if (isset($overrides[$code]) && trim((string) $overrides[$code]) !== '') {
+                $map[$code] = (string) $overrides[$code];
+            } else if ($code === $question->language
+                    && $question->startercode !== null && $question->startercode !== '') {
+                $map[$code] = $question->startercode;
+            } else {
+                $map[$code] = $this->starter_code($code);
+            }
+        }
+        return $map;
     }
 
     /**
