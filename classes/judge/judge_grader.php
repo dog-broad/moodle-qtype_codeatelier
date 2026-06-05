@@ -57,6 +57,8 @@ class judge_grader {
      * @param array $tests the authored test cases (objects with input/expected/matchmode/tolerance/weight/visibility)
      * @param string $schemasql the SQL scenario's schema + seed, prepended to each SQL submission
      * @param bool $allornothing when true, a partial pass scores 0
+     * @param string $scenario the scenario: stdinstdout, function or sql
+     * @param string $entrypoint the function name to call (function scenario)
      * @return array {
      *     infrastructure: bool — true if the sandbox could not be reached (caller should mark needs-grading),
      *     fraction: float, verdict: string (AC|WA|TLE|RE|CE|INTERNAL),
@@ -65,16 +67,25 @@ class judge_grader {
      * }
      */
     public function grade(string $code, string $language, array $tests, string $schemasql = '',
-            bool $allornothing = false): array {
+            bool $allornothing = false, string $scenario = 'stdinstdout', string $entrypoint = ''): array {
         $tests = array_values($tests);
         $issql = ($language === 'sql');
+        $isfunction = ($scenario === 'function');
+        // The function harness wraps the student code once; only the per-case args
+        // (fed on stdin as JSON) vary, exactly like the stdin/stdout scenario.
+        $functionsource = $isfunction ? function_harness::source($language, $code, $entrypoint) : '';
         $cases = [];
         foreach ($tests as $test) {
-            // SQL varies the whole source per test (schema + query + checker); other
-            // languages feed the case input on stdin against one shared program.
-            $cases[] = $issql
-                ? ['source' => self::sql_source($schemasql, $code, $test)]
-                : ['input' => $test->input];
+            // SQL varies the whole source per test (schema + query + checker); the
+            // function scenario shares one harness and feeds the args on stdin; the
+            // stdin/stdout scenario feeds the input on stdin against one program.
+            if ($issql) {
+                $cases[] = ['source' => self::sql_source($schemasql, $code, $test)];
+            } else if ($isfunction) {
+                $cases[] = ['source' => $functionsource, 'input' => (string) $test->input];
+            } else {
+                $cases[] = ['input' => $test->input];
+            }
         }
 
         $runresults = $this->runner->run($code, $language, $cases);
@@ -122,6 +133,10 @@ class judge_grader {
                 $graderresults[] = ['error' => true];
             } else if ($issql && self::is_resultset_mode($tests[$i]->matchmode)) {
                 $graderresults[] = ['rows' => self::parse_csv_rows($result['stdout'])];
+            } else if ($isfunction) {
+                // The harness prints the JSON-encoded return on stdout; feed it as
+                // the return value so the shared `structured` matcher compares it.
+                $graderresults[] = ['returnvalue' => $result['stdout']];
             } else {
                 $graderresults[] = ['stdout' => $result['stdout']];
             }
@@ -200,16 +215,25 @@ class judge_grader {
      * @param string $language a judge-tier language key
      * @param array $tests the authored test cases
      * @param string $schemasql the SQL scenario's schema + seed
+     * @param string $scenario the scenario: stdinstdout, function or sql
+     * @param string $entrypoint the function name to call (function scenario)
      * @return array per-test [{index, output, ok, error}], aligned with the tests
      */
-    public function run_outputs(string $code, string $language, array $tests, string $schemasql = ''): array {
+    public function run_outputs(string $code, string $language, array $tests, string $schemasql = '',
+            string $scenario = 'stdinstdout', string $entrypoint = ''): array {
         $tests = array_values($tests);
         $issql = ($language === 'sql');
+        $isfunction = ($scenario === 'function');
+        $functionsource = $isfunction ? function_harness::source($language, $code, $entrypoint) : '';
         $cases = [];
         foreach ($tests as $test) {
-            $cases[] = $issql
-                ? ['source' => self::sql_source($schemasql, $code, $test)]
-                : ['input' => $test->input];
+            if ($issql) {
+                $cases[] = ['source' => self::sql_source($schemasql, $code, $test)];
+            } else if ($isfunction) {
+                $cases[] = ['source' => $functionsource, 'input' => (string) $test->input];
+            } else {
+                $cases[] = ['input' => $test->input];
+            }
         }
 
         $runresults = $this->runner->run($code, $language, $cases);
