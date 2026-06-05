@@ -299,11 +299,13 @@ class qtype_codeatelier_question extends question_graded_automatically {
         $schemasql = (string) $this->schemasql;
         $allornothing = !empty($this->allornothing);
         $hash = \qtype_codeatelier\judge\result_cache::key(
-                $language, (string) $code, $this->tests, $limits, $schemasql, $allornothing);
+                $language, (string) $code, $this->tests, $limits, $schemasql, $allornothing,
+                $this->data_files_hash());
         $cached = \qtype_codeatelier\judge\result_cache::get($hash);
         if ($cached !== null) {
             return $cached;
         }
+        $runner->set_additional_files($this->data_files_zip());
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
         $result = $grader->grade((string) $code, $language, $this->tests, $schemasql, $allornothing);
         if (empty($result['infrastructure'])) {
@@ -336,6 +338,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
         if (!$visible) {
             return array('verdict' => 'AC', 'compileoutput' => '', 'testresults' => array());
         }
+        $runner->set_additional_files($this->data_files_zip());
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
         return $grader->grade((string) $code, $this->resolve_language($language), $visible,
                 (string) $this->schemasql, !empty($this->allornothing));
@@ -353,7 +356,61 @@ class qtype_codeatelier_question extends question_graded_automatically {
         $limits = $this->judge_limits($this->judge_runner());
         $hash = \qtype_codeatelier\judge\result_cache::key(
                 $this->resolve_language($language), (string) $code, $this->tests, $limits,
-                (string) $this->schemasql, !empty($this->allornothing));
+                (string) $this->schemasql, !empty($this->allornothing), $this->data_files_hash());
         return \qtype_codeatelier\judge\result_cache::get($hash);
+    }
+
+    /**
+     * The support/data files stored on this question, sorted by path.
+     *
+     * @return \stored_file[] the non-directory files (empty when none)
+     */
+    protected function data_files() {
+        if (empty($this->contextid) || empty($this->id)) {
+            return array();
+        }
+        return get_file_storage()->get_area_files($this->contextid, 'qtype_codeatelier', 'datafiles',
+                $this->id, 'filepath, filename', false);
+    }
+
+    /**
+     * A content hash of the support/data files, so editing a file invalidates the
+     * judge result cache. Empty when there are no files.
+     *
+     * @return string
+     */
+    protected function data_files_hash() {
+        $signature = array();
+        foreach ($this->data_files() as $file) {
+            $signature[] = $file->get_filepath() . $file->get_filename() . ':' . $file->get_contenthash();
+        }
+        if (!$signature) {
+            return '';
+        }
+        sort($signature);
+        return sha1(implode("\n", $signature));
+    }
+
+    /**
+     * Package the support/data files into a base64 ZIP for Judge0 additional_files,
+     * or null when there are none. The files appear in the working directory.
+     *
+     * @return string|null
+     */
+    protected function data_files_zip() {
+        $files = $this->data_files();
+        if (!$files) {
+            return null;
+        }
+        $map = array();
+        foreach ($files as $file) {
+            $map[ltrim($file->get_filepath() . $file->get_filename(), '/')] = $file;
+        }
+        $tmp = make_request_directory() . '/datafiles.zip';
+        $packer = get_file_packer('application/zip');
+        if (!$packer->archive_to_pathname($map, $tmp)) {
+            return null;
+        }
+        return base64_encode(file_get_contents($tmp));
     }
 }

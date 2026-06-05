@@ -67,6 +67,9 @@ class judge0_runner {
     /** @var int memory limit in kilobytes per run. */
     private $memorylimit;
 
+    /** @var string|null base64 ZIP of support/data files, added to each submission. */
+    private $additionalfiles = null;
+
     /**
      * @param string $baseurl base URL of the Judge0 instance
      * @param string|null $apikey optional auth token
@@ -79,6 +82,16 @@ class judge0_runner {
         $this->apikey = $apikey;
         $this->cputimelimit = $cputimelimit;
         $this->memorylimit = $memorylimit;
+    }
+
+    /**
+     * Attach support/data files to every submission (a base64 ZIP Judge0 unpacks
+     * into the working directory). Null clears them.
+     *
+     * @param string|null $base64zip the base64-encoded ZIP, or null
+     */
+    public function set_additional_files(?string $base64zip): void {
+        $this->additionalfiles = $base64zip;
     }
 
     /** @var float the built-in fallback CPU-time limit in seconds. */
@@ -184,13 +197,18 @@ class judge0_runner {
             // source per test — schema + query + checker — rather than stdin).
             $source = isset($case['source']) ? (string) $case['source'] : $code;
             $stdin = isset($case['input']) ? (string) $case['input'] : '';
-            $submissions[] = [
+            $submission = [
                 'source_code' => base64_encode($source),
                 'language_id' => $languageid,
                 'stdin' => base64_encode($stdin),
                 'cpu_time_limit' => $this->cputimelimit,
                 'memory_limit' => $this->memorylimit,
             ];
+            if ($this->additionalfiles !== null) {
+                // Judge0 unpacks this base64 ZIP into the working directory.
+                $submission['additional_files'] = $this->additionalfiles;
+            }
+            $submissions[] = $submission;
         }
 
         $responses = $this->submit_batch($submissions);
