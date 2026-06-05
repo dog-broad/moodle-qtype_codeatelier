@@ -351,6 +351,27 @@ class qtype_codeatelier_question extends question_graded_automatically {
     }
 
     /**
+     * Run the code once against a student-supplied input on the judge tier — the
+     * "run with my own input" scratch console. Formative: no grade, no tests.
+     *
+     * @param string $code the student submission
+     * @param string|null $language the chosen language
+     * @param string $input the student's own input (stdin, or a JSON argument array)
+     * @return array|null the scratch result, or null if no endpoint is configured
+     */
+    public function run_scratch($code, $language, $input) {
+        $runner = $this->judge_runner();
+        if ($runner === null) {
+            return null;
+        }
+        $runner->set_additional_files($this->data_files_zip());
+        $grader = new \qtype_codeatelier\judge\judge_grader($runner);
+        return $grader->run_scratch((string) $code, $this->resolve_language($language),
+                (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature,
+                (string) $this->schemasql, (string) $input);
+    }
+
+    /**
      * The memoised judge result for the given code, or null on a cache miss.
      * Never runs the sandbox — safe to call from a render path (review).
      *

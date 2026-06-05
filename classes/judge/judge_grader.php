@@ -281,6 +281,54 @@ class judge_grader {
     }
 
     /**
+     * Run the code once against a student-supplied input — the judge-tier "run with
+     * my own input" scratch console. Formative: no grade, no tests, no hidden data.
+     * The input is stdin (stdin/stdout scenario) or a JSON argument array (function).
+     *
+     * @param string $code the student submission
+     * @param string $language a judge-tier language key
+     * @param string $scenario the scenario (stdinstdout or function; SQL has no scratch)
+     * @param string $entrypoint the function name (function scenario)
+     * @param string $signature the typed signature (static-language function)
+     * @param string $schemasql the SQL schema + seed (unused for scratch)
+     * @param string $input the student's own input
+     * @return array {infrastructure, verdict, stdout, stderr, compileoutput}
+     */
+    public function run_scratch(string $code, string $language, string $scenario, string $entrypoint,
+            string $signature, string $schemasql, string $input): array {
+        $isfunction = ($scenario === 'function');
+        $isstaticfn = $isfunction && function_harness::needs_signature($language);
+        $sig = $isstaticfn ? signature::parse($signature) : null;
+        if ($isfunction) {
+            $src = function_harness::source($language, $code, $entrypoint, $sig);
+            $stdin = $isstaticfn ? $sig->encode_args(self::decode_args($input)) : $input;
+            $case = ['source' => $src, 'input' => $stdin];
+        } else {
+            $case = ['input' => $input];
+        }
+
+        $results = $this->runner->run($code, $language, [$case]);
+        $r = $results[0] ?? null;
+        if ($r === null || $r['outcome'] === 'internal') {
+            return ['infrastructure' => true, 'verdict' => 'INTERNAL',
+                'stdout' => '', 'stderr' => '', 'compileoutput' => ''];
+        }
+        $outcome = $r['outcome'];
+        $stdout = (string) $r['stdout'];
+        if ($outcome === 'ran' && $isstaticfn) {
+            $stdout = (string) json_encode($sig->decode_return($r['stdout']));
+        }
+        $verdicts = ['ce' => 'CE', 'tle' => 'TLE', 'mle' => 'MLE', 're' => 'RE', 'ran' => 'OK'];
+        return [
+            'infrastructure' => false,
+            'verdict' => $verdicts[$outcome] ?? 'OK',
+            'stdout' => $stdout,
+            'stderr' => (string) $r['stderr'],
+            'compileoutput' => (string) $r['compileoutput'],
+        ];
+    }
+
+    /**
      * The overall verdict by precedence: RE > MLE > TLE > WA > AC. A compile
      * error is handled separately as a whole-submission failure.
      *
