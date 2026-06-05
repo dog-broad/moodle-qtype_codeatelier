@@ -281,13 +281,15 @@ class judge_grader {
      */
     public static function parse_csv_rows(string $stdout): array {
         $stdout = str_replace("\r\n", "\n", $stdout);
-        // Drop exactly one trailing newline so a final single-NULL row (an empty
-        // line) is not mistaken for the trailing-newline artifact.
-        if (substr($stdout, -1) === "\n") {
-            $stdout = substr($stdout, 0, -1);
-        }
+        // Empty output is an empty result set (no rows) — checked before stripping
+        // the trailing newline, so a single empty row ("\n") is not lost.
         if ($stdout === '') {
             return [];
+        }
+        // Drop exactly one trailing newline (the row terminator), so the normal
+        // trailing newline does not add a phantom empty row.
+        if (substr($stdout, -1) === "\n") {
+            $stdout = substr($stdout, 0, -1);
         }
         $rows = [];
         foreach (explode("\n", $stdout) as $line) {

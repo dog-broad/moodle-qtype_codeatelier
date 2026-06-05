@@ -102,6 +102,26 @@ final class judge_question_test extends \advanced_testcase {
         $this->assertEquals(2, $runner->call_count());
     }
 
+    public function test_judge_sql_grades_authoritatively_via_rows(): void {
+        $this->resetAfterTest();
+        // Judge0 SQLite CSV: visible test returns rows in order, hidden out of order.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "1,amy\n2,bo\n"),
+            qtype_codeatelier_stub_runner::row('ran', "2,bo\n1,amy\n"),
+        ));
+        $question = test_question_maker::make_question('codeatelier', 'judge_sql');
+        $question->judgerunner = $runner;
+
+        // Warm the memo (as the scheduled task does), then grade the submission.
+        $question->get_judge_result('SELECT id, name FROM users ORDER BY id');
+        list($fraction, $state) = $question->grade_response(
+                array('answer' => 'SELECT id, name FROM users ORDER BY id'));
+        $this->assertEquals(1.0, $fraction);
+        $this->assertEquals(question_state::$gradedright, $state);
+        // The runner was asked to run SQL (the language resolved to sql).
+        $this->assertSame('sql', $runner->last_language());
+    }
+
     public function test_grade_response_reads_the_chosen_language(): void {
         $this->resetAfterTest();
         $runner = new qtype_codeatelier_stub_runner(array(

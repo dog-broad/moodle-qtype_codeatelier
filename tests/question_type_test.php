@@ -192,9 +192,34 @@ final class question_type_test extends \advanced_testcase {
 
         $this->assertEquals('judge', $data->options->tier);
         $this->assertEquals('python', $data->options->language);
-        // The judge tier is always the stdin/stdout shape.
+        // A judge stdin/stdout question keeps its scenario.
         $this->assertEquals('stdinstdout', $data->options->scenario);
         $this->assertCount(2, $data->options->tests);
         $this->assertEquals(0, (int) array_values($data->options->tests)[1]->visibility);
+    }
+
+    public function test_judge_sql_scenario_round_trips(): void {
+        // The judge tier no longer forces stdin/stdout: a judge SQL question keeps
+        // scenario=sql and its schema+seed through save/load.
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        $question = $qgen->create_question('codeatelier', 'judge_sql', array('category' => $cat->id));
+        $data = question_bank::load_question_data($question->id);
+
+        $this->assertEquals('judge', $data->options->tier);
+        $this->assertEquals('sql', $data->options->language);
+        $this->assertEquals('sql', $data->options->scenario);
+        $this->assertStringContainsString('CREATE TABLE users', $data->options->schemasql);
+        $tests = array_values($data->options->tests);
+        $this->assertCount(2, $tests);
+        $this->assertEquals('resultset_ordered', $tests[0]->matchmode);
+        $this->assertEquals(0, (int) $tests[1]->visibility);
     }
 }

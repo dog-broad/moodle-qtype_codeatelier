@@ -184,4 +184,96 @@ final class judge_grader_test extends \advanced_testcase {
         $this->assertSame('INTERNAL', $result['verdict']);
         $this->assertEquals(0.0, $result['fraction']);
     }
+
+    public function test_cache_key_depends_on_schema_and_checker(): void {
+        // The SQL source includes the schema and (per test) the checker query, so
+        // editing either must change the memo key.
+        $base = array((object) array('input' => '', 'expected' => '[[1]]', 'matchmode' => 'resultset',
+            'tolerance' => null, 'weight' => 1, 'visibility' => 1, 'checkerquery' => null));
+        $withchecker = array((object) array('input' => '', 'expected' => '[[1]]', 'matchmode' => 'resultset',
+            'tolerance' => null, 'weight' => 1, 'visibility' => 1, 'checkerquery' => 'SELECT count(*) FROM t'));
+        $limits = array('cputime' => 2.0, 'memory' => 128000);
+
+        $a = result_cache::key('sql', 'SELECT 1', $base, $limits, 'CREATE TABLE t(a INT);');
+        $b = result_cache::key('sql', 'SELECT 1', $base, $limits, 'CREATE TABLE t(a INT, b INT);');
+        $c = result_cache::key('sql', 'SELECT 1', $withchecker, $limits, 'CREATE TABLE t(a INT);');
+        $this->assertNotEquals($a, $b, 'schema change must change the key');
+        $this->assertNotEquals($a, $c, 'checker-query change must change the key');
+    }
+
+    public function test_parse_csv_rows_types_cells(): void {
+        $rows = judge_grader::parse_csv_rows("1,alice,5.5\n2,bob,\n3,\"a,b\",10\n");
+        $this->assertSame(array(
+            array(1, 'alice', 5.5),
+            array(2, 'bob', null),
+            array(3, 'a,b', 10),
+        ), $rows);
+        // An empty result set is no rows; a single all-NULL row is one row.
+        $this->assertSame(array(), judge_grader::parse_csv_rows(''));
+        $this->assertSame(array(array(null)), judge_grader::parse_csv_rows("\n"));
+    }
+
+    /**
+     * One SQL result-set test with the given expected JSON and match mode.
+     *
+     * @param string $expected the expected rows as JSON
+     * @param string $mode resultset | resultset_ordered
+     * @param string|null $checker an optional checker query
+     * @return array
+     */
+    private function sql_test(string $expected, string $mode, ?string $checker = null): array {
+        return array((object) array('input' => '', 'expected' => $expected, 'matchmode' => $mode,
+            'tolerance' => null, 'weight' => 1, 'visibility' => 1, 'checkerquery' => $checker));
+    }
+
+    public function test_sql_resultset_unordered_ac(): void {
+        // Judge0 returns the rows in a different order; the unordered match passes.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "2,y\n1,x\n"),
+        ));
+        $result = (new judge_grader($runner))->grade('SELECT a, b FROM t', 'sql',
+                $this->sql_test('[[1,"x"],[2,"y"]]', 'resultset'), 'CREATE TABLE t(a INT, b TEXT);');
+
+        $this->assertSame('AC', $result['verdict']);
+        $this->assertEquals(1.0, $result['fraction']);
+        // The visible diagnostic shows the parsed rows as JSON (symmetric with expected).
+        $this->assertSame('[[2,"y"],[1,"x"]]', $result['testresults'][0]['actual']);
+    }
+
+    public function test_sql_resultset_ordered_is_order_sensitive(): void {
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "2,y\n1,x\n"),
+        ));
+        $result = (new judge_grader($runner))->grade('SELECT a, b FROM t ORDER BY a', 'sql',
+                $this->sql_test('[[1,"x"],[2,"y"]]', 'resultset_ordered'), 'CREATE TABLE t(a INT, b TEXT);');
+
+        $this->assertSame('WA', $result['verdict']);
+        $this->assertEquals(0.0, $result['fraction']);
+    }
+
+    public function test_sql_mutation_with_checker_ac(): void {
+        // A mutation graded by its checker SELECT: Judge0 prints only the checker rows.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "11\n12\n"),
+        ));
+        $result = (new judge_grader($runner))->grade('UPDATE t SET a = a + 10', 'sql',
+                $this->sql_test('[[11],[12]]', 'resultset_ordered', 'SELECT a FROM t ORDER BY a'),
+                'CREATE TABLE t(a INT); INSERT INTO t VALUES (1),(2);');
+
+        $this->assertSame('AC', $result['verdict']);
+        $this->assertEquals(1.0, $result['fraction']);
+        $this->assertSame('sql', $runner->last_language());
+    }
+
+    public function test_sql_syntax_error_is_re(): void {
+        // A bad query surfaces as a Judge0 runtime error -> RE verdict.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('re', '', array('stderr' => 'Error: no such column: zzz')),
+        ));
+        $result = (new judge_grader($runner))->grade('SELECT zzz FROM t', 'sql',
+                $this->sql_test('[[1]]', 'resultset'), 'CREATE TABLE t(a INT);');
+
+        $this->assertSame('RE', $result['verdict']);
+        $this->assertSame('re', $result['testresults'][0]['status']);
+    }
 }
