@@ -17,6 +17,7 @@
 namespace qtype_codeatelier;
 
 use qtype_codeatelier\judge\judge_grader;
+use qtype_codeatelier\judge\result_cache;
 use qtype_codeatelier_stub_runner;
 
 defined('MOODLE_INTERNAL') || die();
@@ -49,6 +50,17 @@ final class judge_grader_test extends \advanced_testcase {
             (object) array('input' => "10 20\n", 'expected' => '30', 'matchmode' => 'trimmed',
                 'tolerance' => null, 'weight' => 1, 'visibility' => 0),
         );
+    }
+
+    public function test_cache_key_depends_on_limits(): void {
+        // Changing a per-question limit must change the memo key, so an answer is
+        // re-graded under the new limit rather than served a stale result.
+        $tests = $this->sum_tests();
+        $a = result_cache::key('cpp', 'code', $tests, array('cputime' => 2.0, 'memory' => 128000));
+        $b = result_cache::key('cpp', 'code', $tests, array('cputime' => 1.0, 'memory' => 128000));
+        $c = result_cache::key('cpp', 'code', $tests, array('cputime' => 2.0, 'memory' => 64000));
+        $this->assertNotEquals($a, $b);
+        $this->assertNotEquals($a, $c);
     }
 
     public function test_all_correct_is_ac(): void {
@@ -171,5 +183,185 @@ final class judge_grader_test extends \advanced_testcase {
         $this->assertTrue($result['infrastructure']);
         $this->assertSame('INTERNAL', $result['verdict']);
         $this->assertEquals(0.0, $result['fraction']);
+    }
+
+    public function test_cache_key_depends_on_schema_and_checker(): void {
+        // The SQL source includes the schema and (per test) the checker query, so
+        // editing either must change the memo key.
+        $base = array((object) array('input' => '', 'expected' => '[[1]]', 'matchmode' => 'resultset',
+            'tolerance' => null, 'weight' => 1, 'visibility' => 1, 'checkerquery' => null));
+        $withchecker = array((object) array('input' => '', 'expected' => '[[1]]', 'matchmode' => 'resultset',
+            'tolerance' => null, 'weight' => 1, 'visibility' => 1, 'checkerquery' => 'SELECT count(*) FROM t'));
+        $limits = array('cputime' => 2.0, 'memory' => 128000);
+
+        $a = result_cache::key('sql', 'SELECT 1', $base, $limits, 'CREATE TABLE t(a INT);');
+        $b = result_cache::key('sql', 'SELECT 1', $base, $limits, 'CREATE TABLE t(a INT, b INT);');
+        $c = result_cache::key('sql', 'SELECT 1', $withchecker, $limits, 'CREATE TABLE t(a INT);');
+        $this->assertNotEquals($a, $b, 'schema change must change the key');
+        $this->assertNotEquals($a, $c, 'checker-query change must change the key');
+    }
+
+    public function test_parse_csv_rows_types_cells(): void {
+        $rows = judge_grader::parse_csv_rows("1,alice,5.5\n2,bob,\n3,\"a,b\",10\n");
+        $this->assertSame(array(
+            array(1, 'alice', 5.5),
+            array(2, 'bob', null),
+            array(3, 'a,b', 10),
+        ), $rows);
+        // An empty result set is no rows; a single all-NULL row is one row.
+        $this->assertSame(array(), judge_grader::parse_csv_rows(''));
+        $this->assertSame(array(array(null)), judge_grader::parse_csv_rows("\n"));
+    }
+
+    /**
+     * One SQL result-set test with the given expected JSON and match mode.
+     *
+     * @param string $expected the expected rows as JSON
+     * @param string $mode resultset | resultset_ordered
+     * @param string|null $checker an optional checker query
+     * @return array
+     */
+    private function sql_test(string $expected, string $mode, ?string $checker = null): array {
+        return array((object) array('input' => '', 'expected' => $expected, 'matchmode' => $mode,
+            'tolerance' => null, 'weight' => 1, 'visibility' => 1, 'checkerquery' => $checker));
+    }
+
+    public function test_sql_resultset_unordered_ac(): void {
+        // Judge0 returns the rows in a different order; the unordered match passes.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "2,y\n1,x\n"),
+        ));
+        $result = (new judge_grader($runner))->grade('SELECT a, b FROM t', 'sql',
+                $this->sql_test('[[1,"x"],[2,"y"]]', 'resultset'), 'CREATE TABLE t(a INT, b TEXT);');
+
+        $this->assertSame('AC', $result['verdict']);
+        $this->assertEquals(1.0, $result['fraction']);
+        // The visible diagnostic shows the parsed rows as JSON (symmetric with expected).
+        $this->assertSame('[[2,"y"],[1,"x"]]', $result['testresults'][0]['actual']);
+    }
+
+    public function test_sql_resultset_ordered_is_order_sensitive(): void {
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "2,y\n1,x\n"),
+        ));
+        $result = (new judge_grader($runner))->grade('SELECT a, b FROM t ORDER BY a', 'sql',
+                $this->sql_test('[[1,"x"],[2,"y"]]', 'resultset_ordered'), 'CREATE TABLE t(a INT, b TEXT);');
+
+        $this->assertSame('WA', $result['verdict']);
+        $this->assertEquals(0.0, $result['fraction']);
+    }
+
+    public function test_sql_mutation_with_checker_ac(): void {
+        // A mutation graded by its checker SELECT: Judge0 prints only the checker rows.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "11\n12\n"),
+        ));
+        $result = (new judge_grader($runner))->grade('UPDATE t SET a = a + 10', 'sql',
+                $this->sql_test('[[11],[12]]', 'resultset_ordered', 'SELECT a FROM t ORDER BY a'),
+                'CREATE TABLE t(a INT); INSERT INTO t VALUES (1),(2);');
+
+        $this->assertSame('AC', $result['verdict']);
+        $this->assertEquals(1.0, $result['fraction']);
+        $this->assertSame('sql', $runner->last_language());
+    }
+
+    public function test_sql_syntax_error_is_re(): void {
+        // A bad query surfaces as a Judge0 runtime error -> RE verdict.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('re', '', array('stderr' => 'Error: no such column: zzz')),
+        ));
+        $result = (new judge_grader($runner))->grade('SELECT zzz FROM t', 'sql',
+                $this->sql_test('[[1]]', 'resultset'), 'CREATE TABLE t(a INT);');
+
+        $this->assertSame('RE', $result['verdict']);
+        $this->assertSame('re', $result['testresults'][0]['status']);
+    }
+
+    public function test_run_outputs_captures_every_test(): void {
+        // Run-to-capture: the produced output of ALL tests is returned (visible AND
+        // hidden), so the author can fill every Expected field.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+            qtype_codeatelier_stub_runner::row('ran', "30\n"),
+        ));
+        $outputs = (new judge_grader($runner))->run_outputs('code', 'python', $this->sum_tests());
+
+        $this->assertCount(2, $outputs);
+        $this->assertTrue($outputs[0]['ok']);
+        $this->assertSame("5\n", $outputs[0]['output']);
+        $this->assertSame(0, $outputs[0]['index']);
+        // The hidden test's output is captured too (no visibility filter here).
+        $this->assertTrue($outputs[1]['ok']);
+        $this->assertSame("30\n", $outputs[1]['output']);
+    }
+
+    public function test_run_outputs_sql_returns_parsed_rows_json(): void {
+        // The captured value for a SQL result-set test is the parsed rows as JSON,
+        // the same shape grading compares against.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "1,amy\n2,bo\n"),
+        ));
+        $outputs = (new judge_grader($runner))->run_outputs('SELECT id, name FROM users', 'sql',
+                $this->sql_test('[]', 'resultset'), 'CREATE TABLE users(id INT, name TEXT);');
+
+        $this->assertSame('[[1,"amy"],[2,"bo"]]', $outputs[0]['output']);
+    }
+
+    public function test_all_or_nothing_zeroes_a_partial(): void {
+        // One test passes, one fails -> partial 0.5 normally, but 0 all-or-nothing.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+            qtype_codeatelier_stub_runner::row('ran', "999\n"),
+        ));
+        $partial = (new judge_grader($runner))->grade('code', 'python', $this->sum_tests());
+        $this->assertEquals(0.5, $partial['fraction']);
+
+        $aon = (new judge_grader($runner))->grade('code', 'python', $this->sum_tests(), '', true);
+        $this->assertEquals(0.0, $aon['fraction']);
+        $this->assertSame('WA', $aon['verdict']);
+    }
+
+    public function test_all_or_nothing_keeps_full_marks_when_all_pass(): void {
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+            qtype_codeatelier_stub_runner::row('ran', "30\n"),
+        ));
+        $aon = (new judge_grader($runner))->grade('code', 'python', $this->sum_tests(), '', true);
+        $this->assertEquals(1.0, $aon['fraction']);
+        $this->assertSame('AC', $aon['verdict']);
+    }
+
+    public function test_cache_key_depends_on_all_or_nothing(): void {
+        $tests = $this->sum_tests();
+        $limits = array('cputime' => 2.0, 'memory' => 128000);
+        $partial = result_cache::key('python', 'code', $tests, $limits, '', false);
+        $aon = result_cache::key('python', 'code', $tests, $limits, '', true);
+        $this->assertNotEquals($partial, $aon);
+    }
+
+    public function test_cache_key_depends_on_data_files(): void {
+        // Editing a support/data file changes its hash, so the memo is invalidated
+        // and the answer re-grades against the new data.
+        $tests = $this->sum_tests();
+        $limits = array('cputime' => 2.0, 'memory' => 128000);
+        $none = result_cache::key('python', 'code', $tests, $limits, '', false, '');
+        $withfiles = result_cache::key('python', 'code', $tests, $limits, '', false, 'filehash-v1');
+        $changed = result_cache::key('python', 'code', $tests, $limits, '', false, 'filehash-v2');
+        $this->assertNotEquals($none, $withfiles);
+        $this->assertNotEquals($withfiles, $changed);
+    }
+
+    public function test_run_outputs_reports_a_failing_reference(): void {
+        // A reference that errors yields no output and surfaces why.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('re', '', array('stderr' => 'Traceback: boom')),
+        ));
+        $tests = array((object) array('input' => 'x', 'expected' => '', 'matchmode' => 'trimmed',
+            'tolerance' => null, 'weight' => 1, 'visibility' => 1, 'checkerquery' => null));
+        $outputs = (new judge_grader($runner))->run_outputs('code', 'python', $tests);
+
+        $this->assertFalse($outputs[0]['ok']);
+        $this->assertSame('', $outputs[0]['output']);
+        $this->assertStringContainsString('boom', $outputs[0]['error']);
     }
 }

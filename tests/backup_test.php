@@ -124,6 +124,66 @@ final class backup_test extends \advanced_testcase {
         $this->assertEquals('python', $restored->language);
     }
 
+    public function test_languages_starters_and_limits_survive_backup_and_restore(): void {
+        global $DB, $USER;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        // A multi-language judge question with explicit per-question limits,
+        // all-or-nothing grading, and a support/data file.
+        $draftid = file_get_unused_draft_itemid();
+        get_file_storage()->create_file_from_string((object) array(
+                'contextid' => \context_user::instance($USER->id)->id, 'component' => 'user',
+                'filearea' => 'draft', 'itemid' => $draftid, 'filepath' => '/', 'filename' => 'fixture.txt'),
+                "fixture data\n");
+        $qgen->create_question('codeatelier', 'multilang', array(
+                'category' => $cat->id, 'cputimelimit' => '1.5', 'memorylimit' => '64000',
+                'allornothing' => 1, 'datafiles' => $draftid));
+
+        $bc = new backup_controller(backup::TYPE_1COURSE, $course->id, backup::FORMAT_MOODLE,
+                backup::INTERACTIVE_NO, backup::MODE_IMPORT, $USER->id);
+        $backupid = $bc->get_backupid();
+        $bc->execute_plan();
+        $bc->destroy();
+
+        $newcourse = $generator->create_course();
+        $rc = new restore_controller($backupid, $newcourse->id, backup::INTERACTIVE_NO,
+                backup::MODE_IMPORT, $USER->id, backup::TARGET_NEW_COURSE);
+        $this->assertTrue($rc->execute_precheck());
+        $rc->execute_plan();
+        $rc->destroy();
+
+        $newcontext = \context_course::instance($newcourse->id);
+        $restored = $this->find_restored_options($newcontext->id);
+        $this->assertNotNull($restored);
+
+        // The allowed set and per-language starters must survive a course copy...
+        $langs = explode(',', $restored->languages);
+        sort($langs);
+        $this->assertEquals(array('c', 'cpp', 'python'), $langs);
+        $starters = json_decode($restored->starters, true);
+        $this->assertArrayHasKey('c', $starters);
+        $this->assertArrayHasKey('cpp', $starters);
+        // ...as must the per-question limits (previously dropped by the backup step)...
+        $this->assertEquals(1.5, (float) $restored->cputimelimit);
+        $this->assertEquals(64000, (int) $restored->memorylimit);
+        // ...and the reference solution...
+        $this->assertStringContainsString('input().split()', $restored->referencesolution);
+        // ...and the all-or-nothing flag...
+        $this->assertEquals(1, (int) $restored->allornothing);
+        // ...and the support/data file (restored into the new course's context).
+        $datafiles = get_file_storage()->get_area_files($newcontext->id, 'qtype_codeatelier',
+                'datafiles', $restored->questionid, 'filename', false);
+        $this->assertCount(1, $datafiles);
+        $this->assertEquals('fixture.txt', reset($datafiles)->get_filename());
+    }
+
     /**
      * Find the CodeAtelier options row whose question lives in the given context.
      *

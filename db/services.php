@@ -32,4 +32,12 @@ $functions = [
         'type' => 'read',
         'ajax' => true,
     ],
+    'qtype_codeatelier_run_reference' => [
+        'classname' => 'qtype_codeatelier\external\run_reference',
+        'methodname' => 'execute',
+        'description' => 'Teacher-only: run a reference solution against all tests and return each produced output (run-to-capture).',
+        'type' => 'read',
+        'ajax' => true,
+        'capabilities' => 'moodle/question:add',
+    ],
 ];

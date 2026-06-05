@@ -35,7 +35,7 @@ defined('MOODLE_INTERNAL') || die();
 class result_cache {
 
     /** @var int the result-blob shape version; bump to invalidate older cached entries. */
-    const BLOB_VERSION = 2;
+    const BLOB_VERSION = 5;
 
     /**
      * The cache key for a submission: a hash over everything that can change the
@@ -46,9 +46,13 @@ class result_cache {
      * @param string $code the student submission
      * @param array $tests the authored test cases
      * @param array $limits the runner limits ['cputime' => float, 'memory' => int]
+     * @param string $schemasql the SQL scenario's schema + seed (empty for non-SQL)
+     * @param bool $allornothing whether the question grades all-or-nothing
+     * @param string $datafileshash a content hash of the support/data files (empty for none)
      * @return string a 40-char SHA-1
      */
-    public static function key(string $language, string $code, array $tests, array $limits): string {
+    public static function key(string $language, string $code, array $tests, array $limits,
+            string $schemasql = '', bool $allornothing = false, string $datafileshash = ''): string {
         $signature = [];
         foreach (array_values($tests) as $test) {
             $signature[] = [
@@ -58,9 +62,12 @@ class result_cache {
                 isset($test->tolerance) ? (string) $test->tolerance : '',
                 (string) $test->weight,
                 (string) $test->visibility,
+                // The checker query is part of what runs for a SQL mutation test.
+                isset($test->checkerquery) ? (string) $test->checkerquery : '',
             ];
         }
-        return sha1(json_encode([self::BLOB_VERSION, $language, $code, $signature, $limits]));
+        return sha1(json_encode([self::BLOB_VERSION, $language, $code, $signature, $limits, $schemasql,
+                $allornothing, $datafileshash]));
     }
 
     /**

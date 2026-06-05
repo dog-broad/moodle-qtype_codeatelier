@@ -33,13 +33,18 @@ import {sql} from '@codemirror/lang-sql';
 import {javascript} from '@codemirror/lang-javascript';
 import {cpp} from '@codemirror/lang-cpp';
 import {java} from '@codemirror/lang-java';
+import {go} from '@codemirror/lang-go';
+import {rust} from '@codemirror/lang-rust';
+import {php} from '@codemirror/lang-php';
+import {csharp} from '@replit/codemirror-lang-csharp';
 import {highlightTree, classHighlighter} from '@lezer/highlight';
 
 /**
  * Resolve the CodeMirror language extension for a CodeAtelier language code.
  *
- * @param {String} language python, sql, javascript, c, cpp or java
+ * @param {String} language a CodeAtelier language code
  * @return {Object|null} the language extension, or null for plain text
+ *     (Kotlin and Ruby have no CodeMirror 6 grammar, so they edit as plain text).
  */
 const languageExtension = (language) => {
     switch (language) {
@@ -47,6 +52,8 @@ const languageExtension = (language) => {
             return sql();
         case 'javascript':
             return javascript();
+        case 'typescript':
+            return javascript({typescript: true});
         case 'python':
             return python();
         case 'c':
@@ -54,6 +61,14 @@ const languageExtension = (language) => {
             return cpp();
         case 'java':
             return java();
+        case 'go':
+            return go();
+        case 'rust':
+            return rust();
+        case 'php':
+            return php();
+        case 'csharp':
+            return csharp();
         default:
             return null;
     }
@@ -89,9 +104,13 @@ const languageFromClass = (className) => {
         return null;
     }
     const name = match[1].toLowerCase();
-    const alias = {py: 'python', js: 'javascript', node: 'javascript'};
+    const alias = {py: 'python', js: 'javascript', node: 'javascript', ts: 'typescript',
+        'c++': 'cpp', 'c#': 'csharp', cs: 'csharp', golang: 'go', rs: 'rust', rb: 'ruby'};
     const resolved = alias[name] || name;
-    return (resolved === 'python' || resolved === 'sql' || resolved === 'javascript') ? resolved : null;
+    // Highlight a prompt code block only for a language we have a grammar for.
+    const known = ['python', 'sql', 'javascript', 'typescript', 'c', 'cpp', 'java',
+        'go', 'rust', 'php', 'csharp'];
+    return known.indexOf(resolved) !== -1 ? resolved : null;
 };
 
 const escapeHtml = (value) => value

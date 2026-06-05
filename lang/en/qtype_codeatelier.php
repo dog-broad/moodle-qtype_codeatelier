@@ -44,9 +44,19 @@ $string['judge0baseurl'] = 'Judge0 base URL';
 $string['judge0baseurl_desc'] = 'Base URL of the Judge0 instance the server submits code to, for example http://judge.example.org:2358. Judge0 must run on a host configured for cgroup v1. Leave empty until a Judge0 instance is available.';
 $string['judge0apikey'] = 'Judge0 auth token';
 $string['judge0apikey_desc'] = 'Optional authentication token sent with each submission (a self-hosted Judge0 auth token, or a hosted-gateway API key). Leave empty if the instance needs no authentication.';
+$string['judge0cputimelimit'] = 'Default CPU-time limit (seconds)';
+$string['judge0cputimelimit_desc'] = 'The default per-run CPU-time limit for judge-tier questions, in seconds. Individual questions may override this.';
+$string['judge0memorylimit'] = 'Default memory limit (KB)';
+$string['judge0memorylimit_desc'] = 'The default per-run memory limit for judge-tier questions, in kilobytes. Individual questions may override this.';
+$string['runexamplescooldown'] = 'Run-examples cooldown (seconds)';
+$string['runexamplescooldown_desc'] = 'The minimum number of seconds a student must wait between formative "run against examples" requests, which run on the server sandbox. Throttles on-demand sandbox load; the authoritative grading at submit is unaffected. Set to 0 to disable the cooldown.';
+$string['judgecacheretention'] = 'Grading cache retention (days)';
+$string['judgecacheretention_desc'] = 'How long memoised judge-tier grading results are kept before a daily cleanup task removes them. The cache only speeds up review and regrade; a removed entry is recomputed when next needed. Set to 0 to keep entries forever.';
 
 // Student attempt UI.
 $string['answerlabel'] = 'Your code';
+$string['chooselanguage'] = 'Language';
+$string['languageused'] = 'Language used: {$a}';
 $string['loadingeditor'] = 'Loading editor…';
 $string['runlabel'] = 'Run';
 $string['checklabel'] = 'Check';
@@ -83,6 +93,10 @@ $string['pleasewritecode'] = 'Please write some code before submitting.';
 $string['judgenote'] = 'This question is graded on the server against hidden tests when you submit. The editor is for writing and reviewing your code.';
 $string['judgeverdict'] = 'Verdict:';
 $string['judgenoresult'] = 'No graded result is available for this attempt.';
+$string['judgepending'] = 'Awaiting automatic grading. Your submission has been received and will be graded shortly — refresh in a moment.';
+$string['task_grade_pending'] = 'Grade pending judge-tier submissions';
+$string['task_prune_judgecache'] = 'Prune old judge-tier grading cache entries';
+$string['runexamplestoofast'] = 'Please wait {$a} second(s) before running the examples again.';
 $string['verdict_AC'] = 'Accepted';
 $string['verdict_WA'] = 'Wrong answer';
 $string['verdict_TLE'] = 'Time limit exceeded';
@@ -96,6 +110,21 @@ $string['judgememory'] = '{$a}';
 $string['runexamples'] = 'Run examples';
 $string['notjudgequestion'] = 'This is not a judge-tier CodeAtelier question.';
 $string['judgenotconfigured'] = 'No judge endpoint is configured. Ask your administrator to set the Judge0 base URL.';
+
+// Admin status page.
+$string['statuspagetitle'] = 'Judge tier status';
+$string['status_metric'] = 'Metric';
+$string['status_value'] = 'Value';
+$string['status_endpoint'] = 'Judge0 endpoint';
+$string['status_endpointnotset'] = 'Not configured';
+$string['status_health'] = 'Judge0 health';
+$string['status_reachable'] = 'Reachable (version {$a})';
+$string['status_unreachable'] = 'Unreachable: {$a}';
+$string['status_workers'] = 'Sandbox workers';
+$string['status_workerline'] = 'Queue "{$a->queue}": {$a->size} worker(s), {$a->available} available, {$a->idle} idle';
+$string['status_queuedepth'] = 'Submissions awaiting grading';
+$string['status_cachesize'] = 'Cached grading results';
+$string['status_cacheoldest'] = 'Oldest cached result';
 
 // Soft anti-cheat (judge tier).
 $string['proctornote'] = 'Switching away from this question and paste attempts are recorded for your teacher.';
@@ -115,13 +144,22 @@ $string['tier_judge'] = 'Judge (server sandbox, authoritative)';
 
 // Authoring: language.
 $string['language'] = 'Language';
-$string['language_help'] = 'The language the student writes in. Practice tier: Python (Pyodide), SQL (sql.js) or JavaScript, run in the browser. Judge tier: C, C++, Java, Python or JavaScript, run in the server sandbox.';
+$string['language_help'] = 'The primary (default) language the student writes in. Practice tier: Python (Pyodide), SQL (sql.js) or JavaScript, run in the browser. Judge tier: C, C++, Java, Python, JavaScript, SQL (SQLite), Go, Rust, PHP, TypeScript, C#, Kotlin or Ruby, run in the server sandbox. When you allow several languages below, this is the one selected by default.';
+$string['languages'] = 'Allowed languages';
+$string['languages_help'] = 'The set of languages the student may choose from when attempting the question. Leave empty for a single-language question (the Language above). All chosen languages must belong to the same tier. SQL questions are single-language; function-scenario questions support Python and JavaScript.';
 $string['lang_python'] = 'Python';
 $string['lang_sql'] = 'SQL';
 $string['lang_javascript'] = 'JavaScript';
 $string['lang_c'] = 'C';
 $string['lang_cpp'] = 'C++';
 $string['lang_java'] = 'Java';
+$string['lang_go'] = 'Go';
+$string['lang_rust'] = 'Rust';
+$string['lang_php'] = 'PHP';
+$string['lang_typescript'] = 'TypeScript';
+$string['lang_csharp'] = 'C#';
+$string['lang_kotlin'] = 'Kotlin';
+$string['lang_ruby'] = 'Ruby';
 
 // Authoring: scenario.
 $string['scenario'] = 'Scenario';
@@ -132,23 +170,39 @@ $string['scenario_sql'] = 'SQL (query a database)';
 $string['schemasql'] = 'Schema and seed data (SQL)';
 $string['schemasql_help'] = 'SQL run before the student\'s query to set up the database: CREATE TABLE statements and INSERTs. Runs on SQLite (sql.js) in the browser.';
 $string['checkerquery'] = 'Checker query (SQL)';
-$string['checkerquery_help'] = 'For questions that change data (INSERT/UPDATE/DELETE): a SELECT run after the student\'s statements; its result set is compared with the expected result. Leave empty to compare the student query\'s own result set.';
+$string['checkerquery_help'] = 'For questions that change data (INSERT/UPDATE/DELETE): a SELECT run after the student\'s statements; its result set is compared with the expected result. Leave empty to compare the student query\'s own result set. On the judge tier the student answer should be a mutation (non-SELECT) when a checker query is set, so only the checker\'s rows are compared.';
 $string['testfeedback'] = 'Feedback (shown for this test)';
 $string['entrypoint'] = 'Function name';
 $string['entrypoint_help'] = 'The name of the function the student must define. Each test\'s Input is a **JSON array of the arguments** passed to the call: `[2, 3]` calls `f(2, 3)`, while a function taking a single list needs it wrapped, `[[1, 2, 3]]`, to call `f([1, 2, 3])`. The function\'s return value is compared with Expected.';
 $string['startercode'] = 'Starter code';
-$string['startercode_help'] = 'Optional code pre-filled in the student\'s editor — for example a function signature to complete.';
+$string['startercode_help'] = 'Optional code pre-filled in the student\'s editor for the primary language — for example a function signature to complete.';
+$string['referencesolution'] = 'Reference solution';
+$string['referencesolution_help'] = 'A correct solution in the primary language. Use **Capture expected outputs** to fill the Expected fields by running it against every test. On the judge tier the reference is run on save and the save is blocked if it does not pass every test; on the practice tier a failing reference only warns.';
+$string['datafiles'] = 'Support / data files';
+$string['datafiles_help'] = 'Judge tier only. Files you upload here are placed in the working directory next to the student\'s program, so it can read them at run time (for example a CSV the program opens). The practice tier (in-browser) does not provide these files.';
+$string['starterlang'] = 'Starter for language';
+$string['starterother'] = 'Starter code for this language';
+$string['cputimelimit'] = 'CPU-time limit (seconds)';
+$string['cputimelimit_help'] = 'Judge tier only. The CPU-time limit for each run of this question, in seconds. Leave blank to use the site default.';
+$string['memorylimit'] = 'Memory limit (KB)';
+$string['memorylimit_help'] = 'Judge tier only. The memory limit for each run of this question, in kilobytes. Leave blank to use the site default.';
+$string['allornothing'] = 'All-or-nothing grading';
+$string['allornothing_label'] = 'Award full marks only if every test passes';
+$string['allornothing_help'] = 'When ticked, a submission scores full marks only if it passes every test case; otherwise it scores zero. When unticked, marks are the weighted fraction of tests passed (partial credit).';
 
 // Authoring: live preview.
 $string['preview'] = 'Preview';
 $string['previewrefresh'] = 'Refresh preview';
 $string['previewintro'] = 'See exactly what students will see. Click refresh after changing the question, code or test cases.';
 $string['captureexpected'] = 'Capture expected outputs';
-$string['captureexpected_help'] = 'Write a correct solution in the preview editor, then capture its output for every test case into the Expected fields. Review them before saving.';
+$string['captureexpected_help'] = 'Write a Reference solution above, then capture its output for every test case into the Expected fields (the judge tier runs it in the sandbox; the practice tier runs it in your browser). Review the captured values before saving.';
 $string['capturepreviewfirst'] = 'Refresh the preview and write a solution in its editor first.';
 $string['capturenotests'] = 'Add at least one test case with an input first.';
 $string['capturedone'] = 'Captured expected output for {$a} test case(s) — review them before saving.';
 $string['captureerrors'] = 'Captured {$a->ok} of {$a->total} — {$a->failed} case(s) errored and were left unchanged.';
+$string['capturenoreference'] = 'Write a reference solution first.';
+$string['referencewarning'] = 'Warning: your reference solution does not pass test {$a}. Students may not be able to score full marks.';
+$string['referenceverifyfail'] = 'Could not verify the reference solution (the runtime did not load). Saving anyway.';
 
 // Authoring: test cases.
 $string['testcases'] = 'Test cases';
@@ -175,5 +229,12 @@ $string['weightnumeric'] = 'The weight must be a number.';
 $string['tolerancenumeric'] = 'A numeric tolerance is required when the matching rule is numeric.';
 $string['notenoughtests'] = 'You must provide at least one test case.';
 $string['entrypointrequired'] = 'Enter the function name for a function question.';
+$string['limitpositive'] = 'Enter a positive number, or leave blank for the site default.';
 $string['languagenotjudge'] = 'The judge tier supports C, C++, Java, Python and JavaScript. SQL is a practice-tier language.';
 $string['languagenotpractice'] = 'The practice tier supports Python, SQL and JavaScript. C, C++ and Java require the judge tier.';
+$string['sqlsinglelanguage'] = 'A SQL question is single-language: set Language to SQL and leave the allowed languages empty.';
+$string['functionlanguageset'] = 'A function-scenario question supports Python and JavaScript only.';
+$string['functionnotjudge'] = 'The judge tier supports the stdin/stdout and SQL scenarios. The function scenario is practice-tier only.';
+$string['referencefailed'] = 'The reference solution does not pass test {$a}. Fix the solution or the expected output before saving.';
+$string['referencecompileerror'] = 'The reference solution did not compile: {$a}';
+$string['startersinvalidjson'] = 'The per-language starter code could not be saved. Please reload the form and try again.';

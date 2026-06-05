@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="question/type/codeatelier/db" VERSION="20260605" COMMENT="XMLDB file for the CodeAtelier question type"
+<XMLDB PATH="question/type/codeatelier/db" VERSION="20260606" COMMENT="XMLDB file for the CodeAtelier question type"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
 >
@@ -14,6 +14,12 @@
         <FIELD NAME="entrypoint" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Function name to call for the function scenario."/>
         <FIELD NAME="startercode" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Starter code shown in the student editor."/>
         <FIELD NAME="schemasql" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="SQL scenario: schema + seed (DDL and INSERTs) loaded before the student query."/>
+        <FIELD NAME="cputimelimit" TYPE="number" LENGTH="10" DECIMALS="3" NOTNULL="false" SEQUENCE="false" COMMENT="Judge tier: per-question CPU-time limit in seconds. Null uses the site default."/>
+        <FIELD NAME="memorylimit" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Judge tier: per-question memory limit in kilobytes. Null uses the site default."/>
+        <FIELD NAME="languages" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Comma-separated set of languages the student may choose from. Empty means single-language (the language field)."/>
+        <FIELD NAME="starters" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON map of language to starter code, for per-language starters when several languages are allowed."/>
+        <FIELD NAME="referencesolution" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="A reference solution (in the primary language) used for validate-on-save and run-to-capture."/>
+        <FIELD NAME="allornothing" TYPE="int" LENGTH="2" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="1 grades all-or-nothing (full marks only if every test passes); 0 allows weighted partial credit."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>

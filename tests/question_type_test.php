@@ -88,6 +88,30 @@ final class question_type_test extends \advanced_testcase {
         $this->assertCount(2, $data->options->tests);
     }
 
+    public function test_per_question_limits_round_trip(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        // Explicit per-question limits are stored.
+        $q1 = $qgen->create_question('codeatelier', 'judge', array(
+            'category' => $cat->id, 'cputimelimit' => '1.5', 'memorylimit' => '64000'));
+        $d1 = question_bank::load_question_data($q1->id);
+        $this->assertEquals(1.5, (float) $d1->options->cputimelimit);
+        $this->assertEquals(64000, (int) $d1->options->memorylimit);
+
+        // Blank limits are stored as null (use the site default).
+        $q2 = $qgen->create_question('codeatelier', 'judge', array('category' => $cat->id));
+        $d2 = question_bank::load_question_data($q2->id);
+        $this->assertNull($d2->options->cputimelimit);
+        $this->assertNull($d2->options->memorylimit);
+    }
+
     public function test_resultset_ordered_matchmode_round_trips(): void {
         // Regression: 'resultset_ordered' is 17 chars and overflowed the original
         // char(16) matchmode column (a DB error on PostgreSQL, truncation on MySQL).
@@ -109,6 +133,166 @@ final class question_type_test extends \advanced_testcase {
         $this->assertEquals('resultset_ordered', array_values($data->options->tests)[0]->matchmode);
     }
 
+    public function test_languages_and_starters_round_trip(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        $question = $qgen->create_question('codeatelier', 'multilang', array('category' => $cat->id));
+        $data = question_bank::load_question_data($question->id);
+
+        // The allowed set is stored as a comma string including the primary.
+        $stored = explode(',', $data->options->languages);
+        sort($stored);
+        $this->assertEquals(array('c', 'cpp', 'python'), $stored);
+
+        // Per-language starters are a JSON map, pruned to the non-primary languages.
+        $starters = json_decode($data->options->starters, true);
+        $this->assertArrayHasKey('c', $starters);
+        $this->assertArrayHasKey('cpp', $starters);
+        // The primary language's starter lives in startercode, not the map.
+        $this->assertArrayNotHasKey('python', $starters);
+    }
+
+    public function test_xml_export_import_round_trip(): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/question/format/xml/format.php');
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        // A multi-language judge question carries the awkward fields: a language set,
+        // a per-language starter map, and a reference solution.
+        $question = $qgen->create_question('codeatelier', 'multilang', array('category' => $cat->id));
+        $questiondata = question_bank::load_question_data($question->id);
+
+        $qtype = question_bank::get_qtype('codeatelier');
+        $format = new \qformat_xml();
+        $fragment = $qtype->export_to_xml($questiondata, $format);
+        $this->assertStringContainsString('<referencesolution>', $fragment);
+        $this->assertStringContainsString('<testcase>', $fragment);
+
+        // Re-import the exported fragment (wrapped as a question element).
+        $xml = '<question type="codeatelier">'
+                . '<name><text>RT</text></name>'
+                . '<questiontext format="html"><text>q</text></questiontext>'
+                . $fragment . '</question>';
+        $data = \xmlize($xml);
+        $qo = $qtype->import_from_xml($data['question'], null, $format);
+
+        $this->assertEquals('judge', $qo->tier);
+        $this->assertEquals('python', $qo->language);
+        $this->assertEquals('stdinstdout', $qo->scenario);
+        // The allowed set survives as an ARRAY (not a collapsed comma string).
+        $langs = $qo->languages;
+        sort($langs);
+        $this->assertEquals(array('c', 'cpp', 'python'), $langs);
+        // The per-language starters and the reference solution survive.
+        $starters = json_decode($qo->starters, true);
+        $this->assertArrayHasKey('c', $starters);
+        $this->assertArrayHasKey('cpp', $starters);
+        $this->assertStringContainsString('input().split()', $qo->referencesolution);
+        // The test cases round-trip.
+        $this->assertCount(2, $qo->testinput);
+        $this->assertEquals('5', $qo->testexpected[0]);
+        $this->assertEquals('trimmed', $qo->matchmode[0]);
+        $this->assertEquals(0, (int) $qo->testvisibility[1]);
+    }
+
+    /**
+     * Create a draft file area containing one file, returning its item id.
+     *
+     * @param string $filename
+     * @param string $content
+     * @return int the draft item id
+     */
+    private function draft_with_file(string $filename, string $content): int {
+        global $USER;
+        $draftid = file_get_unused_draft_itemid();
+        $record = (object) array(
+            'contextid' => \context_user::instance($USER->id)->id,
+            'component' => 'user', 'filearea' => 'draft', 'itemid' => $draftid,
+            'filepath' => '/', 'filename' => $filename,
+        );
+        get_file_storage()->create_file_from_string($record, $content);
+        return $draftid;
+    }
+
+    public function test_data_files_round_trip(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        $draftid = $this->draft_with_file('data.txt', "hello world\n");
+        $question = $qgen->create_question('codeatelier', 'judge',
+                array('category' => $cat->id, 'datafiles' => $draftid));
+
+        // The uploaded file lands in the question's datafiles area.
+        $files = get_file_storage()->get_area_files($context->id, 'qtype_codeatelier', 'datafiles',
+                $question->id, 'filename', false);
+        $this->assertCount(1, $files);
+        $file = reset($files);
+        $this->assertEquals('data.txt', $file->get_filename());
+        $this->assertEquals("hello world\n", $file->get_content());
+    }
+
+    public function test_new_language_and_all_or_nothing_round_trip(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        // A judge question in Go with an additional Rust option and all-or-nothing on.
+        $question = $qgen->create_question('codeatelier', 'judge', array(
+            'category' => $cat->id, 'language' => 'go',
+            'languages' => array('go', 'rust'), 'allornothing' => 1));
+        $data = question_bank::load_question_data($question->id);
+
+        $this->assertEquals('go', $data->options->language);
+        $this->assertEquals(1, (int) $data->options->allornothing);
+        $langs = explode(',', $data->options->languages);
+        sort($langs);
+        $this->assertEquals(array('go', 'rust'), $langs);
+    }
+
+    public function test_single_language_question_stores_just_the_primary(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        // The function fixture has an empty languages set: save still records the
+        // primary so the loaded question is unambiguously single-language.
+        $question = $qgen->create_question('codeatelier', 'function', array('category' => $cat->id));
+        $data = question_bank::load_question_data($question->id);
+        $this->assertEquals('javascript', $data->options->languages);
+        $this->assertEmpty($data->options->starters);
+    }
+
     public function test_judge_question_round_trip(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -124,9 +308,34 @@ final class question_type_test extends \advanced_testcase {
 
         $this->assertEquals('judge', $data->options->tier);
         $this->assertEquals('python', $data->options->language);
-        // The judge tier is always the stdin/stdout shape.
+        // A judge stdin/stdout question keeps its scenario.
         $this->assertEquals('stdinstdout', $data->options->scenario);
         $this->assertCount(2, $data->options->tests);
         $this->assertEquals(0, (int) array_values($data->options->tests)[1]->visibility);
+    }
+
+    public function test_judge_sql_scenario_round_trips(): void {
+        // The judge tier no longer forces stdin/stdout: a judge SQL question keeps
+        // scenario=sql and its schema+seed through save/load.
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        $question = $qgen->create_question('codeatelier', 'judge_sql', array('category' => $cat->id));
+        $data = question_bank::load_question_data($question->id);
+
+        $this->assertEquals('judge', $data->options->tier);
+        $this->assertEquals('sql', $data->options->language);
+        $this->assertEquals('sql', $data->options->scenario);
+        $this->assertStringContainsString('CREATE TABLE users', $data->options->schemasql);
+        $tests = array_values($data->options->tests);
+        $this->assertCount(2, $tests);
+        $this->assertEquals('resultset_ordered', $tests[0]->matchmode);
+        $this->assertEquals(0, (int) $tests[1]->visibility);
     }
 }

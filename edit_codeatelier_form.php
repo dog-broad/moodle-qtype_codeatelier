@@ -43,12 +43,18 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->addHelpButton('language', 'language', 'qtype_codeatelier');
         $mform->setDefault('language', $this->get_default_value('language', 'python'));
 
+        // The set of languages the student may choose from. Empty means
+        // single-language (just the primary Language above).
+        $mform->addElement('autocomplete', 'languages', get_string('languages', 'qtype_codeatelier'),
+                $this->language_options(), array('multiple' => true));
+        $mform->addHelpButton('languages', 'languages', 'qtype_codeatelier');
+
         $mform->addElement('select', 'scenario', get_string('scenario', 'qtype_codeatelier'),
                 $this->scenario_options());
         $mform->addHelpButton('scenario', 'scenario', 'qtype_codeatelier');
         $mform->setDefault('scenario', $this->get_default_value('scenario', 'stdinstdout'));
-        // The judge tier is always the stdin/stdout shape — see the question type.
-        $mform->hideIf('scenario', 'tier', 'eq', 'judge');
+        // The judge tier supports stdin/stdout and SQL (not function) — enforced in
+        // validation(); the practice tier supports all three.
 
         $mform->addElement('text', 'entrypoint', get_string('entrypoint', 'qtype_codeatelier'),
                 array('size' => 40));
@@ -61,11 +67,56 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->setType('startercode', PARAM_RAW);
         $mform->addHelpButton('startercode', 'startercode', 'qtype_codeatelier');
 
+        // Per-language starter code for the additional allowed languages (the
+        // primary language uses the Starter code field above). The picker + editor
+        // are driven by the authoring JS, which keeps the JSON map in the hidden
+        // 'starters' field; this section hides itself when only one language is
+        // allowed. starterlang/starteredit are UI only and are not saved.
+        $mform->addElement('select', 'starterlang', get_string('starterlang', 'qtype_codeatelier'),
+                $this->language_options());
+        $mform->addElement('textarea', 'starteredit', get_string('starterother', 'qtype_codeatelier'),
+                array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
+        $mform->setType('starteredit', PARAM_RAW);
+        $mform->addElement('hidden', 'starters', '', array('id' => 'id_starters'));
+        $mform->setType('starters', PARAM_RAW);
+
         $mform->addElement('textarea', 'schemasql', get_string('schemasql', 'qtype_codeatelier'),
                 array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
         $mform->setType('schemasql', PARAM_RAW);
         $mform->addHelpButton('schemasql', 'schemasql', 'qtype_codeatelier');
         $mform->hideIf('schemasql', 'scenario', 'neq', 'sql');
+
+        // A reference solution (in the primary language). The authoring JS can run
+        // it to capture the Expected outputs and to validate the question; on the
+        // judge tier a reference that fails any test blocks the save.
+        $mform->addElement('textarea', 'referencesolution', get_string('referencesolution', 'qtype_codeatelier'),
+                array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
+        $mform->setType('referencesolution', PARAM_RAW);
+        $mform->addHelpButton('referencesolution', 'referencesolution', 'qtype_codeatelier');
+
+        // Support/data files: judge tier only. They are placed in the working
+        // directory next to the program so it can read them at run time.
+        $mform->addElement('filemanager', 'datafiles', get_string('datafiles', 'qtype_codeatelier'),
+                null, qtype_codeatelier::datafiles_options());
+        $mform->addHelpButton('datafiles', 'datafiles', 'qtype_codeatelier');
+
+        // Per-question judge limits (blank = site default). Judge tier only.
+        $mform->addElement('text', 'cputimelimit', get_string('cputimelimit', 'qtype_codeatelier'),
+                array('size' => 10));
+        $mform->setType('cputimelimit', PARAM_RAW_TRIMMED);
+        $mform->addHelpButton('cputimelimit', 'cputimelimit', 'qtype_codeatelier');
+        $mform->hideIf('cputimelimit', 'tier', 'neq', 'judge');
+
+        $mform->addElement('text', 'memorylimit', get_string('memorylimit', 'qtype_codeatelier'),
+                array('size' => 10));
+        $mform->setType('memorylimit', PARAM_RAW_TRIMMED);
+        $mform->addHelpButton('memorylimit', 'memorylimit', 'qtype_codeatelier');
+        $mform->hideIf('memorylimit', 'tier', 'neq', 'judge');
+
+        $mform->addElement('advcheckbox', 'allornothing', get_string('allornothing', 'qtype_codeatelier'),
+                get_string('allornothing_label', 'qtype_codeatelier'));
+        $mform->setDefault('allornothing', 0);
+        $mform->addHelpButton('allornothing', 'allornothing', 'qtype_codeatelier');
 
         $mform->addElement('header', 'testcasesheader', get_string('testcases', 'qtype_codeatelier'));
         $mform->setExpanded('testcasesheader');
@@ -105,6 +156,12 @@ class qtype_codeatelier_edit_form extends question_edit_form {
 
         $PAGE->requires->js_call_amd('qtype_codeatelier/author', 'init', array(array(
             'languageid' => 'id_language',
+            'languagesid' => 'id_languages',
+            'starterlangid' => 'id_starterlang',
+            'startereditid' => 'id_starteredit',
+            'startersid' => 'id_starters',
+            'referencesolutionid' => 'id_referencesolution',
+            'tierid' => 'id_tier',
             'scenarioid' => 'id_scenario',
             'entrypointid' => 'id_entrypoint',
             'startercodeid' => 'id_startercode',
@@ -114,8 +171,18 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'captureid' => $previewid . '_capture',
             'statusid' => $previewid . '_status',
             'previewid' => $previewid,
+            'contextid' => $this->context->id,
             'previewcontext' => qtype_codeatelier::ui_labels(),
             'strings' => qtype_codeatelier::ui_strings(),
+            'capturestrings' => array(
+                'running' => get_string('running', 'qtype_codeatelier'),
+                'capturedone' => get_string('capturedone', 'qtype_codeatelier'),
+                'captureerrors' => get_string('captureerrors', 'qtype_codeatelier'),
+                'capturenotests' => get_string('capturenotests', 'qtype_codeatelier'),
+                'capturenoreference' => get_string('capturenoreference', 'qtype_codeatelier'),
+                'referencewarning' => get_string('referencewarning', 'qtype_codeatelier'),
+                'referenceverifyfail' => get_string('referenceverifyfail', 'qtype_codeatelier'),
+            ),
             'pyodidebaseurl' => get_config('qtype_codeatelier', 'pyodidebaseurl'),
             'sqljsbaseurl' => get_config('qtype_codeatelier', 'sqljsbaseurl'),
             'timeoutms' => 5000,
@@ -211,6 +278,13 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'c' => get_string('lang_c', 'qtype_codeatelier'),
             'cpp' => get_string('lang_cpp', 'qtype_codeatelier'),
             'java' => get_string('lang_java', 'qtype_codeatelier'),
+            'go' => get_string('lang_go', 'qtype_codeatelier'),
+            'rust' => get_string('lang_rust', 'qtype_codeatelier'),
+            'php' => get_string('lang_php', 'qtype_codeatelier'),
+            'typescript' => get_string('lang_typescript', 'qtype_codeatelier'),
+            'csharp' => get_string('lang_csharp', 'qtype_codeatelier'),
+            'kotlin' => get_string('lang_kotlin', 'qtype_codeatelier'),
+            'ruby' => get_string('lang_ruby', 'qtype_codeatelier'),
         );
     }
 
@@ -218,7 +292,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
     const PRACTICE_LANGUAGES = array('python', 'sql', 'javascript');
 
     /** @var array languages that run in the server sandbox (judge tier). */
-    const JUDGE_LANGUAGES = array('c', 'cpp', 'java', 'python', 'javascript');
+    const JUDGE_LANGUAGES = array('c', 'cpp', 'java', 'python', 'javascript', 'sql',
+            'go', 'rust', 'php', 'typescript', 'csharp', 'kotlin', 'ruby');
 
     /**
      * @return array matching-mode code => display name
@@ -247,6 +322,17 @@ class qtype_codeatelier_edit_form extends question_edit_form {
 
     protected function data_preprocessing($question) {
         $question = parent::data_preprocessing($question);
+
+        // The allowed-language set is stored as a comma-separated string; the
+        // multi-select wants an array.
+        $question->languages = (isset($question->languages) && trim((string) $question->languages) !== '')
+                ? explode(',', $question->languages) : array();
+
+        // Prepare the support/data files draft area from the saved files.
+        $draftid = file_get_submitted_draft_itemid('datafiles');
+        file_prepare_draft_area($draftid, $this->context->id, 'qtype_codeatelier', 'datafiles',
+                !empty($question->id) ? (int) $question->id : null, qtype_codeatelier::datafiles_options());
+        $question->datafiles = $draftid;
 
         if (empty($question->options->tests)) {
             return $question;
@@ -279,17 +365,71 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $errors = parent::validation($data, $files);
 
         $tier = isset($data['tier']) ? $data['tier'] : 'practice';
-        if ($tier === 'judge' && !in_array($data['language'], self::JUDGE_LANGUAGES, true)) {
-            $errors['language'] = get_string('languagenotjudge', 'qtype_codeatelier');
+        $scenario = isset($data['scenario']) ? $data['scenario'] : 'stdinstdout';
+        $tierlangs = $tier === 'judge' ? self::JUDGE_LANGUAGES : self::PRACTICE_LANGUAGES;
+
+        // The full allowed set: the primary language plus the multi-select choices.
+        $allowed = array($data['language']);
+        if (!empty($data['languages']) && is_array($data['languages'])) {
+            foreach ($data['languages'] as $lang) {
+                if (!in_array($lang, $allowed, true)) {
+                    $allowed[] = $lang;
+                }
+            }
         }
-        if ($tier === 'practice' && !in_array($data['language'], self::PRACTICE_LANGUAGES, true)) {
-            $errors['language'] = get_string('languagenotpractice', 'qtype_codeatelier');
+
+        // Every allowed language must belong to the chosen tier.
+        foreach ($allowed as $lang) {
+            if (!in_array($lang, $tierlangs, true)) {
+                $errors['languages'] = ($tier === 'judge')
+                    ? get_string('languagenotjudge', 'qtype_codeatelier')
+                    : get_string('languagenotpractice', 'qtype_codeatelier');
+                break;
+            }
+        }
+
+        // Scenario constraints. SQL is single-language on BOTH tiers (the source is
+        // the schema plus one query). The function harness exists only on the
+        // practice tier for Python/JS; the judge tier supports stdin/stdout and SQL.
+        if (!isset($errors['languages'])) {
+            if ($scenario === 'sql') {
+                if ($allowed !== array('sql')) {
+                    $errors['languages'] = get_string('sqlsinglelanguage', 'qtype_codeatelier');
+                }
+            } else if ($scenario === 'function') {
+                if ($tier === 'judge') {
+                    $errors['scenario'] = get_string('functionnotjudge', 'qtype_codeatelier');
+                } else {
+                    foreach ($allowed as $lang) {
+                        if (!in_array($lang, array('python', 'javascript'), true)) {
+                            $errors['languages'] = get_string('functionlanguageset', 'qtype_codeatelier');
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // The per-language starter map is JS-managed; a non-empty value must be JSON.
+        if (!empty($data['starters'])) {
+            json_decode($data['starters']);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $errors['starteredit'] = get_string('startersinvalidjson', 'qtype_codeatelier');
+            }
         }
 
         // The judge tier is always stdin/stdout, so the entrypoint is only
         // required for a practice-tier function question.
         if ($tier !== 'judge' && $data['scenario'] === 'function' && trim($data['entrypoint']) === '') {
             $errors['entrypoint'] = get_string('entrypointrequired', 'qtype_codeatelier');
+        }
+
+        // Per-question limits, when given, must be positive numbers.
+        foreach (array('cputimelimit', 'memorylimit') as $limit) {
+            $value = isset($data[$limit]) ? trim($data[$limit]) : '';
+            if ($value !== '' && (!is_numeric($value) || (float) $value <= 0)) {
+                $errors[$limit] = get_string('limitpositive', 'qtype_codeatelier');
+            }
         }
 
         $count = 0;
@@ -315,7 +455,115 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             $errors['testinput[0]'] = get_string('notenoughtests', 'qtype_codeatelier');
         }
 
+        // Validate-on-save: a judge-tier reference solution must pass every test or
+        // the save is rejected (the practice tier is warned client-side instead — the
+        // server cannot run browser code). Skips silently with no endpoint or an
+        // unreachable sandbox; the grade memo makes an unchanged re-save instant.
+        // Skip when the question uses data files: validate-on-save runs the reference
+        // through Judge0 but cannot package the not-yet-saved draft files, so it
+        // would wrongly fail a reference that reads them.
+        if ($tier === 'judge' && $count > 0 && !isset($errors['languages'])
+                && trim((string) ($data['referencesolution'] ?? '')) !== ''
+                && !$this->has_draft_data_files($data)) {
+            $errors = $this->validate_reference($data, $errors);
+        }
+
         return $errors;
+    }
+
+    /**
+     * Run the judge-tier reference solution against every authored test and add an
+     * error if it does not pass them all.
+     *
+     * @param array $data the submitted form data
+     * @param array $errors the errors collected so far
+     * @return array the errors, possibly with a referencesolution entry added
+     */
+    /**
+     * Whether the submitted form has data files in its draft area.
+     *
+     * @param array $data the submitted form data
+     * @return bool
+     */
+    protected function has_draft_data_files($data) {
+        if (empty($data['datafiles'])) {
+            return false;
+        }
+        $info = file_get_draft_area_info($data['datafiles']);
+        return !empty($info['filecount']);
+    }
+
+    protected function validate_reference($data, $errors) {
+        question_bank::load_question_definition_classes('codeatelier');
+        $question = new qtype_codeatelier_question();
+        $question->language = $data['language'];
+        $question->tier = 'judge';
+        $question->scenario = $data['scenario'];
+        $question->schemasql = ($data['scenario'] === 'sql') ? ($data['schemasql'] ?? '') : null;
+        $question->cputimelimit = (isset($data['cputimelimit']) && trim($data['cputimelimit']) !== '')
+                ? (float) $data['cputimelimit'] : null;
+        $question->memorylimit = (isset($data['memorylimit']) && trim($data['memorylimit']) !== '')
+                ? (int) $data['memorylimit'] : null;
+        $question->languages = null;
+        $question->tests = $this->tests_from_form($data);
+
+        $result = $question->get_judge_result($data['referencesolution'], $data['language']);
+        if ($result === null || !empty($result['infrastructure'])) {
+            // No endpoint, or the sandbox is unreachable: cannot validate, so allow
+            // the save rather than block on infrastructure.
+            return $errors;
+        }
+        if (($result['verdict'] ?? '') !== 'AC' || ($result['fraction'] ?? 0) < 1.0) {
+            $errors['referencesolution'] = $this->reference_error_message($result);
+        }
+        return $errors;
+    }
+
+    /**
+     * Build test-case objects from the submitted form data, skipping blank rows
+     * exactly as {@see qtype_codeatelier::save_question_options()} does.
+     *
+     * @param array $data the submitted form data
+     * @return array test-case stdClass objects
+     */
+    protected function tests_from_form($data) {
+        $tests = array();
+        foreach ($data['testinput'] as $key => $input) {
+            $expected = $data['testexpected'][$key];
+            if (trim($input) === '' && trim($expected) === '') {
+                continue;
+            }
+            $tests[] = (object) array(
+                'input' => $input,
+                'expected' => $expected,
+                'matchmode' => $data['matchmode'][$key],
+                'tolerance' => isset($data['tolerance'][$key]) ? $data['tolerance'][$key] : null,
+                'weight' => $data['testweight'][$key],
+                'visibility' => $data['testvisibility'][$key],
+                'checkerquery' => isset($data['checkerquery'][$key]) ? $data['checkerquery'][$key] : null,
+            );
+        }
+        return $tests;
+    }
+
+    /**
+     * A localised "the reference failed" message naming the first failing test, or
+     * surfacing the compiler output on a compile error.
+     *
+     * @param array $result a judge_grader result
+     * @return string
+     */
+    protected function reference_error_message($result) {
+        if (($result['verdict'] ?? '') === 'CE') {
+            return get_string('referencecompileerror', 'qtype_codeatelier',
+                    shorten_text(trim((string) ($result['compileoutput'] ?? '')), 200));
+        }
+        foreach ($result['testresults'] as $tr) {
+            if (empty($tr['passed'])) {
+                return get_string('referencefailed', 'qtype_codeatelier', $tr['index'] + 1);
+            }
+        }
+        return get_string('referencefailed', 'qtype_codeatelier', 1);
     }
 
     public function qtype() {

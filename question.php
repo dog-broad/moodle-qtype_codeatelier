@@ -42,7 +42,7 @@ require_once($CFG->dirroot . '/question/type/questionbase.php');
  */
 class qtype_codeatelier_question extends question_graded_automatically {
 
-    /** @var string the practice-tier language: python, sql or javascript. */
+    /** @var string the primary/default language; always a member of the allowed set. */
     public $language;
 
     /** @var string the scenario: stdinstdout, function or sql. */
@@ -60,6 +60,24 @@ class qtype_codeatelier_question extends question_graded_automatically {
     /** @var string the execution tier: practice (in-browser) or judge (server sandbox). */
     public $tier = 'practice';
 
+    /** @var float|null per-question judge CPU-time limit in seconds; null uses the site default. */
+    public $cputimelimit = null;
+
+    /** @var int|null per-question judge memory limit in kilobytes; null uses the site default. */
+    public $memorylimit = null;
+
+    /** @var string|null comma-separated set of languages the student may choose; empty means single-language. */
+    public $languages = null;
+
+    /** @var string|null JSON map of language to starter code, for per-language starters. */
+    public $starters = null;
+
+    /** @var string|null reference solution (primary language) for validate-on-save and capture. */
+    public $referencesolution = null;
+
+    /** @var int 1 grades all-or-nothing (full marks only if every test passes), 0 partial credit. */
+    public $allornothing = 0;
+
     /** @var array the test cases (rows from qtype_codeatelier_tests). */
     public $tests = array();
 
@@ -67,13 +85,52 @@ class qtype_codeatelier_question extends question_graded_automatically {
     public $judgerunner = null;
 
     public function get_expected_data() {
-        $expected = array('answer' => PARAM_RAW, 'score' => PARAM_RAW_TRIMMED);
+        // The student's chosen language is a per-attempt response variable (a
+        // question may allow a set of languages). It is re-validated server-side
+        // on every grading path, so a tampered value can only fall back to the
+        // primary language — see resolve_language().
+        $expected = array('answer' => PARAM_RAW, 'score' => PARAM_RAW_TRIMMED, 'language' => PARAM_ALPHANUMEXT);
         if ($this->is_judge()) {
             // The soft anti-cheat log travels as a response variable; it is stored
             // with the attempt and never affects the grade.
             $expected['proctorlog'] = PARAM_RAW;
         }
         return $expected;
+    }
+
+    /**
+     * The set of languages a student may choose from. Always includes the primary
+     * language; an empty/unset languages column means single-language.
+     *
+     * @return string[] the allowed language codes, primary first
+     */
+    public function get_allowed_languages() {
+        $allowed = array();
+        if ($this->languages !== null && trim((string) $this->languages) !== '') {
+            foreach (explode(',', (string) $this->languages) as $lang) {
+                $lang = trim($lang);
+                if ($lang !== '' && $lang !== $this->language && !in_array($lang, $allowed, true)) {
+                    $allowed[] = $lang;
+                }
+            }
+        }
+        // The primary language always leads the set.
+        array_unshift($allowed, $this->language);
+        return $allowed;
+    }
+
+    /**
+     * Validate a candidate language against the allowed set, falling back to the
+     * primary language. The single server-side guard for the client-supplied
+     * choice — every run/grade path funnels through it so a disallowed language
+     * can never execute or grade.
+     *
+     * @param string|null $candidate the requested language
+     * @return string an allowed language code
+     */
+    public function resolve_language($candidate) {
+        $candidate = trim((string) $candidate);
+        return in_array($candidate, $this->get_allowed_languages(), true) ? $candidate : $this->language;
     }
 
     /**
@@ -115,13 +172,19 @@ class qtype_codeatelier_question extends question_graded_automatically {
     }
 
     public function is_same_response(array $prevresponse, array $newresponse) {
+        // The chosen language is part of the response identity: a different
+        // language grades differently, so re-picking it is a new gradable response
+        // (and must regrade rather than be deduplicated).
+        $samelanguage = question_utils::arrays_same_at_key_missing_is_blank(
+                $prevresponse, $newresponse, 'language');
         if ($this->is_judge()) {
-            // The grade derives from the code alone; a re-check that only changes
-            // the (ignored) client score is the same gradable response.
-            return question_utils::arrays_same_at_key_missing_is_blank(
+            // The grade derives from the code (and language); a re-check that only
+            // changes the (ignored) client score is the same gradable response.
+            return $samelanguage && question_utils::arrays_same_at_key_missing_is_blank(
                     $prevresponse, $newresponse, 'answer');
         }
-        return question_utils::arrays_same_at_key_missing_is_blank(
+        return $samelanguage
+                && question_utils::arrays_same_at_key_missing_is_blank(
                         $prevresponse, $newresponse, 'answer')
                 && question_utils::arrays_same_at_key_missing_is_blank(
                         $prevresponse, $newresponse, 'score');
@@ -169,8 +232,14 @@ class qtype_codeatelier_question extends question_graded_automatically {
      */
     protected function grade_judge_response(array $response) {
         $code = isset($response['answer']) ? (string) $response['answer'] : '';
-        $result = $this->get_judge_result($code);
-        if ($result === null || !empty($result['infrastructure'])) {
+        $language = $this->resolve_language($response['language'] ?? null);
+        // Grading runs OFF the web request so an exam-end burst of submissions does
+        // not block the server. We only read the memo here: if the scheduled judge
+        // task has already computed this answer (or it is an identical resubmission),
+        // record the grade; otherwise leave it awaiting automatic grading. The task
+        // runs the sandbox, populates the memo, and regrades the attempt.
+        $result = $this->cached_judge_result($code, $language);
+        if ($result === null) {
             return array(0.0, question_state::$needsgrading);
         }
         $fraction = max(0.0, min(1.0, (float) $result['fraction']));
@@ -186,20 +255,28 @@ class qtype_codeatelier_question extends question_graded_automatically {
         if ($this->judgerunner !== null) {
             return $this->judgerunner;
         }
-        return \qtype_codeatelier\judge\judge0_runner::from_config();
+        return \qtype_codeatelier\judge\judge0_runner::from_config(
+                $this->cputimelimit !== null ? (float) $this->cputimelimit : null,
+                $this->memorylimit !== null ? (int) $this->memorylimit : null);
     }
 
     /**
-     * The runner limits that take part in the result-cache key.
+     * The effective judge limits that take part in the result-cache key: the
+     * per-question values when set, otherwise the site defaults.
      *
      * @param \qtype_codeatelier\judge\judge0_runner|null $runner
      * @return array ['cputime' => float, 'memory' => int]
      */
     protected function judge_limits($runner) {
-        if ($runner === null) {
-            return array('cputime' => 2.0, 'memory' => 128000);
+        if ($runner !== null) {
+            return array('cputime' => $runner->get_cpu_time_limit(), 'memory' => $runner->get_memory_limit());
         }
-        return array('cputime' => $runner->get_cpu_time_limit(), 'memory' => $runner->get_memory_limit());
+        return array(
+            'cputime' => $this->cputimelimit !== null ? (float) $this->cputimelimit
+                    : \qtype_codeatelier\judge\judge0_runner::default_cpu_time_limit(),
+            'memory' => $this->memorylimit !== null ? (int) $this->memorylimit
+                    : \qtype_codeatelier\judge\judge0_runner::default_memory_limit(),
+        );
     }
 
     /**
@@ -209,22 +286,28 @@ class qtype_codeatelier_question extends question_graded_automatically {
      * {@see cached_judge_result()} there.
      *
      * @param string $code the student submission
+     * @param string|null $language the chosen language; null/invalid falls back to the primary
      * @return array|null the grading result (see judge_grader::grade), or null if no endpoint is configured
      */
-    public function get_judge_result($code) {
+    public function get_judge_result($code, $language = null) {
         $runner = $this->judge_runner();
         if ($runner === null) {
             return null;
         }
+        $language = $this->resolve_language($language);
         $limits = $this->judge_limits($runner);
+        $schemasql = (string) $this->schemasql;
+        $allornothing = !empty($this->allornothing);
         $hash = \qtype_codeatelier\judge\result_cache::key(
-                $this->language, (string) $code, $this->tests, $limits);
+                $language, (string) $code, $this->tests, $limits, $schemasql, $allornothing,
+                $this->data_files_hash());
         $cached = \qtype_codeatelier\judge\result_cache::get($hash);
         if ($cached !== null) {
             return $cached;
         }
+        $runner->set_additional_files($this->data_files_zip());
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
-        $result = $grader->grade((string) $code, $this->language, $this->tests);
+        $result = $grader->grade((string) $code, $language, $this->tests, $schemasql, $allornothing);
         if (empty($result['infrastructure'])) {
             \qtype_codeatelier\judge\result_cache::put($hash, $result);
         }
@@ -238,9 +321,10 @@ class qtype_codeatelier_question extends question_graded_automatically {
      * tests are never executed or returned, and no grade is recorded.
      *
      * @param string $code the student submission
+     * @param string|null $language the chosen language; null/invalid falls back to the primary
      * @return array|null the judge_grader result over the visible tests, or null if no endpoint is configured
      */
-    public function run_examples($code) {
+    public function run_examples($code, $language = null) {
         $runner = $this->judge_runner();
         if ($runner === null) {
             return null;
@@ -254,8 +338,10 @@ class qtype_codeatelier_question extends question_graded_automatically {
         if (!$visible) {
             return array('verdict' => 'AC', 'compileoutput' => '', 'testresults' => array());
         }
+        $runner->set_additional_files($this->data_files_zip());
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
-        return $grader->grade((string) $code, $this->language, $visible);
+        return $grader->grade((string) $code, $this->resolve_language($language), $visible,
+                (string) $this->schemasql, !empty($this->allornothing));
     }
 
     /**
@@ -263,12 +349,68 @@ class qtype_codeatelier_question extends question_graded_automatically {
      * Never runs the sandbox — safe to call from a render path (review).
      *
      * @param string $code the student submission
+     * @param string|null $language the chosen language; null/invalid falls back to the primary
      * @return array|null
      */
-    public function cached_judge_result($code) {
+    public function cached_judge_result($code, $language = null) {
         $limits = $this->judge_limits($this->judge_runner());
         $hash = \qtype_codeatelier\judge\result_cache::key(
-                $this->language, (string) $code, $this->tests, $limits);
+                $this->resolve_language($language), (string) $code, $this->tests, $limits,
+                (string) $this->schemasql, !empty($this->allornothing), $this->data_files_hash());
         return \qtype_codeatelier\judge\result_cache::get($hash);
+    }
+
+    /**
+     * The support/data files stored on this question, sorted by path.
+     *
+     * @return \stored_file[] the non-directory files (empty when none)
+     */
+    protected function data_files() {
+        if (empty($this->contextid) || empty($this->id)) {
+            return array();
+        }
+        return get_file_storage()->get_area_files($this->contextid, 'qtype_codeatelier', 'datafiles',
+                $this->id, 'filepath, filename', false);
+    }
+
+    /**
+     * A content hash of the support/data files, so editing a file invalidates the
+     * judge result cache. Empty when there are no files.
+     *
+     * @return string
+     */
+    protected function data_files_hash() {
+        $signature = array();
+        foreach ($this->data_files() as $file) {
+            $signature[] = $file->get_filepath() . $file->get_filename() . ':' . $file->get_contenthash();
+        }
+        if (!$signature) {
+            return '';
+        }
+        sort($signature);
+        return sha1(implode("\n", $signature));
+    }
+
+    /**
+     * Package the support/data files into a base64 ZIP for Judge0 additional_files,
+     * or null when there are none. The files appear in the working directory.
+     *
+     * @return string|null
+     */
+    protected function data_files_zip() {
+        $files = $this->data_files();
+        if (!$files) {
+            return null;
+        }
+        $map = array();
+        foreach ($files as $file) {
+            $map[ltrim($file->get_filepath() . $file->get_filename(), '/')] = $file;
+        }
+        $tmp = make_request_directory() . '/datafiles.zip';
+        $packer = get_file_packer('application/zip');
+        if (!$packer->archive_to_pathname($map, $tmp)) {
+            return null;
+        }
+        return base64_encode(file_get_contents($tmp));
     }
 }

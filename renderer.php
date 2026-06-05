@@ -44,20 +44,23 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
         $question = $qa->get_question();
         $isjudge = $question->is_judge();
-        $language = !empty($question->language) ? $question->language : 'python';
-        // The judge tier is always the stdin/stdout shape (see the question type).
-        $scenario = $isjudge ? 'stdinstdout'
-            : (!empty($question->scenario) ? $question->scenario : 'stdinstdout');
+        // The set of languages the student may choose from, and the one in effect
+        // for this attempt (the stored choice, re-validated; primary by default).
+        $allowed = $question->get_allowed_languages();
+        $chosen = $question->resolve_language($qa->get_last_qt_var('language', ''));
+        $startermap = $this->starter_map($question, $allowed);
+        // The scenario drives the harness + the client UI on both tiers (the judge
+        // tier now supports stdin/stdout and SQL).
+        $scenario = !empty($question->scenario) ? $question->scenario : 'stdinstdout';
 
         $answername = $qa->get_qt_field_name('answer');
         $scorename = $qa->get_qt_field_name('score');
+        $languagename = $qa->get_qt_field_name('language');
         $wrapperid = $answername . '_wrapper';
 
         $currentcode = $qa->get_last_qt_var('answer', '');
         if ($currentcode === '') {
-            $currentcode = ($question->startercode !== null && $question->startercode !== '')
-                ? $question->startercode
-                : $this->starter_code($language);
+            $currentcode = isset($startermap[$chosen]) ? $startermap[$chosen] : $this->starter_code($chosen);
         }
         $currentscore = $qa->get_last_qt_var('score', '');
 
@@ -88,7 +91,14 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         $judgereviewhtml = '';
         $proctorreviewhtml = '';
         if ($isjudge && $options->readonly) {
-            $judgereviewhtml = $this->render_judge_review($question->cached_judge_result($currentcode));
+            $cached = $question->cached_judge_result($currentcode, $chosen);
+            if ($cached === null && $qa->get_state() == question_state::$needsgrading) {
+                // Graded off-request: the scheduled task has not reached this attempt yet.
+                $judgereviewhtml = html_writer::div(get_string('judgepending', 'qtype_codeatelier'),
+                        'codeatelier-judge-review codeatelier-judge-pending');
+            } else {
+                $judgereviewhtml = $this->render_judge_review($cached);
+            }
             $proctorreviewhtml = $this->render_proctor_summary($qa->get_last_qt_var('proctorlog', ''));
         }
 
@@ -99,6 +109,18 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
         $validationresponse = $isjudge ? array('answer' => $currentcode) : array('score' => $currentscore);
 
+        // The student-facing language picker shows only when there is a real choice
+        // and the attempt is live; on review we show which language was used.
+        $languagechoice = count($allowed) > 1 && !$options->readonly;
+        $languageoptions = array();
+        foreach ($allowed as $code) {
+            $languageoptions[] = array(
+                'code' => $code,
+                'label' => get_string('lang_' . $code, 'qtype_codeatelier'),
+                'selected' => ($code === $chosen),
+            );
+        }
+
         $context = array(
             'questiontext' => $question->format_questiontext($qa),
             'wrapperid' => $wrapperid,
@@ -107,6 +129,14 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'answervalue' => $currentcode,
             'scorename' => $scorename,
             'scorevalue' => $currentscore,
+            'languagename' => $languagename,
+            'languagevalue' => $chosen,
+            'languagechoice' => $languagechoice,
+            'languageoptions' => $languageoptions,
+            'languagechooselabel' => get_string('chooselanguage', 'qtype_codeatelier'),
+            'showlanguageused' => $options->readonly && count($allowed) > 1,
+            'languageusedlabel' => get_string('languageused', 'qtype_codeatelier',
+                    get_string('lang_' . $chosen, 'qtype_codeatelier')),
             'readonly' => $options->readonly,
             'isjudge' => $isjudge,
             'judgenote' => $isjudge ? get_string('judgenote', 'qtype_codeatelier') : '',
@@ -122,16 +152,23 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
         $PAGE->requires->js_call_amd('qtype_codeatelier/control', 'init', array(array(
             'wrapperid' => $wrapperid,
-            'language' => $language,
+            'language' => $chosen,
+            'languages' => array_values($allowed),
+            'starters' => $startermap,
             'scenario' => $scenario,
             'entrypoint' => $question->entrypoint,
-            'schemasql' => $isjudge ? null : $question->schemasql,
+            // Ship the schema for any SQL question so the client schema viewer
+            // renders. A judge attempt has no Check button, so control.js never
+            // wires client-side grading — the schema is the visible data, while the
+            // expected rows and checker queries (hidden tests) are never shipped.
+            'schemasql' => ($scenario === 'sql') ? $question->schemasql : null,
             'pyodidebaseurl' => get_config('qtype_codeatelier', 'pyodidebaseurl'),
             'sqljsbaseurl' => get_config('qtype_codeatelier', 'sqljsbaseurl'),
             'tests' => $tests,
             'timeoutms' => 5000,
             'readonly' => (bool) $options->readonly,
             'isjudge' => $isjudge,
+            'allornothing' => (bool) $question->allornothing,
             'strings' => qtype_codeatelier::ui_strings(),
         )));
 
@@ -147,6 +184,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             $PAGE->requires->js_call_amd('qtype_codeatelier/judgerun', 'init', array(array(
                 'wrapperid' => $wrapperid,
                 'questionid' => (int) $question->id,
+                'language' => $chosen,
                 'strings' => array(
                     'running' => get_string('running', 'qtype_codeatelier'),
                     'example' => get_string('result_test', 'qtype_codeatelier'),
@@ -266,7 +304,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         $status = (string) $tr['status'];
 
         $label = $visible
-            ? get_string('result_test', 'qtype_codeatelier', $tr['index'] + 1)
+            ? get_string('result_test', 'qtype_codeatelier') . ' ' . ($tr['index'] + 1)
             : get_string('result_hidden', 'qtype_codeatelier');
         $statuslabel = $passed
             ? get_string('result_pass', 'qtype_codeatelier')
@@ -383,6 +421,36 @@ class qtype_codeatelier_renderer extends qtype_renderer {
     }
 
     /**
+     * The starter code for each allowed language: the teacher's per-language
+     * override when present, then the question's single startercode for the
+     * primary language, then the built-in template. Lets the editor swap starters
+     * as the student changes language without a server round-trip.
+     *
+     * @param qtype_codeatelier_question $question
+     * @param string[] $allowed the allowed language codes
+     * @return array map of language code to starter source
+     */
+    protected function starter_map($question, array $allowed) {
+        $overrides = ($question->starters !== null && trim((string) $question->starters) !== '')
+            ? json_decode((string) $question->starters, true) : null;
+        if (!is_array($overrides)) {
+            $overrides = array();
+        }
+        $map = array();
+        foreach ($allowed as $code) {
+            if (isset($overrides[$code]) && trim((string) $overrides[$code]) !== '') {
+                $map[$code] = (string) $overrides[$code];
+            } else if ($code === $question->language
+                    && $question->startercode !== null && $question->startercode !== '') {
+                $map[$code] = $question->startercode;
+            } else {
+                $map[$code] = $this->starter_code($code);
+            }
+        }
+        return $map;
+    }
+
+    /**
      * A language-appropriate placeholder shown in a fresh editor.
      *
      * @param string $language python, sql or javascript
@@ -402,6 +470,25 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 // Judge0 compiles the public class named Main.
                 return "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n"
                     . "        Scanner sc = new Scanner(System.in);\n        // Read input, print output\n    }\n}\n";
+            case 'go':
+                return "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n)\n\n"
+                    . "func main() {\n\treader := bufio.NewReader(os.Stdin)\n\t_ = reader\n\t// Read input, print output\n\t_ = fmt.Println\n}\n";
+            case 'rust':
+                return "use std::io::{self, Read};\n\nfn main() {\n    let mut input = String::new();\n"
+                    . "    io::stdin().read_to_string(&mut input).unwrap();\n    // Read input, print output\n}\n";
+            case 'php':
+                return "<?php\n// Read input with fgets(STDIN); print output with echo.\n";
+            case 'typescript':
+                // 'declare' keeps the older tsc on Judge0 happy without @types/node.
+                return "declare const require: any;\nconst input: string = require('fs').readFileSync(0, 'utf8');\n"
+                    . "// Parse input; print with console.log.\n";
+            case 'csharp':
+                return "using System;\n\nclass Program {\n    static void Main() {\n"
+                    . "        // Read input with Console.ReadLine(); print with Console.WriteLine().\n    }\n}\n";
+            case 'kotlin':
+                return "fun main() {\n    // Read input with readLine(); print with println().\n}\n";
+            case 'ruby':
+                return "# Read input with gets; print with puts.\n";
             case 'python':
             default:
                 return "# Write your Python code here\n";

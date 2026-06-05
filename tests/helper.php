@@ -33,7 +33,7 @@ defined('MOODLE_INTERNAL') || die();
 class qtype_codeatelier_test_helper extends question_test_helper {
 
     public function get_test_questions() {
-        return array('function', 'judge');
+        return array('function', 'judge', 'multilang', 'judge_sql');
     }
 
     /**
@@ -56,6 +56,8 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $q->entrypoint = 'add';
         $q->startercode = "function add(a, b) {\n}\n";
         $q->schemasql = null;
+        $q->languages = null;
+        $q->starters = null;
         $q->tests = array(
             (object) array('sortorder' => 0, 'input' => '[2, 3]', 'expected' => '5',
                 'matchmode' => 'structured', 'tolerance' => null, 'weight' => 1,
@@ -95,6 +97,10 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $form->testvisibility = array(1, 0);
         $form->checkerquery = array('', '');
         $form->testfeedback = array('Add the two numbers.', '');
+        $form->cputimelimit = '';
+        $form->memorylimit = '';
+        $form->languages = array();
+        $form->starters = '';
         return $form;
     }
 
@@ -118,6 +124,8 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $q->entrypoint = null;
         $q->startercode = '';
         $q->schemasql = null;
+        $q->languages = null;
+        $q->starters = null;
         $q->tests = array(
             (object) array('sortorder' => 0, 'input' => "2 3\n", 'expected' => '5',
                 'matchmode' => 'trimmed', 'tolerance' => null, 'weight' => 1,
@@ -127,6 +135,42 @@ class qtype_codeatelier_test_helper extends question_test_helper {
                 'visibility' => 0, 'checkerquery' => null, 'feedback' => null),
         );
         return $q;
+    }
+
+    /**
+     * A multi-language judge question: the same "sum two integers" problem with an
+     * allowed set of Python, C and C++, a per-language starter for C and C++, and
+     * Python as the primary/default. Tests must inject a runner to grade.
+     *
+     * @return qtype_codeatelier_question
+     */
+    public function make_codeatelier_question_multilang() {
+        $q = $this->make_codeatelier_question_judge();
+        $q->name = 'CodeAtelier judge sum (multi-language)';
+        $q->languages = 'python,c,cpp';
+        $q->starters = json_encode(array(
+            'c' => "#include <stdio.h>\nint main(void){return 0;}\n",
+            'cpp' => "#include <iostream>\nint main(){return 0;}\n",
+        ));
+        $q->referencesolution = "print(sum(map(int, input().split())))\n";
+        return $q;
+    }
+
+    /**
+     * Edit-form data for the multi-language judge question.
+     *
+     * @return stdClass
+     */
+    public function get_codeatelier_question_form_data_multilang() {
+        $form = $this->get_codeatelier_question_form_data_judge();
+        $form->name = 'CodeAtelier judge sum (multi-language)';
+        $form->languages = array('python', 'c', 'cpp');
+        $form->starters = json_encode(array(
+            'c' => "#include <stdio.h>\nint main(void){return 0;}\n",
+            'cpp' => "#include <iostream>\nint main(){return 0;}\n",
+        ));
+        $form->referencesolution = "print(sum(map(int, input().split())))\n";
+        return $form;
     }
 
     /**
@@ -156,6 +200,78 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $form->testvisibility = array(1, 0);
         $form->checkerquery = array('', '');
         $form->testfeedback = array('', '');
+        $form->cputimelimit = '';
+        $form->memorylimit = '';
+        $form->languages = array();
+        $form->starters = '';
+        return $form;
+    }
+
+    /**
+     * A judge-tier SQL question: a schema+seed and a SELECT, with one ordered
+     * (visible) and one unordered (hidden) result-set test. Tests must inject a
+     * runner whose canned stdout is Judge0 SQLite CSV.
+     *
+     * @return qtype_codeatelier_question
+     */
+    public function make_codeatelier_question_judge_sql() {
+        question_bank::load_question_definition_classes('codeatelier');
+        $q = new qtype_codeatelier_question();
+        test_question_maker::initialise_a_question($q);
+        $q->name = 'CodeAtelier judge SQL';
+        $q->questiontext = 'Select id and name from users, ordered by id.';
+        $q->generalfeedback = '';
+        $q->qtype = question_bank::get_qtype('codeatelier');
+        $q->language = 'sql';
+        $q->tier = 'judge';
+        $q->scenario = 'sql';
+        $q->entrypoint = null;
+        $q->startercode = "SELECT id, name FROM users ORDER BY id;\n";
+        $q->schemasql = "CREATE TABLE users(id INT, name TEXT);\nINSERT INTO users VALUES (1,'amy'),(2,'bo');";
+        $q->languages = null;
+        $q->starters = null;
+        $q->tests = array(
+            (object) array('sortorder' => 0, 'input' => '', 'expected' => '[[1,"amy"],[2,"bo"]]',
+                'matchmode' => 'resultset_ordered', 'tolerance' => null, 'weight' => 1,
+                'visibility' => 1, 'checkerquery' => null, 'feedback' => null),
+            (object) array('sortorder' => 1, 'input' => '', 'expected' => '[[1,"amy"],[2,"bo"]]',
+                'matchmode' => 'resultset', 'tolerance' => null, 'weight' => 1,
+                'visibility' => 0, 'checkerquery' => null, 'feedback' => null),
+        );
+        return $q;
+    }
+
+    /**
+     * Edit-form data for the judge-tier SQL question.
+     *
+     * @return stdClass
+     */
+    public function get_codeatelier_question_form_data_judge_sql() {
+        $form = new stdClass();
+        $form->name = 'CodeAtelier judge SQL';
+        $form->questiontext = array('text' => 'Select id and name from users, ordered by id.',
+            'format' => FORMAT_HTML);
+        $form->generalfeedback = array('text' => '', 'format' => FORMAT_HTML);
+        $form->defaultmark = 1.0;
+        $form->penalty = 0.0;
+        $form->language = 'sql';
+        $form->tier = 'judge';
+        $form->scenario = 'sql';
+        $form->entrypoint = '';
+        $form->startercode = "SELECT id, name FROM users ORDER BY id;\n";
+        $form->schemasql = "CREATE TABLE users(id INT, name TEXT);\nINSERT INTO users VALUES (1,'amy'),(2,'bo');";
+        $form->testinput = array('', '');
+        $form->testexpected = array('[[1,"amy"],[2,"bo"]]', '[[1,"amy"],[2,"bo"]]');
+        $form->matchmode = array('resultset_ordered', 'resultset');
+        $form->tolerance = array('', '');
+        $form->testweight = array('1', '1');
+        $form->testvisibility = array(1, 0);
+        $form->checkerquery = array('', '');
+        $form->testfeedback = array('', '');
+        $form->cputimelimit = '';
+        $form->memorylimit = '';
+        $form->languages = array();
+        $form->starters = '';
         return $form;
     }
 }

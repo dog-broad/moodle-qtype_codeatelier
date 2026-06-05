@@ -32,6 +32,9 @@ class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runn
     /** @var int how many times run() has been called. */
     private $calls = 0;
 
+    /** @var string|null the language passed to the most recent run() call. */
+    private $lastlanguage = null;
+
     /**
      * @param array $rows the per-case result rows run() should return
      */
@@ -42,6 +45,7 @@ class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runn
 
     public function run(string $code, string $language, array $cases): array {
         $this->calls++;
+        $this->lastlanguage = $language;
         return $this->rows;
     }
 
@@ -50,6 +54,13 @@ class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runn
      */
     public function call_count(): int {
         return $this->calls;
+    }
+
+    /**
+     * @return string|null the language the most recent run() received
+     */
+    public function last_language() {
+        return $this->lastlanguage;
     }
 
     /**

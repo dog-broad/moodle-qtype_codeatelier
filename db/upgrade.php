@@ -133,5 +133,53 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026061800, 'qtype', 'codeatelier');
     }
 
+    if ($oldversion < 2026062000) {
+        // Per-question judge limits (null = use the site default).
+        $table = new xmldb_table('qtype_codeatelier_options');
+        $cputime = new xmldb_field('cputimelimit', XMLDB_TYPE_NUMBER, '10, 3', null, null, null, null, 'schemasql');
+        if (!$dbman->field_exists($table, $cputime)) {
+            $dbman->add_field($table, $cputime);
+        }
+        $memory = new xmldb_field('memorylimit', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'cputimelimit');
+        if (!$dbman->field_exists($table, $memory)) {
+            $dbman->add_field($table, $memory);
+        }
+        upgrade_plugin_savepoint(true, 2026062000, 'qtype', 'codeatelier');
+    }
+
+    if ($oldversion < 2026062100) {
+        // Student language choice: the allowed set, and per-language starter code.
+        $table = new xmldb_table('qtype_codeatelier_options');
+        $languages = new xmldb_field('languages', XMLDB_TYPE_TEXT, null, null, null, null, null, 'memorylimit');
+        if (!$dbman->field_exists($table, $languages)) {
+            $dbman->add_field($table, $languages);
+        }
+        $starters = new xmldb_field('starters', XMLDB_TYPE_TEXT, null, null, null, null, null, 'languages');
+        if (!$dbman->field_exists($table, $starters)) {
+            $dbman->add_field($table, $starters);
+        }
+        upgrade_plugin_savepoint(true, 2026062100, 'qtype', 'codeatelier');
+    }
+
+    if ($oldversion < 2026062200) {
+        // A reference solution for validate-on-save and run-to-capture.
+        $table = new xmldb_table('qtype_codeatelier_options');
+        $field = new xmldb_field('referencesolution', XMLDB_TYPE_TEXT, null, null, null, null, null, 'starters');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        upgrade_plugin_savepoint(true, 2026062200, 'qtype', 'codeatelier');
+    }
+
+    if ($oldversion < 2026062300) {
+        // All-or-nothing grading toggle (0 = weighted partial credit).
+        $table = new xmldb_table('qtype_codeatelier_options');
+        $field = new xmldb_field('allornothing', XMLDB_TYPE_INTEGER, '2', null, null, null, '0', 'referencesolution');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        upgrade_plugin_savepoint(true, 2026062300, 'qtype', 'codeatelier');
+    }
+
     return true;
 }

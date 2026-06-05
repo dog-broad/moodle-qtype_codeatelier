@@ -45,7 +45,8 @@ class backup_qtype_codeatelier_plugin extends backup_qtype_plugin {
         $plugin->add_child($pluginwrapper);
 
         $options = new backup_nested_element('codeatelier_options', array('id'), array(
-            'language', 'tier', 'scenario', 'entrypoint', 'startercode', 'schemasql'));
+            'language', 'tier', 'scenario', 'entrypoint', 'startercode', 'schemasql',
+            'cputimelimit', 'memorylimit', 'languages', 'starters', 'referencesolution', 'allornothing'));
         $pluginwrapper->add_child($options);
         $options->set_source_table('qtype_codeatelier_options',
                 array('questionid' => backup::VAR_PARENTID));
@@ -60,5 +61,15 @@ class backup_qtype_codeatelier_plugin extends backup_qtype_plugin {
                 array('questionid' => backup::VAR_PARENTID), 'sortorder ASC, id ASC');
 
         return $plugin;
+    }
+
+    /**
+     * The file areas this qtype owns, so backup/restore carries them (the
+     * support/data files are mapped to the restored question id).
+     *
+     * @return array filearea => mapping name
+     */
+    public static function get_qtype_fileareas() {
+        return array('datafiles' => 'question_created');
     }
 }

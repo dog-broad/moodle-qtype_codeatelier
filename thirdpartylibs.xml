@@ -3,8 +3,15 @@
     <library>
         <location>amd/build/editor.min.js</location>
         <name>CodeMirror 6</name>
-        <description>Code editor and syntax highlighter. Bundled at build time (Rollup) from the npm packages codemirror (6.0.2), @codemirror/state (6.6.0), @codemirror/view (6.43.0), @codemirror/commands (6.x), @codemirror/lint (6.x), @codemirror/lang-python, @codemirror/lang-sql, @codemirror/lang-javascript, @lezer/highlight (1.2.3) and @lezer/common (1.5.2). All are MIT-licensed and authored by Marijn Haverbeke and contributors.</description>
+        <description>Code editor and syntax highlighter. Bundled at build time (Rollup) from the npm packages codemirror (6.0.2), @codemirror/state (6.6.0), @codemirror/view (6.43.0), @codemirror/commands (6.x), @codemirror/lint (6.x), the language grammars @codemirror/lang-python, @codemirror/lang-sql, @codemirror/lang-javascript, @codemirror/lang-cpp, @codemirror/lang-java, @codemirror/lang-go, @codemirror/lang-rust, @codemirror/lang-php, and @lezer/highlight (1.2.3) and @lezer/common (1.5.2). All are MIT-licensed and authored by Marijn Haverbeke and contributors.</description>
         <version>6.0.2</version>
+        <license>MIT</license>
+    </library>
+    <library>
+        <location>amd/build/editor.min.js</location>
+        <name>@replit/codemirror-lang-csharp</name>
+        <description>CodeMirror 6 language grammar for C#, bundled into editor.min.js at build time (Rollup). Authored by Replit and contributors.</description>
+        <version>6.2.0</version>
         <license>MIT</license>
     </library>
 </libraries>

@@ -40,8 +40,23 @@ require_once($CFG->libdir . '/questionlib.php');
  */
 class qtype_codeatelier extends question_type {
 
+    /** @var string[] every language code the question type knows, in picker order. */
+    const ALL_LANGUAGES = array('python', 'sql', 'javascript', 'c', 'cpp', 'java',
+            'go', 'rust', 'php', 'typescript', 'csharp', 'kotlin', 'ruby');
+
+    /**
+     * Filemanager / file-area options for the support-data files area.
+     *
+     * @return array
+     */
+    public static function datafiles_options() {
+        return array('subdirs' => 1, 'maxfiles' => 20, 'maxbytes' => 1048576, 'accepted_types' => '*');
+    }
+
     public function extra_question_fields() {
-        return array('qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint', 'startercode', 'schemasql');
+        return array('qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint',
+                'startercode', 'schemasql', 'cputimelimit', 'memorylimit', 'languages', 'starters',
+                'referencesolution', 'allornothing');
     }
 
     public function get_question_options($question) {
@@ -55,11 +70,47 @@ class qtype_codeatelier extends question_type {
     public function save_question_options($question) {
         global $DB;
 
-        // The judge tier is always the stdin/stdout shape, whatever the (hidden)
-        // scenario field last held in the form.
-        if (isset($question->tier) && $question->tier === 'judge') {
-            $question->scenario = 'stdinstdout';
+        // A blank per-question limit means "use the site default" — store null.
+        $question->cputimelimit = (isset($question->cputimelimit) && trim((string) $question->cputimelimit) !== '')
+                ? (float) $question->cputimelimit : null;
+        $question->memorylimit = (isset($question->memorylimit) && trim((string) $question->memorylimit) !== '')
+                ? (int) $question->memorylimit : null;
+
+        // The allowed-language set is stored as a comma-separated string (the form
+        // sends an array); the primary language is always a member. Per-language
+        // starter code is a JSON map, pruned to the languages actually allowed.
+        $primary = isset($question->language) ? $question->language : 'python';
+        $allowed = array();
+        foreach ((array) ($question->languages ?? array()) as $lang) {
+            $lang = trim((string) $lang);
+            if ($lang !== '' && in_array($lang, self::ALL_LANGUAGES, true) && !in_array($lang, $allowed, true)) {
+                $allowed[] = $lang;
+            }
         }
+        if (!in_array($primary, $allowed, true)) {
+            array_unshift($allowed, $primary);
+        }
+        $question->languages = implode(',', $allowed);
+
+        $decoded = isset($question->starters) && trim((string) $question->starters) !== ''
+                ? json_decode((string) $question->starters, true) : null;
+        $starters = array();
+        if (is_array($decoded)) {
+            foreach ($allowed as $lang) {
+                // The primary language's starter lives in startercode, not the map.
+                if ($lang !== $primary && isset($decoded[$lang]) && trim((string) $decoded[$lang]) !== '') {
+                    $starters[$lang] = (string) $decoded[$lang];
+                }
+            }
+        }
+        $question->starters = $starters ? json_encode($starters) : null;
+
+        // The reference solution is a scalar; store null when blank.
+        $question->referencesolution = (isset($question->referencesolution)
+                && trim((string) $question->referencesolution) !== '')
+                ? (string) $question->referencesolution : null;
+
+        $question->allornothing = !empty($question->allornothing) ? 1 : 0;
 
         // Saves the language/tier/scenario options into qtype_codeatelier_options.
         parent::save_question_options($question);
@@ -108,6 +159,23 @@ class qtype_codeatelier extends question_type {
         foreach ($oldtests as $leftover) {
             $DB->delete_records('qtype_codeatelier_tests', array('id' => $leftover->id));
         }
+
+        // Persist the support/data files from the form's draft area.
+        if (isset($question->datafiles) && isset($question->context)) {
+            file_save_draft_area_files($question->datafiles, $question->context->id,
+                    'qtype_codeatelier', 'datafiles', (int) $question->id, self::datafiles_options());
+        }
+    }
+
+    public function move_files($questionid, $oldcontextid, $newcontextid) {
+        parent::move_files($questionid, $oldcontextid, $newcontextid);
+        get_file_storage()->move_area_files_to_new_context($oldcontextid, $newcontextid,
+                'qtype_codeatelier', 'datafiles', $questionid);
+    }
+
+    protected function delete_files($questionid, $contextid) {
+        parent::delete_files($questionid, $contextid);
+        get_file_storage()->delete_area_files($contextid, 'qtype_codeatelier', 'datafiles', $questionid);
     }
 
     protected function initialise_question_instance(question_definition $question, $questiondata) {
@@ -126,6 +194,135 @@ class qtype_codeatelier extends question_type {
         // The result is supplied with the response, so there is no meaningful
         // random-guess baseline to report.
         return null;
+    }
+
+    /**
+     * Export a question to Moodle XML. Fully custom (the base class assumes an
+     * 'answers' child table this type does not have): writes every option column
+     * plus a <testcase> per test case.
+     *
+     * @param object $question the question being exported
+     * @param qformat_xml $format the export format
+     * @param mixed $extra unused
+     * @return string the XML fragment
+     */
+    public function export_to_xml($question, qformat_xml $format, $extra = null) {
+        $fields = $this->extra_question_fields();
+        array_shift($fields);
+
+        $output = '';
+        foreach ($fields as $field) {
+            $value = isset($question->options->$field) ? $question->options->$field : '';
+            $output .= "    <{$field}>" . $format->xml_escape((string) $value) . "</{$field}>\n";
+        }
+
+        foreach ($question->options->tests as $test) {
+            $output .= "    <testcase>\n";
+            foreach (array('input', 'expected', 'matchmode', 'tolerance', 'weight',
+                    'visibility', 'checkerquery', 'feedback') as $field) {
+                $value = isset($test->$field) ? $test->$field : '';
+                $output .= "      <{$field}>" . $format->xml_escape((string) $value) . "</{$field}>\n";
+            }
+            $output .= "    </testcase>\n";
+        }
+
+        // The support/data files travel as base64 <file> elements.
+        $datafiles = get_file_storage()->get_area_files($question->contextid, 'qtype_codeatelier',
+                'datafiles', $question->id, 'filepath, filename', false);
+        $output .= $format->write_files($datafiles);
+
+        return $output;
+    }
+
+    /**
+     * Import a question from Moodle XML written by {@see export_to_xml()}.
+     *
+     * @param array $data the xmlized question element
+     * @param object $question unused (the in-progress question)
+     * @param qformat_xml $format the import format
+     * @param mixed $extra unused
+     * @return object|bool the question object to save, or false if not our type
+     */
+    public function import_from_xml($data, $question, qformat_xml $format, $extra = null) {
+        if (!isset($data['@']['type']) || $data['@']['type'] !== 'codeatelier') {
+            return false;
+        }
+
+        $qo = $format->import_headers($data);
+        $qo->qtype = 'codeatelier';
+
+        $defaults = array(
+            'language' => 'python', 'tier' => 'practice', 'scenario' => 'stdinstdout',
+            'entrypoint' => '', 'startercode' => '', 'schemasql' => '',
+            'cputimelimit' => '', 'memorylimit' => '', 'languages' => '',
+            'starters' => '', 'referencesolution' => '', 'allornothing' => 0,
+        );
+        $fields = $this->extra_question_fields();
+        array_shift($fields);
+        foreach ($fields as $field) {
+            $default = isset($defaults[$field]) ? $defaults[$field] : '';
+            $qo->$field = $format->getpath($data, array('#', $field, 0, '#'), $default);
+        }
+        // save_question_options expects the allowed-language SET as an array (the
+        // multi-select value), not the stored comma string — casting a comma string
+        // would collapse the whole set to one bad element.
+        $qo->languages = ($qo->languages !== '' && $qo->languages !== null)
+            ? array_values(array_filter(array_map('trim', explode(',', $qo->languages))))
+            : array();
+
+        foreach (array('testinput', 'testexpected', 'matchmode', 'tolerance',
+                'testweight', 'testvisibility', 'checkerquery', 'testfeedback') as $arr) {
+            $qo->$arr = array();
+        }
+        $testcases = isset($data['#']['testcase']) ? $data['#']['testcase'] : array();
+        foreach ($testcases as $tc) {
+            $qo->testinput[] = $format->getpath($tc, array('#', 'input', 0, '#'), '');
+            $qo->testexpected[] = $format->getpath($tc, array('#', 'expected', 0, '#'), '');
+            $qo->matchmode[] = $format->getpath($tc, array('#', 'matchmode', 0, '#'), 'trimmed');
+            $qo->tolerance[] = $format->getpath($tc, array('#', 'tolerance', 0, '#'), '');
+            $qo->testweight[] = $format->getpath($tc, array('#', 'weight', 0, '#'), '1');
+            $qo->testvisibility[] = $format->getpath($tc, array('#', 'visibility', 0, '#'), 1);
+            $qo->checkerquery[] = $format->getpath($tc, array('#', 'checkerquery', 0, '#'), '');
+            $qo->testfeedback[] = $format->getpath($tc, array('#', 'feedback', 0, '#'), '');
+        }
+
+        // Rebuild the support/data files into a draft area so the normal save path
+        // stores them on the imported question.
+        $qo->datafiles = $this->import_datafiles($data);
+        return $qo;
+    }
+
+    /**
+     * Recreate the support/data <file> nodes of an imported question into a fresh
+     * draft area, returning its item id (an empty draft when there are no files).
+     *
+     * @param array $data the xmlized question element
+     * @return int the draft area item id
+     */
+    protected function import_datafiles($data) {
+        global $USER;
+        $draftid = file_get_unused_draft_itemid();
+        $files = isset($data['#']['file']) ? $data['#']['file'] : array();
+        if (!$files) {
+            return $draftid;
+        }
+        $fs = get_file_storage();
+        $usercontext = context_user::instance($USER->id);
+        foreach ($files as $filexml) {
+            if (empty($filexml['@']['name'])) {
+                continue;
+            }
+            $record = (object) array(
+                'contextid' => $usercontext->id,
+                'component' => 'user',
+                'filearea' => 'draft',
+                'itemid' => $draftid,
+                'filepath' => isset($filexml['@']['path']) ? $filexml['@']['path'] : '/',
+                'filename' => $filexml['@']['name'],
+            );
+            $fs->create_file_from_string($record, base64_decode(isset($filexml['#']) ? $filexml['#'] : ''));
+        }
+        return $draftid;
     }
 
     /**

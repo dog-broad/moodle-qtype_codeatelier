@@ -57,7 +57,8 @@ final class grader_test extends \advanced_testcase {
                 return (array) $r;
             }, $case->results);
 
-            $graded = grader::grade($results, $case->tests);
+            $options = isset($case->options) ? (array) $case->options : array();
+            $graded = grader::grade($results, $case->tests, $options);
 
             $this->assertEqualsWithDelta($case->wantfraction, $graded['fraction'], 1e-9,
                     "grade case '{$case->name}' fraction disagreed with the corpus");

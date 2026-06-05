@@ -45,6 +45,8 @@ class run_examples extends external_api {
         return new external_function_parameters([
             'questionid' => new external_value(PARAM_INT, 'The CodeAtelier question id'),
             'code' => new external_value(PARAM_RAW, 'The student submission to run'),
+            'language' => new external_value(PARAM_ALPHANUMEXT, 'The chosen language (re-validated server-side)',
+                    VALUE_DEFAULT, ''),
         ]);
     }
 
@@ -53,14 +55,15 @@ class run_examples extends external_api {
      *
      * @param int $questionid the question id
      * @param string $code the student submission
+     * @param string $language the chosen language (re-validated against the question's allowed set)
      * @return array the run result (verdict over visible examples, compile output, per-example results)
      */
-    public static function execute(int $questionid, string $code): array {
-        global $CFG;
+    public static function execute(int $questionid, string $code, string $language = ''): array {
+        global $CFG, $USER;
         require_once($CFG->dirroot . '/question/engine/lib.php');
 
         $params = self::validate_parameters(self::execute_parameters(),
-                ['questionid' => $questionid, 'code' => $code]);
+                ['questionid' => $questionid, 'code' => $code, 'language' => $language]);
 
         $question = \question_bank::load_question($params['questionid']);
         if (!($question instanceof \qtype_codeatelier_question) || !$question->is_judge()) {
@@ -72,7 +75,14 @@ class run_examples extends external_api {
         $context = \context::instance_by_id($question->contextid);
         self::validate_context($context);
 
-        $result = $question->run_examples($params['code']);
+        // Throttle on-demand sandbox runs per user so a student cannot hammer Judge0.
+        // The authoritative submit path is async and self-throttling, so only this
+        // formative endpoint needs a cooldown.
+        self::enforce_cooldown((int) $USER->id);
+
+        // Re-validate the chosen language server-side; a disallowed value falls back
+        // to the question's primary language and can never run something off-tier.
+        $result = $question->run_examples($params['code'], $question->resolve_language($params['language']));
         if ($result === null) {
             throw new \moodle_exception('judgenotconfigured', 'qtype_codeatelier');
         }
@@ -97,6 +107,31 @@ class run_examples extends external_api {
             'compileoutput' => $result['compileoutput'] ?? '',
             'examples' => $examples,
         ];
+    }
+
+    /**
+     * Reject a call that arrives inside the per-user cooldown window.
+     *
+     * The last-call timestamp lives in an application cache (shared across the
+     * user's tabs and across nodes); it is stamped before the run so concurrent
+     * calls are throttled too. A cooldown of 0 disables the throttle entirely.
+     *
+     * @param int $userid the calling user's id
+     * @throws \moodle_exception when called again within the cooldown window
+     */
+    private static function enforce_cooldown(int $userid): void {
+        $cooldown = (int) get_config('qtype_codeatelier', 'runexamplescooldown');
+        if ($cooldown <= 0) {
+            return;
+        }
+        $cache = \cache::make('qtype_codeatelier', 'runexamples');
+        $key = (string) $userid;
+        $now = time();
+        $last = (int) $cache->get($key);
+        if ($last && ($now - $last) < $cooldown) {
+            throw new \moodle_exception('runexamplestoofast', 'qtype_codeatelier', '', $cooldown - ($now - $last));
+        }
+        $cache->set($key, $now);
     }
 
     /**

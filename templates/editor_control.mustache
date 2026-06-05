@@ -29,6 +29,13 @@
     * answerlabel string - accessible label for the editor
     * scorename string - the qt field name for the browser-computed score
     * scorevalue string - the current score
+    * languagename string - the qt field name for the chosen language
+    * languagevalue string - the chosen language code
+    * languagechoice bool - whether to show the language picker (more than one allowed, live attempt)
+    * languageoptions array - {code, label, selected} per allowed language
+    * languagechooselabel string - label for the language picker
+    * showlanguageused bool - whether to show which language was used (review of a multi-language question)
+    * languageusedlabel string - the "Language used: X" note for review
     * runlabel string - the run button label
     * focuslabel string - the focus-mode toggle button label
     * outputtabslabel string - accessible label for the output/tests tablist
@@ -44,6 +51,19 @@
         <div class="codeatelier-examples" data-role="examples"></div>
     </div>
     <div class="codeatelier-pane codeatelier-pane-work" data-role="pane-work">
+        {{#languagechoice}}
+        <div class="codeatelier-langpicker" data-role="langpicker">
+            <label class="codeatelier-block-label" for="{{wrapperid}}_language">{{languagechooselabel}}</label>
+            <select class="custom-select" id="{{wrapperid}}_language" data-role="language-select">
+                {{#languageoptions}}
+                <option value="{{code}}" {{#selected}}selected="selected"{{/selected}}>{{label}}</option>
+                {{/languageoptions}}
+            </select>
+        </div>
+        {{/languagechoice}}
+        {{#showlanguageused}}
+        <p class="codeatelier-language-used small text-muted" data-role="language-used">{{languageusedlabel}}</p>
+        {{/showlanguageused}}
         <div class="codeatelier-editor">
             <label class="sr-only" for="{{answerid}}">{{answerlabel}}</label>
             <div class="codeatelier-skeleton" data-role="skeleton" aria-hidden="true">
@@ -93,6 +113,7 @@
         {{/isjudge}}
         {{/readonly}}
         <input type="hidden" data-role="score" name="{{scorename}}" value="{{scorevalue}}">
+        <input type="hidden" data-role="language" name="{{languagename}}" value="{{languagevalue}}">
         {{^isjudge}}
         <div class="codeatelier-console" id="{{wrapperid}}_panel_console" role="tabpanel"
             aria-labelledby="{{wrapperid}}_tab_console" tabindex="0"

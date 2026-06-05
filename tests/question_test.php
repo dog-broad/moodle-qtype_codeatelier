@@ -39,8 +39,50 @@ final class question_test extends \advanced_testcase {
     public function test_get_expected_data(): void {
         $question = $this->make_question();
         $this->assertEquals(
-                array('answer' => PARAM_RAW, 'score' => PARAM_RAW_TRIMMED),
+                array('answer' => PARAM_RAW, 'score' => PARAM_RAW_TRIMMED, 'language' => PARAM_ALPHANUMEXT),
                 $question->get_expected_data());
+    }
+
+    public function test_get_expected_data_judge_has_language_and_proctorlog(): void {
+        $question = test_question_maker::make_question('codeatelier', 'judge');
+        $expected = $question->get_expected_data();
+        $this->assertArrayHasKey('language', $expected);
+        $this->assertArrayHasKey('proctorlog', $expected);
+    }
+
+    public function test_get_allowed_languages_single_and_set(): void {
+        $question = $this->make_question();
+        // Empty languages column means single-language (the primary).
+        $question->languages = null;
+        $this->assertEquals(array('javascript'), $question->get_allowed_languages());
+
+        // A populated set always includes the primary, primary first, deduped.
+        $question->languages = 'python,javascript,python';
+        $this->assertEquals(array('javascript', 'python'), $question->get_allowed_languages());
+    }
+
+    public function test_resolve_language_guards_the_choice(): void {
+        $question = $this->make_question();
+        $question->languages = 'javascript,python';
+
+        // A language in the allowed set passes through.
+        $this->assertEquals('python', $question->resolve_language('python'));
+        // Anything else (tamper, blank, unknown) falls back to the primary.
+        $this->assertEquals('javascript', $question->resolve_language('c'));
+        $this->assertEquals('javascript', $question->resolve_language(''));
+        $this->assertEquals('javascript', $question->resolve_language(null));
+    }
+
+    public function test_is_same_response_accounts_for_language(): void {
+        $question = test_question_maker::make_question('codeatelier', 'multilang');
+
+        $base = array('answer' => 'print(1)', 'score' => '', 'language' => 'python');
+        $samelang = array('answer' => 'print(1)', 'score' => '', 'language' => 'python');
+        $difflang = array('answer' => 'print(1)', 'score' => '', 'language' => 'c');
+
+        $this->assertTrue($question->is_same_response($base, $samelang));
+        // Same code, different language is a different gradable response (it regrades).
+        $this->assertFalse($question->is_same_response($base, $difflang));
     }
 
     public function test_is_complete_response(): void {
