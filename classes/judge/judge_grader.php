@@ -186,6 +186,54 @@ class judge_grader {
     }
 
     /**
+     * Run code against every test and return the PRODUCED OUTPUT of each — the
+     * teacher-only "run-to-capture" primitive that fills Expected fields from a
+     * reference solution. Unlike {@see grade()} there is no comparison and no
+     * visibility filtering: the author sees every test's output (visible and
+     * hidden) and it never touches the grade memo. The output is the same shape
+     * the grader compares — stdout for text scenarios, the parsed result rows as
+     * JSON for SQL result-set tests.
+     *
+     * @param string $code the reference solution
+     * @param string $language a judge-tier language key
+     * @param array $tests the authored test cases
+     * @param string $schemasql the SQL scenario's schema + seed
+     * @return array per-test [{index, output, ok, error}], aligned with the tests
+     */
+    public function run_outputs(string $code, string $language, array $tests, string $schemasql = ''): array {
+        $tests = array_values($tests);
+        $issql = ($language === 'sql');
+        $cases = [];
+        foreach ($tests as $test) {
+            $cases[] = $issql
+                ? ['source' => self::sql_source($schemasql, $code, $test)]
+                : ['input' => $test->input];
+        }
+
+        $runresults = $this->runner->run($code, $language, $cases);
+
+        $outputs = [];
+        foreach ($runresults as $i => $result) {
+            $outcome = $result['outcome'];
+            if ($outcome === 'ran') {
+                $output = ($issql && self::is_resultset_mode($tests[$i]->matchmode))
+                    ? json_encode(self::parse_csv_rows($result['stdout']))
+                    : (string) $result['stdout'];
+                $outputs[] = ['index' => $i, 'output' => $output, 'ok' => true, 'error' => ''];
+            } else {
+                // A compile error, timeout, runtime error or unreachable sandbox
+                // yields no usable output; surface why so the author can fix it.
+                $error = $outcome === 'ce' ? (string) $result['compileoutput']
+                    : (trim((string) ($result['stderr'] ?? '')) !== '' ? (string) $result['stderr']
+                        : (string) ($result['statusdesc'] ?? $outcome));
+                $outputs[] = ['index' => $i, 'output' => '', 'ok' => false,
+                    'error' => $error !== '' ? $error : $outcome];
+            }
+        }
+        return $outputs;
+    }
+
+    /**
      * The overall verdict by precedence: RE > MLE > TLE > WA > AC. A compile
      * error is handled separately as a whole-submission failure.
      *
