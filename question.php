@@ -51,6 +51,9 @@ class qtype_codeatelier_question extends question_graded_automatically {
     /** @var string|null the function name to call for the function scenario. */
     public $entrypoint;
 
+    /** @var string|null typed signature for static-language function grading. */
+    public $functionsignature;
+
     /** @var string|null starter code shown in the editor. */
     public $startercode;
 
@@ -300,7 +303,8 @@ class qtype_codeatelier_question extends question_graded_automatically {
         $allornothing = !empty($this->allornothing);
         $hash = \qtype_codeatelier\judge\result_cache::key(
                 $language, (string) $code, $this->tests, $limits, $schemasql, $allornothing,
-                $this->data_files_hash(), (string) $this->scenario, (string) $this->entrypoint);
+                $this->data_files_hash(), (string) $this->scenario, (string) $this->entrypoint,
+                (string) $this->functionsignature);
         $cached = \qtype_codeatelier\judge\result_cache::get($hash);
         if ($cached !== null) {
             return $cached;
@@ -308,7 +312,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
         $runner->set_additional_files($this->data_files_zip());
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
         $result = $grader->grade((string) $code, $language, $this->tests, $schemasql, $allornothing,
-                (string) $this->scenario, (string) $this->entrypoint);
+                (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature);
         if (empty($result['infrastructure'])) {
             \qtype_codeatelier\judge\result_cache::put($hash, $result);
         }
@@ -343,7 +347,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
         return $grader->grade((string) $code, $this->resolve_language($language), $visible,
                 (string) $this->schemasql, !empty($this->allornothing),
-                (string) $this->scenario, (string) $this->entrypoint);
+                (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature);
     }
 
     /**
@@ -359,7 +363,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
         $hash = \qtype_codeatelier\judge\result_cache::key(
                 $this->resolve_language($language), (string) $code, $this->tests, $limits,
                 (string) $this->schemasql, !empty($this->allornothing), $this->data_files_hash(),
-                (string) $this->scenario, (string) $this->entrypoint);
+                (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature);
         return \qtype_codeatelier\judge\result_cache::get($hash);
     }
 
