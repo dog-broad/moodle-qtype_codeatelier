@@ -45,6 +45,7 @@ class judge0_runner {
         'java' => 62,
         'python' => 71,
         'javascript' => 63,
+        'sql' => 82,
     ];
 
     /** @var string base URL of the Judge0 instance (no trailing slash). */
@@ -153,9 +154,9 @@ class judge0_runner {
      * the sandbox than one blocking submission per case. Execution only: comparing
      * output against the expected value is the grader's job.
      *
-     * @param string $code the student source
-     * @param string $language a CodeAtelier language key (c, cpp, java, python, javascript)
-     * @param array $cases the test cases, each at least ['input' => stdin]
+     * @param string $code the student source (the default for every case)
+     * @param string $language a CodeAtelier language key (c, cpp, java, python, javascript, sql)
+     * @param array $cases the test cases, each ['input' => stdin] and/or ['source' => full source override]
      * @return array per-case results aligned by index ({outcome, stdout, stderr,
      *   compileoutput, time, memory, statusid, statusdesc}; outcome is one of
      *   ran | ce | tle | mle | re | internal)
@@ -172,9 +173,12 @@ class judge0_runner {
 
         $submissions = [];
         foreach ($cases as $case) {
+            // A case may override the whole source (the SQL scenario varies the
+            // source per test — schema + query + checker — rather than stdin).
+            $source = isset($case['source']) ? (string) $case['source'] : $code;
             $stdin = isset($case['input']) ? (string) $case['input'] : '';
             $submissions[] = [
-                'source_code' => base64_encode($code),
+                'source_code' => base64_encode($source),
                 'language_id' => $languageid,
                 'stdin' => base64_encode($stdin),
                 'cpu_time_limit' => $this->cputimelimit,
