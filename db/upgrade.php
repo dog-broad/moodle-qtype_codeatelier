@@ -147,5 +147,19 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026062000, 'qtype', 'codeatelier');
     }
 
+    if ($oldversion < 2026062100) {
+        // Student language choice: the allowed set, and per-language starter code.
+        $table = new xmldb_table('qtype_codeatelier_options');
+        $languages = new xmldb_field('languages', XMLDB_TYPE_TEXT, null, null, null, null, null, 'memorylimit');
+        if (!$dbman->field_exists($table, $languages)) {
+            $dbman->add_field($table, $languages);
+        }
+        $starters = new xmldb_field('starters', XMLDB_TYPE_TEXT, null, null, null, null, null, 'languages');
+        if (!$dbman->field_exists($table, $starters)) {
+            $dbman->add_field($table, $starters);
+        }
+        upgrade_plugin_savepoint(true, 2026062100, 'qtype', 'codeatelier');
+    }
+
     return true;
 }

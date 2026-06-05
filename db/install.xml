@@ -16,6 +16,8 @@
         <FIELD NAME="schemasql" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="SQL scenario: schema + seed (DDL and INSERTs) loaded before the student query."/>
         <FIELD NAME="cputimelimit" TYPE="number" LENGTH="10" DECIMALS="3" NOTNULL="false" SEQUENCE="false" COMMENT="Judge tier: per-question CPU-time limit in seconds. Null uses the site default."/>
         <FIELD NAME="memorylimit" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Judge tier: per-question memory limit in kilobytes. Null uses the site default."/>
+        <FIELD NAME="languages" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Comma-separated set of languages the student may choose from. Empty means single-language (the language field)."/>
+        <FIELD NAME="starters" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON map of language to starter code, for per-language starters when several languages are allowed."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
