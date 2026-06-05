@@ -210,6 +210,48 @@ final class question_type_test extends \advanced_testcase {
         $this->assertEquals(0, (int) $qo->testvisibility[1]);
     }
 
+    /**
+     * Create a draft file area containing one file, returning its item id.
+     *
+     * @param string $filename
+     * @param string $content
+     * @return int the draft item id
+     */
+    private function draft_with_file(string $filename, string $content): int {
+        global $USER;
+        $draftid = file_get_unused_draft_itemid();
+        $record = (object) array(
+            'contextid' => \context_user::instance($USER->id)->id,
+            'component' => 'user', 'filearea' => 'draft', 'itemid' => $draftid,
+            'filepath' => '/', 'filename' => $filename,
+        );
+        get_file_storage()->create_file_from_string($record, $content);
+        return $draftid;
+    }
+
+    public function test_data_files_round_trip(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        $draftid = $this->draft_with_file('data.txt', "hello world\n");
+        $question = $qgen->create_question('codeatelier', 'judge',
+                array('category' => $cat->id, 'datafiles' => $draftid));
+
+        // The uploaded file lands in the question's datafiles area.
+        $files = get_file_storage()->get_area_files($context->id, 'qtype_codeatelier', 'datafiles',
+                $question->id, 'filename', false);
+        $this->assertCount(1, $files);
+        $file = reset($files);
+        $this->assertEquals('data.txt', $file->get_filename());
+        $this->assertEquals("hello world\n", $file->get_content());
+    }
+
     public function test_new_language_and_all_or_nothing_round_trip(): void {
         $this->resetAfterTest();
         $this->setAdminUser();

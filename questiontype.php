@@ -178,16 +178,6 @@ class qtype_codeatelier extends question_type {
         get_file_storage()->delete_area_files($contextid, 'qtype_codeatelier', 'datafiles', $questionid);
     }
 
-    /**
-     * The file areas this qtype owns, for backup/restore (files are mapped to the
-     * restored question id).
-     *
-     * @return array filearea => mapping name
-     */
-    public function get_qtype_fileareas() {
-        return array('datafiles' => 'question_created');
-    }
-
     protected function initialise_question_instance(question_definition $question, $questiondata) {
         parent::initialise_question_instance($question, $questiondata);
         // $question->language is filled by the base class from extra_question_fields().

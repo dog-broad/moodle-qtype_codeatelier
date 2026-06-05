@@ -339,6 +339,18 @@ final class judge_grader_test extends \advanced_testcase {
         $this->assertNotEquals($partial, $aon);
     }
 
+    public function test_cache_key_depends_on_data_files(): void {
+        // Editing a support/data file changes its hash, so the memo is invalidated
+        // and the answer re-grades against the new data.
+        $tests = $this->sum_tests();
+        $limits = array('cputime' => 2.0, 'memory' => 128000);
+        $none = result_cache::key('python', 'code', $tests, $limits, '', false, '');
+        $withfiles = result_cache::key('python', 'code', $tests, $limits, '', false, 'filehash-v1');
+        $changed = result_cache::key('python', 'code', $tests, $limits, '', false, 'filehash-v2');
+        $this->assertNotEquals($none, $withfiles);
+        $this->assertNotEquals($withfiles, $changed);
+    }
+
     public function test_run_outputs_reports_a_failing_reference(): void {
         // A reference that errors yields no output and surfaces why.
         $runner = new qtype_codeatelier_stub_runner(array(

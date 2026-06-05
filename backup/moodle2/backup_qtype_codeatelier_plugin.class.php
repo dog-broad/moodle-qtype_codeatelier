@@ -62,4 +62,14 @@ class backup_qtype_codeatelier_plugin extends backup_qtype_plugin {
 
         return $plugin;
     }
+
+    /**
+     * The file areas this qtype owns, so backup/restore carries them (the
+     * support/data files are mapped to the restored question id).
+     *
+     * @return array filearea => mapping name
+     */
+    public static function get_qtype_fileareas() {
+        return array('datafiles' => 'question_created');
+    }
 }

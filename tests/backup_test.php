@@ -135,11 +135,16 @@ final class backup_test extends \advanced_testcase {
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
         $cat = $qgen->create_question_category(array('contextid' => $context->id));
-        // A multi-language judge question with explicit per-question limits and
-        // all-or-nothing grading.
+        // A multi-language judge question with explicit per-question limits,
+        // all-or-nothing grading, and a support/data file.
+        $draftid = file_get_unused_draft_itemid();
+        get_file_storage()->create_file_from_string((object) array(
+                'contextid' => \context_user::instance($USER->id)->id, 'component' => 'user',
+                'filearea' => 'draft', 'itemid' => $draftid, 'filepath' => '/', 'filename' => 'fixture.txt'),
+                "fixture data\n");
         $qgen->create_question('codeatelier', 'multilang', array(
                 'category' => $cat->id, 'cputimelimit' => '1.5', 'memorylimit' => '64000',
-                'allornothing' => 1));
+                'allornothing' => 1, 'datafiles' => $draftid));
 
         $bc = new backup_controller(backup::TYPE_1COURSE, $course->id, backup::FORMAT_MOODLE,
                 backup::INTERACTIVE_NO, backup::MODE_IMPORT, $USER->id);
@@ -170,8 +175,13 @@ final class backup_test extends \advanced_testcase {
         $this->assertEquals(64000, (int) $restored->memorylimit);
         // ...and the reference solution...
         $this->assertStringContainsString('input().split()', $restored->referencesolution);
-        // ...and the all-or-nothing flag.
+        // ...and the all-or-nothing flag...
         $this->assertEquals(1, (int) $restored->allornothing);
+        // ...and the support/data file (restored into the new course's context).
+        $datafiles = get_file_storage()->get_area_files($newcontext->id, 'qtype_codeatelier',
+                'datafiles', $restored->questionid, 'filename', false);
+        $this->assertCount(1, $datafiles);
+        $this->assertEquals('fixture.txt', reset($datafiles)->get_filename());
     }
 
     /**
