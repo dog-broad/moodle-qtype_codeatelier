@@ -75,6 +75,9 @@ class qtype_codeatelier_question extends question_graded_automatically {
     /** @var string|null reference solution (primary language) for validate-on-save and capture. */
     public $referencesolution = null;
 
+    /** @var int 1 grades all-or-nothing (full marks only if every test passes), 0 partial credit. */
+    public $allornothing = 0;
+
     /** @var array the test cases (rows from qtype_codeatelier_tests). */
     public $tests = array();
 

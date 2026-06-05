@@ -19,6 +19,7 @@
         <FIELD NAME="languages" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Comma-separated set of languages the student may choose from. Empty means single-language (the language field)."/>
         <FIELD NAME="starters" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON map of language to starter code, for per-language starters when several languages are allowed."/>
         <FIELD NAME="referencesolution" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="A reference solution (in the primary language) used for validate-on-save and run-to-capture."/>
+        <FIELD NAME="allornothing" TYPE="int" LENGTH="2" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="1 grades all-or-nothing (full marks only if every test passes); 0 allows weighted partial credit."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>

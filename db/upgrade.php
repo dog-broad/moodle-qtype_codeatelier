@@ -171,5 +171,15 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026062200, 'qtype', 'codeatelier');
     }
 
+    if ($oldversion < 2026062300) {
+        // All-or-nothing grading toggle (0 = weighted partial credit).
+        $table = new xmldb_table('qtype_codeatelier_options');
+        $field = new xmldb_field('allornothing', XMLDB_TYPE_INTEGER, '2', null, null, null, '0', 'referencesolution');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        upgrade_plugin_savepoint(true, 2026062300, 'qtype', 'codeatelier');
+    }
+
     return true;
 }

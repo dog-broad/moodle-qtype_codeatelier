@@ -47,7 +47,7 @@ class qtype_codeatelier extends question_type {
     public function extra_question_fields() {
         return array('qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint',
                 'startercode', 'schemasql', 'cputimelimit', 'memorylimit', 'languages', 'starters',
-                'referencesolution');
+                'referencesolution', 'allornothing');
     }
 
     public function get_question_options($question) {
@@ -100,6 +100,8 @@ class qtype_codeatelier extends question_type {
         $question->referencesolution = (isset($question->referencesolution)
                 && trim((string) $question->referencesolution) !== '')
                 ? (string) $question->referencesolution : null;
+
+        $question->allornothing = !empty($question->allornothing) ? 1 : 0;
 
         // Saves the language/tier/scenario options into qtype_codeatelier_options.
         parent::save_question_options($question);
@@ -221,7 +223,7 @@ class qtype_codeatelier extends question_type {
             'language' => 'python', 'tier' => 'practice', 'scenario' => 'stdinstdout',
             'entrypoint' => '', 'startercode' => '', 'schemasql' => '',
             'cputimelimit' => '', 'memorylimit' => '', 'languages' => '',
-            'starters' => '', 'referencesolution' => '',
+            'starters' => '', 'referencesolution' => '', 'allornothing' => 0,
         );
         $fields = $this->extra_question_fields();
         array_shift($fields);
