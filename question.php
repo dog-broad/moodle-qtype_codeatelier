@@ -72,6 +72,9 @@ class qtype_codeatelier_question extends question_graded_automatically {
     /** @var string|null JSON map of language to starter code, for per-language starters. */
     public $starters = null;
 
+    /** @var string|null reference solution (primary language) for validate-on-save and capture. */
+    public $referencesolution = null;
+
     /** @var array the test cases (rows from qtype_codeatelier_tests). */
     public $tests = array();
 

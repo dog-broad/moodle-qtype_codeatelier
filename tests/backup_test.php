@@ -163,9 +163,11 @@ final class backup_test extends \advanced_testcase {
         $starters = json_decode($restored->starters, true);
         $this->assertArrayHasKey('c', $starters);
         $this->assertArrayHasKey('cpp', $starters);
-        // ...as must the per-question limits (previously dropped by the backup step).
+        // ...as must the per-question limits (previously dropped by the backup step)...
         $this->assertEquals(1.5, (float) $restored->cputimelimit);
         $this->assertEquals(64000, (int) $restored->memorylimit);
+        // ...and the reference solution.
+        $this->assertStringContainsString('input().split()', $restored->referencesolution);
     }
 
     /**

@@ -159,6 +159,57 @@ final class question_type_test extends \advanced_testcase {
         $this->assertArrayNotHasKey('python', $starters);
     }
 
+    public function test_xml_export_import_round_trip(): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/question/format/xml/format.php');
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        // A multi-language judge question carries the awkward fields: a language set,
+        // a per-language starter map, and a reference solution.
+        $question = $qgen->create_question('codeatelier', 'multilang', array('category' => $cat->id));
+        $questiondata = question_bank::load_question_data($question->id);
+
+        $qtype = question_bank::get_qtype('codeatelier');
+        $format = new \qformat_xml();
+        $fragment = $qtype->export_to_xml($questiondata, $format);
+        $this->assertStringContainsString('<referencesolution>', $fragment);
+        $this->assertStringContainsString('<testcase>', $fragment);
+
+        // Re-import the exported fragment (wrapped as a question element).
+        $xml = '<question type="codeatelier">'
+                . '<name><text>RT</text></name>'
+                . '<questiontext format="html"><text>q</text></questiontext>'
+                . $fragment . '</question>';
+        $data = \xmlize($xml);
+        $qo = $qtype->import_from_xml($data['question'], null, $format);
+
+        $this->assertEquals('judge', $qo->tier);
+        $this->assertEquals('python', $qo->language);
+        $this->assertEquals('stdinstdout', $qo->scenario);
+        // The allowed set survives as an ARRAY (not a collapsed comma string).
+        $langs = $qo->languages;
+        sort($langs);
+        $this->assertEquals(array('c', 'cpp', 'python'), $langs);
+        // The per-language starters and the reference solution survive.
+        $starters = json_decode($qo->starters, true);
+        $this->assertArrayHasKey('c', $starters);
+        $this->assertArrayHasKey('cpp', $starters);
+        $this->assertStringContainsString('input().split()', $qo->referencesolution);
+        // The test cases round-trip.
+        $this->assertCount(2, $qo->testinput);
+        $this->assertEquals('5', $qo->testexpected[0]);
+        $this->assertEquals('trimmed', $qo->matchmode[0]);
+        $this->assertEquals(0, (int) $qo->testvisibility[1]);
+    }
+
     public function test_single_language_question_stores_just_the_primary(): void {
         $this->resetAfterTest();
         $this->setAdminUser();

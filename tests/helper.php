@@ -152,6 +152,7 @@ class qtype_codeatelier_test_helper extends question_test_helper {
             'c' => "#include <stdio.h>\nint main(void){return 0;}\n",
             'cpp' => "#include <iostream>\nint main(){return 0;}\n",
         ));
+        $q->referencesolution = "print(sum(map(int, input().split())))\n";
         return $q;
     }
 
@@ -168,6 +169,7 @@ class qtype_codeatelier_test_helper extends question_test_helper {
             'c' => "#include <stdio.h>\nint main(void){return 0;}\n",
             'cpp' => "#include <iostream>\nint main(){return 0;}\n",
         ));
+        $form->referencesolution = "print(sum(map(int, input().split())))\n";
         return $form;
     }
 

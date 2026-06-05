@@ -276,4 +276,48 @@ final class judge_grader_test extends \advanced_testcase {
         $this->assertSame('RE', $result['verdict']);
         $this->assertSame('re', $result['testresults'][0]['status']);
     }
+
+    public function test_run_outputs_captures_every_test(): void {
+        // Run-to-capture: the produced output of ALL tests is returned (visible AND
+        // hidden), so the author can fill every Expected field.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+            qtype_codeatelier_stub_runner::row('ran', "30\n"),
+        ));
+        $outputs = (new judge_grader($runner))->run_outputs('code', 'python', $this->sum_tests());
+
+        $this->assertCount(2, $outputs);
+        $this->assertTrue($outputs[0]['ok']);
+        $this->assertSame("5\n", $outputs[0]['output']);
+        $this->assertSame(0, $outputs[0]['index']);
+        // The hidden test's output is captured too (no visibility filter here).
+        $this->assertTrue($outputs[1]['ok']);
+        $this->assertSame("30\n", $outputs[1]['output']);
+    }
+
+    public function test_run_outputs_sql_returns_parsed_rows_json(): void {
+        // The captured value for a SQL result-set test is the parsed rows as JSON,
+        // the same shape grading compares against.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "1,amy\n2,bo\n"),
+        ));
+        $outputs = (new judge_grader($runner))->run_outputs('SELECT id, name FROM users', 'sql',
+                $this->sql_test('[]', 'resultset'), 'CREATE TABLE users(id INT, name TEXT);');
+
+        $this->assertSame('[[1,"amy"],[2,"bo"]]', $outputs[0]['output']);
+    }
+
+    public function test_run_outputs_reports_a_failing_reference(): void {
+        // A reference that errors yields no output and surfaces why.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('re', '', array('stderr' => 'Traceback: boom')),
+        ));
+        $tests = array((object) array('input' => 'x', 'expected' => '', 'matchmode' => 'trimmed',
+            'tolerance' => null, 'weight' => 1, 'visibility' => 1, 'checkerquery' => null));
+        $outputs = (new judge_grader($runner))->run_outputs('code', 'python', $tests);
+
+        $this->assertFalse($outputs[0]['ok']);
+        $this->assertSame('', $outputs[0]['output']);
+        $this->assertStringContainsString('boom', $outputs[0]['error']);
+    }
 }
