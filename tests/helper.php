@@ -33,7 +33,7 @@ defined('MOODLE_INTERNAL') || die();
 class qtype_codeatelier_test_helper extends question_test_helper {
 
     public function get_test_questions() {
-        return array('function', 'judge');
+        return array('function', 'judge', 'multilang');
     }
 
     /**
@@ -56,6 +56,8 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $q->entrypoint = 'add';
         $q->startercode = "function add(a, b) {\n}\n";
         $q->schemasql = null;
+        $q->languages = null;
+        $q->starters = null;
         $q->tests = array(
             (object) array('sortorder' => 0, 'input' => '[2, 3]', 'expected' => '5',
                 'matchmode' => 'structured', 'tolerance' => null, 'weight' => 1,
@@ -97,6 +99,8 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $form->testfeedback = array('Add the two numbers.', '');
         $form->cputimelimit = '';
         $form->memorylimit = '';
+        $form->languages = array();
+        $form->starters = '';
         return $form;
     }
 
@@ -120,6 +124,8 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $q->entrypoint = null;
         $q->startercode = '';
         $q->schemasql = null;
+        $q->languages = null;
+        $q->starters = null;
         $q->tests = array(
             (object) array('sortorder' => 0, 'input' => "2 3\n", 'expected' => '5',
                 'matchmode' => 'trimmed', 'tolerance' => null, 'weight' => 1,
@@ -129,6 +135,40 @@ class qtype_codeatelier_test_helper extends question_test_helper {
                 'visibility' => 0, 'checkerquery' => null, 'feedback' => null),
         );
         return $q;
+    }
+
+    /**
+     * A multi-language judge question: the same "sum two integers" problem with an
+     * allowed set of Python, C and C++, a per-language starter for C and C++, and
+     * Python as the primary/default. Tests must inject a runner to grade.
+     *
+     * @return qtype_codeatelier_question
+     */
+    public function make_codeatelier_question_multilang() {
+        $q = $this->make_codeatelier_question_judge();
+        $q->name = 'CodeAtelier judge sum (multi-language)';
+        $q->languages = 'python,c,cpp';
+        $q->starters = json_encode(array(
+            'c' => "#include <stdio.h>\nint main(void){return 0;}\n",
+            'cpp' => "#include <iostream>\nint main(){return 0;}\n",
+        ));
+        return $q;
+    }
+
+    /**
+     * Edit-form data for the multi-language judge question.
+     *
+     * @return stdClass
+     */
+    public function get_codeatelier_question_form_data_multilang() {
+        $form = $this->get_codeatelier_question_form_data_judge();
+        $form->name = 'CodeAtelier judge sum (multi-language)';
+        $form->languages = array('python', 'c', 'cpp');
+        $form->starters = json_encode(array(
+            'c' => "#include <stdio.h>\nint main(void){return 0;}\n",
+            'cpp' => "#include <iostream>\nint main(){return 0;}\n",
+        ));
+        return $form;
     }
 
     /**
@@ -160,6 +200,8 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $form->testfeedback = array('', '');
         $form->cputimelimit = '';
         $form->memorylimit = '';
+        $form->languages = array();
+        $form->starters = '';
         return $form;
     }
 }

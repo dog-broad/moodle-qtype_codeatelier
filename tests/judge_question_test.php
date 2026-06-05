@@ -46,6 +46,84 @@ final class judge_question_test extends \advanced_testcase {
         return $question;
     }
 
+    /**
+     * A multi-language judge question (python primary; c and cpp also allowed).
+     *
+     * @param qtype_codeatelier_stub_runner $runner
+     * @return \qtype_codeatelier_question
+     */
+    private function multilang_question(qtype_codeatelier_stub_runner $runner) {
+        $question = test_question_maker::make_question('codeatelier', 'multilang');
+        $question->judgerunner = $runner;
+        return $question;
+    }
+
+    public function test_grades_in_the_chosen_language(): void {
+        $this->resetAfterTest();
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+            qtype_codeatelier_stub_runner::row('ran', "30\n"),
+        ));
+        $question = $this->multilang_question($runner);
+
+        // The student chose C: the runner must be asked to run C.
+        $question->get_judge_result('code', 'c');
+        $this->assertSame('c', $runner->last_language());
+    }
+
+    public function test_tampered_language_falls_back_to_primary(): void {
+        $this->resetAfterTest();
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+            qtype_codeatelier_stub_runner::row('ran', "30\n"),
+        ));
+        $question = $this->multilang_question($runner);
+
+        // A language outside the allowed set can never run off-tier: it resolves
+        // to the primary language (python).
+        $question->get_judge_result('code', 'ruby');
+        $this->assertSame('python', $runner->last_language());
+    }
+
+    public function test_different_languages_are_separate_memo_buckets(): void {
+        $this->resetAfterTest();
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+            qtype_codeatelier_stub_runner::row('ran', "30\n"),
+        ));
+        $question = $this->multilang_question($runner);
+
+        // Same code, two languages: each computes (and caches) independently.
+        $question->get_judge_result('same code', 'python');
+        $question->get_judge_result('same code', 'c');
+        $this->assertEquals(2, $runner->call_count());
+        // The python bucket is warm; re-reading it does not run the sandbox again.
+        $this->assertNotNull($question->cached_judge_result('same code', 'python'));
+        $this->assertEquals(2, $runner->call_count());
+    }
+
+    public function test_grade_response_reads_the_chosen_language(): void {
+        $this->resetAfterTest();
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+            qtype_codeatelier_stub_runner::row('ran', "30\n"),
+        ));
+        $question = $this->multilang_question($runner);
+
+        // Warm the C bucket the way the scheduled task does, then grade the
+        // response that carries language=c: it must hit that bucket (graded right).
+        $question->get_judge_result('code', 'c');
+        list($fraction, $state) = $question->grade_response(
+                array('answer' => 'code', 'language' => 'c'));
+        $this->assertEquals(1.0, $fraction);
+        $this->assertEquals(question_state::$gradedright, $state);
+
+        // A response with no warmed bucket for its language stays needs-grading.
+        list(, $state) = $question->grade_response(
+                array('answer' => 'code', 'language' => 'python'));
+        $this->assertEquals(question_state::$needsgrading, $state);
+    }
+
     public function test_judge_expects_a_proctor_log_field(): void {
         $this->resetAfterTest();
         $question = $this->judge_question(new qtype_codeatelier_stub_runner(array()));

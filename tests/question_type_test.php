@@ -133,6 +133,50 @@ final class question_type_test extends \advanced_testcase {
         $this->assertEquals('resultset_ordered', array_values($data->options->tests)[0]->matchmode);
     }
 
+    public function test_languages_and_starters_round_trip(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        $question = $qgen->create_question('codeatelier', 'multilang', array('category' => $cat->id));
+        $data = question_bank::load_question_data($question->id);
+
+        // The allowed set is stored as a comma string including the primary.
+        $stored = explode(',', $data->options->languages);
+        sort($stored);
+        $this->assertEquals(array('c', 'cpp', 'python'), $stored);
+
+        // Per-language starters are a JSON map, pruned to the non-primary languages.
+        $starters = json_decode($data->options->starters, true);
+        $this->assertArrayHasKey('c', $starters);
+        $this->assertArrayHasKey('cpp', $starters);
+        // The primary language's starter lives in startercode, not the map.
+        $this->assertArrayNotHasKey('python', $starters);
+    }
+
+    public function test_single_language_question_stores_just_the_primary(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        // The function fixture has an empty languages set: save still records the
+        // primary so the loaded question is unambiguously single-language.
+        $question = $qgen->create_question('codeatelier', 'function', array('category' => $cat->id));
+        $data = question_bank::load_question_data($question->id);
+        $this->assertEquals('javascript', $data->options->languages);
+        $this->assertEmpty($data->options->starters);
+    }
+
     public function test_judge_question_round_trip(): void {
         $this->resetAfterTest();
         $this->setAdminUser();

@@ -124,6 +124,50 @@ final class backup_test extends \advanced_testcase {
         $this->assertEquals('python', $restored->language);
     }
 
+    public function test_languages_starters_and_limits_survive_backup_and_restore(): void {
+        global $DB, $USER;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        // A multi-language judge question with explicit per-question limits.
+        $qgen->create_question('codeatelier', 'multilang', array(
+                'category' => $cat->id, 'cputimelimit' => '1.5', 'memorylimit' => '64000'));
+
+        $bc = new backup_controller(backup::TYPE_1COURSE, $course->id, backup::FORMAT_MOODLE,
+                backup::INTERACTIVE_NO, backup::MODE_IMPORT, $USER->id);
+        $backupid = $bc->get_backupid();
+        $bc->execute_plan();
+        $bc->destroy();
+
+        $newcourse = $generator->create_course();
+        $rc = new restore_controller($backupid, $newcourse->id, backup::INTERACTIVE_NO,
+                backup::MODE_IMPORT, $USER->id, backup::TARGET_NEW_COURSE);
+        $this->assertTrue($rc->execute_precheck());
+        $rc->execute_plan();
+        $rc->destroy();
+
+        $newcontext = \context_course::instance($newcourse->id);
+        $restored = $this->find_restored_options($newcontext->id);
+        $this->assertNotNull($restored);
+
+        // The allowed set and per-language starters must survive a course copy...
+        $langs = explode(',', $restored->languages);
+        sort($langs);
+        $this->assertEquals(array('c', 'cpp', 'python'), $langs);
+        $starters = json_decode($restored->starters, true);
+        $this->assertArrayHasKey('c', $starters);
+        $this->assertArrayHasKey('cpp', $starters);
+        // ...as must the per-question limits (previously dropped by the backup step).
+        $this->assertEquals(1.5, (float) $restored->cputimelimit);
+        $this->assertEquals(64000, (int) $restored->memorylimit);
+    }
+
     /**
      * Find the CodeAtelier options row whose question lives in the given context.
      *
