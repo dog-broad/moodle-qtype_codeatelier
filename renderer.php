@@ -106,6 +106,12 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         // configured (and never on review).
         $canrunexamples = $isjudge && !$options->readonly
                 && !empty(get_config('qtype_codeatelier', 'judge0baseurl'));
+        // "Run with my own input" — a scratch console for stdin/stdout and function
+        // judge questions (SQL has no stdin; it uses run-against-examples instead).
+        $canrunscratch = $canrunexamples && $scenario !== 'sql';
+        $scratchlabel = ($scenario === 'function')
+                ? get_string('scratchargs', 'qtype_codeatelier')
+                : get_string('scratchstdin', 'qtype_codeatelier');
 
         $validationresponse = $isjudge ? array('answer' => $currentcode) : array('score' => $currentscore);
 
@@ -146,6 +152,8 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'proctornote' => $isjudge ? get_string('proctornote', 'qtype_codeatelier') : '',
             'canrunexamples' => $canrunexamples,
             'runexampleslabel' => get_string('runexamples', 'qtype_codeatelier'),
+            'canrunscratch' => $canrunscratch,
+            'scratchlabel' => $scratchlabel,
             'hasvalidationerror' => $qa->get_state() == question_state::$invalid,
             'validationerror' => $question->get_validation_error($validationresponse),
         ) + qtype_codeatelier::ui_labels();
@@ -196,6 +204,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                     're' => get_string('verdict_RE', 'qtype_codeatelier'),
                     'tle' => get_string('verdict_TLE', 'qtype_codeatelier'),
                     'mle' => get_string('verdict_MLE', 'qtype_codeatelier'),
+                    'nooutput' => get_string('scratchnooutput', 'qtype_codeatelier'),
                 ),
             )));
         }

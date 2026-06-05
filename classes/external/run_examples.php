@@ -119,7 +119,7 @@ class run_examples extends external_api {
      * @param int $userid the calling user's id
      * @throws \moodle_exception when called again within the cooldown window
      */
-    private static function enforce_cooldown(int $userid): void {
+    public static function enforce_cooldown(int $userid): void {
         $cooldown = (int) get_config('qtype_codeatelier', 'runexamplescooldown');
         if ($cooldown <= 0) {
             return;

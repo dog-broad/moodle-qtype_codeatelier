@@ -78,6 +78,72 @@ final class judge_grader_test extends \advanced_testcase {
         $this->assertTrue($result['testresults'][1]['passed']);
     }
 
+    /**
+     * Two structured (function-return) tests: visible [2,3]->5, hidden [10,20]->30.
+     *
+     * @return array
+     */
+    private function function_tests(): array {
+        return array(
+            (object) array('input' => '[2, 3]', 'expected' => '5', 'matchmode' => 'structured',
+                'tolerance' => null, 'weight' => 1, 'visibility' => 1),
+            (object) array('input' => '[10, 20]', 'expected' => '30', 'matchmode' => 'structured',
+                'tolerance' => null, 'weight' => 1, 'visibility' => 0),
+        );
+    }
+
+    public function test_function_scenario_grades_by_return_value(): void {
+        // The harness prints the JSON return on stdout; the grader must compare it as
+        // the return value under the structured matcher, so "5" == 5.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', '5'),
+            qtype_codeatelier_stub_runner::row('ran', '30'),
+        ));
+        $result = (new judge_grader($runner))->grade('def add(a, b): return a + b', 'python',
+                $this->function_tests(), '', false, 'function', 'add');
+
+        $this->assertEquals(1.0, $result['fraction']);
+        $this->assertSame('AC', $result['verdict']);
+    }
+
+    public function test_function_scenario_structured_deep_equality(): void {
+        // A JSON-array return compares by deep equality (order-sensitive), and the
+        // cross-language number invariant holds (int 3 vs float 3.0).
+        $tests = array(
+            (object) array('input' => '[[3, 1, 2]]', 'expected' => '[1, 2, 3]', 'matchmode' => 'structured',
+                'tolerance' => null, 'weight' => 1, 'visibility' => 1),
+        );
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', '[1.0, 2, 3]'),
+        ));
+        $result = (new judge_grader($runner))->grade('code', 'javascript', $tests, '', false, 'function', 'sortit');
+
+        $this->assertEquals(1.0, $result['fraction']);
+        $this->assertSame('AC', $result['verdict']);
+    }
+
+    public function test_function_scenario_wrong_return_is_wa(): void {
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', '5'),
+            qtype_codeatelier_stub_runner::row('ran', '999'),
+        ));
+        $result = (new judge_grader($runner))->grade('code', 'python', $this->function_tests(),
+                '', false, 'function', 'add');
+
+        $this->assertEquals(0.5, $result['fraction']);
+        $this->assertSame('WA', $result['verdict']);
+    }
+
+    public function test_cache_key_depends_on_scenario_and_entrypoint(): void {
+        $tests = $this->function_tests();
+        $limits = array('cputime' => 2.0, 'memory' => 128000);
+        $base = result_cache::key('python', 'code', $tests, $limits, '', false, '', 'stdinstdout', '');
+        $func = result_cache::key('python', 'code', $tests, $limits, '', false, '', 'function', 'add');
+        $func2 = result_cache::key('python', 'code', $tests, $limits, '', false, '', 'function', 'other');
+        $this->assertNotEquals($base, $func);
+        $this->assertNotEquals($func, $func2);
+    }
+
     public function test_one_wrong_is_partial_wa(): void {
         $runner = new qtype_codeatelier_stub_runner(array(
             qtype_codeatelier_stub_runner::row('ran', "5\n"),

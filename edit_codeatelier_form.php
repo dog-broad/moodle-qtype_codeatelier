@@ -53,14 +53,20 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 $this->scenario_options());
         $mform->addHelpButton('scenario', 'scenario', 'qtype_codeatelier');
         $mform->setDefault('scenario', $this->get_default_value('scenario', 'stdinstdout'));
-        // The judge tier supports stdin/stdout and SQL (not function) — enforced in
-        // validation(); the practice tier supports all three.
+        // Both tiers support all three scenarios; the per-scenario language rules
+        // (e.g. judge function = dynamic languages only) are enforced in validation().
 
         $mform->addElement('text', 'entrypoint', get_string('entrypoint', 'qtype_codeatelier'),
                 array('size' => 40));
         $mform->setType('entrypoint', PARAM_RAW_TRIMMED);
         $mform->addHelpButton('entrypoint', 'entrypoint', 'qtype_codeatelier');
         $mform->hideIf('entrypoint', 'scenario', 'neq', 'function');
+
+        $mform->addElement('text', 'functionsignature', get_string('functionsignature', 'qtype_codeatelier'),
+                array('size' => 40));
+        $mform->setType('functionsignature', PARAM_RAW_TRIMMED);
+        $mform->addHelpButton('functionsignature', 'functionsignature', 'qtype_codeatelier');
+        $mform->hideIf('functionsignature', 'scenario', 'neq', 'function');
 
         $mform->addElement('textarea', 'startercode', get_string('startercode', 'qtype_codeatelier'),
                 array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
@@ -389,22 +395,35 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         }
 
         // Scenario constraints. SQL is single-language on BOTH tiers (the source is
-        // the schema plus one query). The function harness exists only on the
-        // practice tier for Python/JS; the judge tier supports stdin/stdout and SQL.
+        // the schema plus one query). Function grading needs a per-language harness:
+        // in-browser for Python/JS on the practice tier; on the judge tier the dynamic
+        // languages the sandbox harness covers (static languages need a signature).
         if (!isset($errors['languages'])) {
             if ($scenario === 'sql') {
                 if ($allowed !== array('sql')) {
                     $errors['languages'] = get_string('sqlsinglelanguage', 'qtype_codeatelier');
                 }
             } else if ($scenario === 'function') {
-                if ($tier === 'judge') {
-                    $errors['scenario'] = get_string('functionnotjudge', 'qtype_codeatelier');
-                } else {
-                    foreach ($allowed as $lang) {
-                        if (!in_array($lang, array('python', 'javascript'), true)) {
-                            $errors['languages'] = get_string('functionlanguageset', 'qtype_codeatelier');
-                            break;
-                        }
+                $functionlangs = ($tier === 'judge')
+                    ? \qtype_codeatelier\judge\function_harness::LANGUAGES
+                    : array('python', 'javascript');
+                $needssig = false;
+                foreach ($allowed as $lang) {
+                    if (!in_array($lang, $functionlangs, true)) {
+                        $errors['languages'] = get_string('functionlanguageset', 'qtype_codeatelier');
+                        break;
+                    }
+                    if (\qtype_codeatelier\judge\function_harness::needs_signature($lang)) {
+                        $needssig = true;
+                    }
+                }
+                // A static-language function question needs a valid typed signature.
+                if (!isset($errors['languages']) && $needssig) {
+                    $sig = isset($data['functionsignature']) ? trim($data['functionsignature']) : '';
+                    if ($sig === '') {
+                        $errors['functionsignature'] = get_string('signaturerequired', 'qtype_codeatelier');
+                    } else if (!\qtype_codeatelier\judge\signature::is_valid($sig)) {
+                        $errors['functionsignature'] = get_string('signatureinvalid', 'qtype_codeatelier');
                     }
                 }
             }
@@ -418,9 +437,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             }
         }
 
-        // The judge tier is always stdin/stdout, so the entrypoint is only
-        // required for a practice-tier function question.
-        if ($tier !== 'judge' && $data['scenario'] === 'function' && trim($data['entrypoint']) === '') {
+        // A function question needs the name of the function to call, on either tier.
+        if ($data['scenario'] === 'function' && trim($data['entrypoint']) === '') {
             $errors['entrypoint'] = get_string('entrypointrequired', 'qtype_codeatelier');
         }
 

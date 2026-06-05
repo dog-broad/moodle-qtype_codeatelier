@@ -56,7 +56,7 @@ class qtype_codeatelier extends question_type {
     public function extra_question_fields() {
         return array('qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint',
                 'startercode', 'schemasql', 'cputimelimit', 'memorylimit', 'languages', 'starters',
-                'referencesolution', 'allornothing');
+                'referencesolution', 'allornothing', 'functionsignature');
     }
 
     public function get_question_options($question) {
@@ -256,6 +256,7 @@ class qtype_codeatelier extends question_type {
             'entrypoint' => '', 'startercode' => '', 'schemasql' => '',
             'cputimelimit' => '', 'memorylimit' => '', 'languages' => '',
             'starters' => '', 'referencesolution' => '', 'allornothing' => 0,
+            'functionsignature' => '',
         );
         $fields = $this->extra_question_fields();
         array_shift($fields);

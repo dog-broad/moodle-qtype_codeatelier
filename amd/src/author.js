@@ -383,6 +383,8 @@ export const init = (config) => {
                 code: code,
                 language: langSel ? langSel.value : 'python',
                 scenario: scenSel ? scenSel.value : 'stdinstdout',
+                entrypoint: byId(config.entrypointid) ? byId(config.entrypointid).value : '',
+                functionsignature: byId('id_functionsignature') ? byId('id_functionsignature').value : '',
                 schemasql: schemaTa ? schemaTa.value : '',
                 cputimelimit: byId('id_cputimelimit') ? byId('id_cputimelimit').value : '',
                 memorylimit: byId('id_memorylimit') ? byId('id_memorylimit').value : '',

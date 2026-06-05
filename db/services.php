@@ -32,6 +32,13 @@ $functions = [
         'type' => 'read',
         'ajax' => true,
     ],
+    'qtype_codeatelier_run_scratch' => [
+        'classname' => 'qtype_codeatelier\external\run_scratch',
+        'methodname' => 'execute',
+        'description' => 'Run a judge-tier submission once against the student\'s own input (formative, no grade).',
+        'type' => 'read',
+        'ajax' => true,
+    ],
     'qtype_codeatelier_run_reference' => [
         'classname' => 'qtype_codeatelier\external\run_reference',
         'methodname' => 'execute',
