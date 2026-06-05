@@ -103,14 +103,13 @@ class qtype_codeatelier_question extends question_graded_automatically {
         if ($this->languages !== null && trim((string) $this->languages) !== '') {
             foreach (explode(',', (string) $this->languages) as $lang) {
                 $lang = trim($lang);
-                if ($lang !== '' && !in_array($lang, $allowed, true)) {
+                if ($lang !== '' && $lang !== $this->language && !in_array($lang, $allowed, true)) {
                     $allowed[] = $lang;
                 }
             }
         }
-        if (!in_array($this->language, $allowed, true)) {
-            array_unshift($allowed, $this->language);
-        }
+        // The primary language always leads the set.
+        array_unshift($allowed, $this->language);
         return $allowed;
     }
 
