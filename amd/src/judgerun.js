@@ -46,13 +46,14 @@ export const init = (config) => {
     const langField = root.querySelector('[data-role="language"]');
     const strings = config.strings || {};
 
+    const language = () => (langField && langField.value) ? langField.value : config.language;
+
     button.addEventListener('click', () => {
         button.disabled = true;
         out.textContent = strings.running || 'Running…';
-        const language = (langField && langField.value) ? langField.value : config.language;
         Ajax.call([{
             methodname: 'qtype_codeatelier_run_examples',
-            args: {questionid: config.questionid, code: answer.value, language: language},
+            args: {questionid: config.questionid, code: answer.value, language: language()},
         }])[0].then((result) => {
             render(out, result, strings);
             button.disabled = false;
@@ -62,6 +63,51 @@ export const init = (config) => {
             button.disabled = false;
         });
     });
+
+    // "Run with my own input": run the current code once against the student's own
+    // input (stdin, or a JSON argument array for the function scenario). Formative,
+    // no grade — the judge-tier counterpart of the practice tier's Run verb.
+    const scratchBtn = root.querySelector('[data-role="runscratch"]');
+    const scratchIn = root.querySelector('[data-role="scratchinput"]');
+    const scratchOut = root.querySelector('[data-role="scratchoutput"]');
+    if (scratchBtn && scratchIn && scratchOut) {
+        scratchBtn.addEventListener('click', () => {
+            scratchBtn.disabled = true;
+            scratchOut.textContent = strings.running || 'Running…';
+            Ajax.call([{
+                methodname: 'qtype_codeatelier_run_scratch',
+                args: {questionid: config.questionid, code: answer.value,
+                    language: language(), input: scratchIn.value},
+            }])[0].then((result) => {
+                renderScratch(scratchOut, result, strings);
+                scratchBtn.disabled = false;
+                return result;
+            }).catch((error) => {
+                scratchOut.textContent = (error && error.message) ? error.message : String(error);
+                scratchBtn.disabled = false;
+            });
+        });
+    }
+};
+
+/**
+ * Render a single scratch run: compile error, runtime error output, or stdout.
+ *
+ * @param {HTMLElement} out
+ * @param {Object} result {verdict, compileoutput, stdout, stderr}
+ * @param {Object} strings
+ */
+const renderScratch = (out, result, strings) => {
+    out.textContent = '';
+    if (result.verdict === 'CE' && result.compileoutput) {
+        out.appendChild(pre('codeatelier-compileoutput', result.compileoutput));
+        return;
+    }
+    if (result.stderr && result.stderr.trim() !== '') {
+        out.appendChild(pre('codeatelier-test-error', result.stderr));
+    }
+    const text = (result.stdout && result.stdout !== '') ? result.stdout : (strings.nooutput || '(no output)');
+    out.appendChild(pre('codeatelier-diff-value', text));
 };
 
 /**
