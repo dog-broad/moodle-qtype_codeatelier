@@ -459,8 +459,12 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // the save is rejected (the practice tier is warned client-side instead — the
         // server cannot run browser code). Skips silently with no endpoint or an
         // unreachable sandbox; the grade memo makes an unchanged re-save instant.
+        // Skip when the question uses data files: validate-on-save runs the reference
+        // through Judge0 but cannot package the not-yet-saved draft files, so it
+        // would wrongly fail a reference that reads them.
         if ($tier === 'judge' && $count > 0 && !isset($errors['languages'])
-                && trim((string) ($data['referencesolution'] ?? '')) !== '') {
+                && trim((string) ($data['referencesolution'] ?? '')) !== ''
+                && !$this->has_draft_data_files($data)) {
             $errors = $this->validate_reference($data, $errors);
         }
 
@@ -475,6 +479,20 @@ class qtype_codeatelier_edit_form extends question_edit_form {
      * @param array $errors the errors collected so far
      * @return array the errors, possibly with a referencesolution entry added
      */
+    /**
+     * Whether the submitted form has data files in its draft area.
+     *
+     * @param array $data the submitted form data
+     * @return bool
+     */
+    protected function has_draft_data_files($data) {
+        if (empty($data['datafiles'])) {
+            return false;
+        }
+        $info = file_get_draft_area_info($data['datafiles']);
+        return !empty($info['filecount']);
+    }
+
     protected function validate_reference($data, $errors) {
         question_bank::load_question_definition_classes('codeatelier');
         $question = new qtype_codeatelier_question();
