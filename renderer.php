@@ -112,6 +112,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         $scratchlabel = ($scenario === 'function')
                 ? get_string('scratchargs', 'qtype_codeatelier')
                 : get_string('scratchstdin', 'qtype_codeatelier');
+        // Pre-fill the scratch box with the first visible example's input so a
+        // student sees the expected shape (a JSON argument array for the function
+        // scenario, or the stdin text) rather than guessing at a blank box.
+        $scratchdefault = ($canrunscratch && !empty($tests)) ? (string) $tests[0]['input'] : '';
 
         $validationresponse = $isjudge ? array('answer' => $currentcode) : array('score' => $currentscore);
 
@@ -154,6 +158,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'runexampleslabel' => get_string('runexamples', 'qtype_codeatelier'),
             'canrunscratch' => $canrunscratch,
             'scratchlabel' => $scratchlabel,
+            'scratchdefault' => $scratchdefault,
             'hasvalidationerror' => $qa->get_state() == question_state::$invalid,
             'validationerror' => $question->get_validation_error($validationresponse),
         ) + qtype_codeatelier::ui_labels();
