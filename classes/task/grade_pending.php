@@ -104,8 +104,12 @@ class grade_pending extends \core\task\scheduled_task {
                 continue;
             }
             $code = $qa->get_last_qt_var('answer', '');
+            // Grade in the language the student chose for this attempt. get_judge_result
+            // re-validates it the same way the regrade's grade_response will, so the
+            // memo bucket this warms is exactly the one the regrade then reads.
+            $language = $qa->get_last_qt_var('language', null);
             // Runs the sandbox (batched) and populates the shared memo.
-            $result = $question->get_judge_result($code);
+            $result = $question->get_judge_result($code, $language);
             if ($result === null || !empty($result['infrastructure'])) {
                 // Sandbox unreachable: leave pending, retry next run.
                 continue;

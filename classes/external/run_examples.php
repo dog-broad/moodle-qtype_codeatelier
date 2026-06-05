@@ -45,6 +45,8 @@ class run_examples extends external_api {
         return new external_function_parameters([
             'questionid' => new external_value(PARAM_INT, 'The CodeAtelier question id'),
             'code' => new external_value(PARAM_RAW, 'The student submission to run'),
+            'language' => new external_value(PARAM_ALPHANUMEXT, 'The chosen language (re-validated server-side)',
+                    VALUE_DEFAULT, ''),
         ]);
     }
 
@@ -53,14 +55,15 @@ class run_examples extends external_api {
      *
      * @param int $questionid the question id
      * @param string $code the student submission
+     * @param string $language the chosen language (re-validated against the question's allowed set)
      * @return array the run result (verdict over visible examples, compile output, per-example results)
      */
-    public static function execute(int $questionid, string $code): array {
+    public static function execute(int $questionid, string $code, string $language = ''): array {
         global $CFG;
         require_once($CFG->dirroot . '/question/engine/lib.php');
 
         $params = self::validate_parameters(self::execute_parameters(),
-                ['questionid' => $questionid, 'code' => $code]);
+                ['questionid' => $questionid, 'code' => $code, 'language' => $language]);
 
         $question = \question_bank::load_question($params['questionid']);
         if (!($question instanceof \qtype_codeatelier_question) || !$question->is_judge()) {
@@ -72,7 +75,9 @@ class run_examples extends external_api {
         $context = \context::instance_by_id($question->contextid);
         self::validate_context($context);
 
-        $result = $question->run_examples($params['code']);
+        // Re-validate the chosen language server-side; a disallowed value falls back
+        // to the question's primary language and can never run something off-tier.
+        $result = $question->run_examples($params['code'], $question->resolve_language($params['language']));
         if ($result === null) {
             throw new \moodle_exception('judgenotconfigured', 'qtype_codeatelier');
         }

@@ -29,6 +29,7 @@ import Ajax from 'core/ajax';
  * @param {Object} config
  * @param {String} config.wrapperid the question wrapper element id
  * @param {Number} config.questionid the question id
+ * @param {String} config.language the default language (when the student has not picked one)
  * @param {Object} config.strings localised labels
  */
 export const init = (config) => {
@@ -42,14 +43,16 @@ export const init = (config) => {
     if (!button || !out || !answer) {
         return;
     }
+    const langField = root.querySelector('[data-role="language"]');
     const strings = config.strings || {};
 
     button.addEventListener('click', () => {
         button.disabled = true;
         out.textContent = strings.running || 'Running…';
+        const language = (langField && langField.value) ? langField.value : config.language;
         Ajax.call([{
             methodname: 'qtype_codeatelier_run_examples',
-            args: {questionid: config.questionid, code: answer.value},
+            args: {questionid: config.questionid, code: answer.value, language: language},
         }])[0].then((result) => {
             render(out, result, strings);
             button.disabled = false;
