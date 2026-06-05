@@ -53,8 +53,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 $this->scenario_options());
         $mform->addHelpButton('scenario', 'scenario', 'qtype_codeatelier');
         $mform->setDefault('scenario', $this->get_default_value('scenario', 'stdinstdout'));
-        // The judge tier is always the stdin/stdout shape — see the question type.
-        $mform->hideIf('scenario', 'tier', 'eq', 'judge');
+        // The judge tier supports stdin/stdout and SQL (not function) — enforced in
+        // validation(); the practice tier supports all three.
 
         $mform->addElement('text', 'entrypoint', get_string('entrypoint', 'qtype_codeatelier'),
                 array('size' => 40));
@@ -254,7 +254,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
     const PRACTICE_LANGUAGES = array('python', 'sql', 'javascript');
 
     /** @var array languages that run in the server sandbox (judge tier). */
-    const JUDGE_LANGUAGES = array('c', 'cpp', 'java', 'python', 'javascript');
+    const JUDGE_LANGUAGES = array('c', 'cpp', 'java', 'python', 'javascript', 'sql');
 
     /**
      * @return array matching-mode code => display name
@@ -343,16 +343,23 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             }
         }
 
-        // Scenario constraints (practice tier; the judge tier is always stdin/stdout):
-        // SQL is single-language, and the function harness only exists for Python/JS.
-        if ($tier !== 'judge' && !isset($errors['languages'])) {
-            if ($scenario === 'sql' && $allowed !== array('sql')) {
-                $errors['languages'] = get_string('sqlsinglelanguage', 'qtype_codeatelier');
+        // Scenario constraints. SQL is single-language on BOTH tiers (the source is
+        // the schema plus one query). The function harness exists only on the
+        // practice tier for Python/JS; the judge tier supports stdin/stdout and SQL.
+        if (!isset($errors['languages'])) {
+            if ($scenario === 'sql') {
+                if ($allowed !== array('sql')) {
+                    $errors['languages'] = get_string('sqlsinglelanguage', 'qtype_codeatelier');
+                }
             } else if ($scenario === 'function') {
-                foreach ($allowed as $lang) {
-                    if (!in_array($lang, array('python', 'javascript'), true)) {
-                        $errors['languages'] = get_string('functionlanguageset', 'qtype_codeatelier');
-                        break;
+                if ($tier === 'judge') {
+                    $errors['scenario'] = get_string('functionnotjudge', 'qtype_codeatelier');
+                } else {
+                    foreach ($allowed as $lang) {
+                        if (!in_array($lang, array('python', 'javascript'), true)) {
+                            $errors['languages'] = get_string('functionlanguageset', 'qtype_codeatelier');
+                            break;
+                        }
                     }
                 }
             }

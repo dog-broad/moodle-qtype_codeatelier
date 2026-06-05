@@ -196,4 +196,5 @@ $string['languagenotjudge'] = 'The judge tier supports C, C++, Java, Python and 
 $string['languagenotpractice'] = 'The practice tier supports Python, SQL and JavaScript. C, C++ and Java require the judge tier.';
 $string['sqlsinglelanguage'] = 'A SQL question is single-language: set Language to SQL and leave the allowed languages empty.';
 $string['functionlanguageset'] = 'A function-scenario question supports Python and JavaScript only.';
+$string['functionnotjudge'] = 'The judge tier supports the stdin/stdout and SQL scenarios. The function scenario is practice-tier only.';
 $string['startersinvalidjson'] = 'The per-language starter code could not be saved. Please reload the form and try again.';

@@ -59,12 +59,6 @@ class qtype_codeatelier extends question_type {
     public function save_question_options($question) {
         global $DB;
 
-        // The judge tier is always the stdin/stdout shape, whatever the (hidden)
-        // scenario field last held in the form.
-        if (isset($question->tier) && $question->tier === 'judge') {
-            $question->scenario = 'stdinstdout';
-        }
-
         // A blank per-question limit means "use the site default" — store null.
         $question->cputimelimit = (isset($question->cputimelimit) && trim((string) $question->cputimelimit) !== '')
                 ? (float) $question->cputimelimit : null;
