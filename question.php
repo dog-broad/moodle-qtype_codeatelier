@@ -297,14 +297,15 @@ class qtype_codeatelier_question extends question_graded_automatically {
         $language = $this->resolve_language($language);
         $limits = $this->judge_limits($runner);
         $schemasql = (string) $this->schemasql;
+        $allornothing = !empty($this->allornothing);
         $hash = \qtype_codeatelier\judge\result_cache::key(
-                $language, (string) $code, $this->tests, $limits, $schemasql);
+                $language, (string) $code, $this->tests, $limits, $schemasql, $allornothing);
         $cached = \qtype_codeatelier\judge\result_cache::get($hash);
         if ($cached !== null) {
             return $cached;
         }
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
-        $result = $grader->grade((string) $code, $language, $this->tests, $schemasql);
+        $result = $grader->grade((string) $code, $language, $this->tests, $schemasql, $allornothing);
         if (empty($result['infrastructure'])) {
             \qtype_codeatelier\judge\result_cache::put($hash, $result);
         }
@@ -337,7 +338,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
         }
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
         return $grader->grade((string) $code, $this->resolve_language($language), $visible,
-                (string) $this->schemasql);
+                (string) $this->schemasql, !empty($this->allornothing));
     }
 
     /**
@@ -352,7 +353,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
         $limits = $this->judge_limits($this->judge_runner());
         $hash = \qtype_codeatelier\judge\result_cache::key(
                 $this->resolve_language($language), (string) $code, $this->tests, $limits,
-                (string) $this->schemasql);
+                (string) $this->schemasql, !empty($this->allornothing));
         return \qtype_codeatelier\judge\result_cache::get($hash);
     }
 }

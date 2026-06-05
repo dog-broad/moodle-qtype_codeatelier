@@ -163,6 +163,9 @@ $string['cputimelimit'] = 'CPU-time limit (seconds)';
 $string['cputimelimit_help'] = 'Judge tier only. The CPU-time limit for each run of this question, in seconds. Leave blank to use the site default.';
 $string['memorylimit'] = 'Memory limit (KB)';
 $string['memorylimit_help'] = 'Judge tier only. The memory limit for each run of this question, in kilobytes. Leave blank to use the site default.';
+$string['allornothing'] = 'All-or-nothing grading';
+$string['allornothing_label'] = 'Award full marks only if every test passes';
+$string['allornothing_help'] = 'When ticked, a submission scores full marks only if it passes every test case; otherwise it scores zero. When unticked, marks are the weighted fraction of tests passed (partial credit).';
 
 // Authoring: live preview.
 $string['preview'] = 'Preview';

@@ -715,7 +715,7 @@ export const init = (config) => {
                     showError(result.error);
                     return;
                 }
-                const graded = grade(result.results, config.tests);
+                const graded = grade(result.results, config.tests, {allOrNothing: config.allornothing});
                 if (scoreinput) {
                     scoreinput.value = graded.fraction;
                 }

@@ -168,6 +168,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'timeoutms' => 5000,
             'readonly' => (bool) $options->readonly,
             'isjudge' => $isjudge,
+            'allornothing' => (bool) $question->allornothing,
             'strings' => qtype_codeatelier::ui_strings(),
         )));
 

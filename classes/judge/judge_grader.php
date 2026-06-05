@@ -56,6 +56,7 @@ class judge_grader {
      * @param string $language a judge-tier language key (c, cpp, java, python, javascript, sql)
      * @param array $tests the authored test cases (objects with input/expected/matchmode/tolerance/weight/visibility)
      * @param string $schemasql the SQL scenario's schema + seed, prepended to each SQL submission
+     * @param bool $allornothing when true, a partial pass scores 0
      * @return array {
      *     infrastructure: bool — true if the sandbox could not be reached (caller should mark needs-grading),
      *     fraction: float, verdict: string (AC|WA|TLE|RE|CE|INTERNAL),
@@ -63,7 +64,8 @@ class judge_grader {
      *     testresults: array of {index, status (pass|fail|re|tle|ce), passed, visibility, time, memory}
      * }
      */
-    public function grade(string $code, string $language, array $tests, string $schemasql = ''): array {
+    public function grade(string $code, string $language, array $tests, string $schemasql = '',
+            bool $allornothing = false): array {
         $tests = array_values($tests);
         $issql = ($language === 'sql');
         $cases = [];
@@ -125,7 +127,7 @@ class judge_grader {
             }
         }
 
-        $graded = grader::grade($graderresults, $tests);
+        $graded = grader::grade($graderresults, $tests, ['allOrNothing' => $allornothing]);
 
         $testresults = [];
         $anyre = false;

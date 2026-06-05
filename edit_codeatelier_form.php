@@ -107,6 +107,11 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->addHelpButton('memorylimit', 'memorylimit', 'qtype_codeatelier');
         $mform->hideIf('memorylimit', 'tier', 'neq', 'judge');
 
+        $mform->addElement('advcheckbox', 'allornothing', get_string('allornothing', 'qtype_codeatelier'),
+                get_string('allornothing_label', 'qtype_codeatelier'));
+        $mform->setDefault('allornothing', 0);
+        $mform->addHelpButton('allornothing', 'allornothing', 'qtype_codeatelier');
+
         $mform->addElement('header', 'testcasesheader', get_string('testcases', 'qtype_codeatelier'));
         $mform->setExpanded('testcasesheader');
 
