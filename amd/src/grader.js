@@ -195,9 +195,11 @@ const actualOutput = (result) => {
  *
  * @param {Array} results runner results, aligned with tests by index
  * @param {Array} tests the authored test cases ({expected, matchmode, tolerance, weight, visibility})
+ * @param {Object} [options] {allOrNothing} — when set, a partial pass scores 0
  * @return {Object} {fraction, verdict, testresults}
  */
-const grade = (results, tests) => {
+const grade = (results, tests, options) => {
+    const opts = options || {};
     let totalweight = 0;
     let earned = 0;
 
@@ -239,7 +241,11 @@ const grade = (results, tests) => {
         };
     });
 
-    const fraction = totalweight > 0 ? earned / totalweight : 0;
+    let fraction = totalweight > 0 ? earned / totalweight : 0;
+    // All-or-nothing: a partial pass earns nothing.
+    if (opts.allOrNothing && fraction < 1) {
+        fraction = 0;
+    }
 
     let verdict;
     if (testresults.some((tr) => tr.status === 'error')) {

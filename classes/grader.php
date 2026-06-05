@@ -122,9 +122,10 @@ class grader {
      *
      * @param array $results runner results, aligned with tests by index
      * @param array $tests the authored test cases
+     * @param array $options {allOrNothing} — when set, a partial pass scores 0
      * @return array {fraction, verdict, testresults}
      */
-    public static function grade(array $results, array $tests): array {
+    public static function grade(array $results, array $tests, array $options = []): array {
         $totalweight = 0.0;
         $earned = 0.0;
         $testresults = [];
@@ -168,6 +169,10 @@ class grader {
         }
 
         $fraction = $totalweight > 0 ? $earned / $totalweight : 0.0;
+        // All-or-nothing: a partial pass earns nothing.
+        if (!empty($options['allOrNothing']) && $fraction < 1) {
+            $fraction = 0.0;
+        }
 
         $haserror = false;
         $hastimeout = false;

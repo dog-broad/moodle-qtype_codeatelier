@@ -154,6 +154,36 @@
             "wanttestresults": [
                 {"status": "pass", "passed": true, "visibility": 1}
             ]
+        },
+        {
+            "name": "allornothing-partial-scores-zero",
+            "options": {"allOrNothing": true},
+            "results": [{"stdout": "5\n"}, {"stdout": "wrong\n"}],
+            "tests": [
+                {"expected": "5", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 1},
+                {"expected": "30", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 0}
+            ],
+            "wantfraction": 0.0,
+            "wantverdict": "WA",
+            "wanttestresults": [
+                {"status": "pass", "passed": true, "visibility": 1},
+                {"status": "fail", "passed": false, "visibility": 0}
+            ]
+        },
+        {
+            "name": "allornothing-all-pass-is-AC",
+            "options": {"allOrNothing": true},
+            "results": [{"stdout": "5\n"}, {"stdout": "30\n"}],
+            "tests": [
+                {"expected": "5", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 1},
+                {"expected": "30", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 0}
+            ],
+            "wantfraction": 1.0,
+            "wantverdict": "AC",
+            "wanttestresults": [
+                {"status": "pass", "passed": true, "visibility": 1},
+                {"status": "pass", "passed": true, "visibility": 0}
+            ]
         }
     ]
 }

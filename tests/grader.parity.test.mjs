@@ -49,7 +49,7 @@ test('matches() agrees with the shared corpus', () => {
 
 test('grade() agrees with the shared corpus', () => {
     for (const c of corpus.grade) {
-        const graded = grade(c.results, c.tests);
+        const graded = grade(c.results, c.tests, c.options || {});
         assert.ok(
             Math.abs(graded.fraction - c.wantfraction) < 1e-9,
             `grade case '${c.name}' fraction disagreed (got ${graded.fraction})`);
