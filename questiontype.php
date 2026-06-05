@@ -44,6 +44,15 @@ class qtype_codeatelier extends question_type {
     const ALL_LANGUAGES = array('python', 'sql', 'javascript', 'c', 'cpp', 'java',
             'go', 'rust', 'php', 'typescript', 'csharp', 'kotlin', 'ruby');
 
+    /**
+     * Filemanager / file-area options for the support-data files area.
+     *
+     * @return array
+     */
+    public static function datafiles_options() {
+        return array('subdirs' => 1, 'maxfiles' => 20, 'maxbytes' => 1048576, 'accepted_types' => '*');
+    }
+
     public function extra_question_fields() {
         return array('qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint',
                 'startercode', 'schemasql', 'cputimelimit', 'memorylimit', 'languages', 'starters',
@@ -150,6 +159,33 @@ class qtype_codeatelier extends question_type {
         foreach ($oldtests as $leftover) {
             $DB->delete_records('qtype_codeatelier_tests', array('id' => $leftover->id));
         }
+
+        // Persist the support/data files from the form's draft area.
+        if (isset($question->datafiles) && isset($question->context)) {
+            file_save_draft_area_files($question->datafiles, $question->context->id,
+                    'qtype_codeatelier', 'datafiles', (int) $question->id, self::datafiles_options());
+        }
+    }
+
+    public function move_files($questionid, $oldcontextid, $newcontextid) {
+        parent::move_files($questionid, $oldcontextid, $newcontextid);
+        get_file_storage()->move_area_files_to_new_context($oldcontextid, $newcontextid,
+                'qtype_codeatelier', 'datafiles', $questionid);
+    }
+
+    protected function delete_files($questionid, $contextid) {
+        parent::delete_files($questionid, $contextid);
+        get_file_storage()->delete_area_files($contextid, 'qtype_codeatelier', 'datafiles', $questionid);
+    }
+
+    /**
+     * The file areas this qtype owns, for backup/restore (files are mapped to the
+     * restored question id).
+     *
+     * @return array filearea => mapping name
+     */
+    public function get_qtype_fileareas() {
+        return array('datafiles' => 'question_created');
     }
 
     protected function initialise_question_instance(question_definition $question, $questiondata) {

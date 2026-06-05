@@ -97,7 +97,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // Support/data files: judge tier only. They are placed in the working
         // directory next to the program so it can read them at run time.
         $mform->addElement('filemanager', 'datafiles', get_string('datafiles', 'qtype_codeatelier'),
-                null, self::datafiles_options());
+                null, qtype_codeatelier::datafiles_options());
         $mform->addHelpButton('datafiles', 'datafiles', 'qtype_codeatelier');
 
         // Per-question judge limits (blank = site default). Judge tier only.
@@ -254,15 +254,6 @@ class qtype_codeatelier_edit_form extends question_edit_form {
     }
 
     /**
-     * Filemanager options for the support/data files area.
-     *
-     * @return array
-     */
-    public static function datafiles_options() {
-        return array('subdirs' => 1, 'maxfiles' => 20, 'maxbytes' => 1048576, 'accepted_types' => '*');
-    }
-
-    /**
      * @return array tier code => display name
      */
     protected function tier_options() {
@@ -340,7 +331,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // Prepare the support/data files draft area from the saved files.
         $draftid = file_get_submitted_draft_itemid('datafiles');
         file_prepare_draft_area($draftid, $this->context->id, 'qtype_codeatelier', 'datafiles',
-                !empty($question->id) ? (int) $question->id : null, self::datafiles_options());
+                !empty($question->id) ? (int) $question->id : null, qtype_codeatelier::datafiles_options());
         $question->datafiles = $draftid;
 
         if (empty($question->options->tests)) {
