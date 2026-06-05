@@ -123,7 +123,7 @@ $string['tier_judge'] = 'Judge (server sandbox, authoritative)';
 
 // Authoring: language.
 $string['language'] = 'Language';
-$string['language_help'] = 'The primary (default) language the student writes in. Practice tier: Python (Pyodide), SQL (sql.js) or JavaScript, run in the browser. Judge tier: C, C++, Java, Python or JavaScript, run in the server sandbox. When you allow several languages below, this is the one selected by default.';
+$string['language_help'] = 'The primary (default) language the student writes in. Practice tier: Python (Pyodide), SQL (sql.js) or JavaScript, run in the browser. Judge tier: C, C++, Java, Python, JavaScript or SQL (SQLite), run in the server sandbox. When you allow several languages below, this is the one selected by default.';
 $string['languages'] = 'Allowed languages';
 $string['languages_help'] = 'The set of languages the student may choose from when attempting the question. Leave empty for a single-language question (the Language above). All chosen languages must belong to the same tier. SQL questions are single-language; function-scenario questions support Python and JavaScript.';
 $string['lang_python'] = 'Python';
@@ -142,7 +142,7 @@ $string['scenario_sql'] = 'SQL (query a database)';
 $string['schemasql'] = 'Schema and seed data (SQL)';
 $string['schemasql_help'] = 'SQL run before the student\'s query to set up the database: CREATE TABLE statements and INSERTs. Runs on SQLite (sql.js) in the browser.';
 $string['checkerquery'] = 'Checker query (SQL)';
-$string['checkerquery_help'] = 'For questions that change data (INSERT/UPDATE/DELETE): a SELECT run after the student\'s statements; its result set is compared with the expected result. Leave empty to compare the student query\'s own result set.';
+$string['checkerquery_help'] = 'For questions that change data (INSERT/UPDATE/DELETE): a SELECT run after the student\'s statements; its result set is compared with the expected result. Leave empty to compare the student query\'s own result set. On the judge tier the student answer should be a mutation (non-SELECT) when a checker query is set, so only the checker\'s rows are compared.';
 $string['testfeedback'] = 'Feedback (shown for this test)';
 $string['entrypoint'] = 'Function name';
 $string['entrypoint_help'] = 'The name of the function the student must define. Each test\'s Input is a **JSON array of the arguments** passed to the call: `[2, 3]` calls `f(2, 3)`, while a function taking a single list needs it wrapped, `[[1, 2, 3]]`, to call `f([1, 2, 3])`. The function\'s return value is compared with Expected.';
