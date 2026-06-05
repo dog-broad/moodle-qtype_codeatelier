@@ -304,7 +304,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         $status = (string) $tr['status'];
 
         $label = $visible
-            ? get_string('result_test', 'qtype_codeatelier', $tr['index'] + 1)
+            ? get_string('result_test', 'qtype_codeatelier') . ' ' . ($tr['index'] + 1)
             : get_string('result_hidden', 'qtype_codeatelier');
         $statuslabel = $passed
             ? get_string('result_pass', 'qtype_codeatelier')
