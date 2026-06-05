@@ -51,11 +51,12 @@ class result_cache {
      * @param string $datafileshash a content hash of the support/data files (empty for none)
      * @param string $scenario the scenario (function/entrypoint change the harness, so the result)
      * @param string $entrypoint the function name called (function scenario)
+     * @param string $funcsig the typed signature (static-language function scenario)
      * @return string a 40-char SHA-1
      */
     public static function key(string $language, string $code, array $tests, array $limits,
             string $schemasql = '', bool $allornothing = false, string $datafileshash = '',
-            string $scenario = 'stdinstdout', string $entrypoint = ''): string {
+            string $scenario = 'stdinstdout', string $entrypoint = '', string $funcsig = ''): string {
         $signature = [];
         foreach (array_values($tests) as $test) {
             $signature[] = [
@@ -70,7 +71,7 @@ class result_cache {
             ];
         }
         return sha1(json_encode([self::BLOB_VERSION, $language, $code, $signature, $limits, $schemasql,
-                $allornothing, $datafileshash, $scenario, $entrypoint]));
+                $allornothing, $datafileshash, $scenario, $entrypoint, $funcsig]));
     }
 
     /**

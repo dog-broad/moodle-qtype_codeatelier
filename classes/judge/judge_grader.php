@@ -59,6 +59,7 @@ class judge_grader {
      * @param bool $allornothing when true, a partial pass scores 0
      * @param string $scenario the scenario: stdinstdout, function or sql
      * @param string $entrypoint the function name to call (function scenario)
+     * @param string $signature the typed signature (static-language function scenario)
      * @return array {
      *     infrastructure: bool — true if the sandbox could not be reached (caller should mark needs-grading),
      *     fraction: float, verdict: string (AC|WA|TLE|RE|CE|INTERNAL),
@@ -67,22 +68,29 @@ class judge_grader {
      * }
      */
     public function grade(string $code, string $language, array $tests, string $schemasql = '',
-            bool $allornothing = false, string $scenario = 'stdinstdout', string $entrypoint = ''): array {
+            bool $allornothing = false, string $scenario = 'stdinstdout', string $entrypoint = '',
+            string $signature = ''): array {
         $tests = array_values($tests);
         $issql = ($language === 'sql');
         $isfunction = ($scenario === 'function');
-        // The function harness wraps the student code once; only the per-case args
-        // (fed on stdin as JSON) vary, exactly like the stdin/stdout scenario.
-        $functionsource = $isfunction ? function_harness::source($language, $code, $entrypoint) : '';
+        // Static-language functions carry a typed signature that drives a generated
+        // harness and a typed stdin/stdout protocol; dynamic ones pass JSON directly.
+        $isstaticfn = $isfunction && function_harness::needs_signature($language);
+        $sig = $isstaticfn ? signature::parse($signature) : null;
+        // The function harness wraps the student code once; only the per-case args vary.
+        $functionsource = $isfunction ? function_harness::source($language, $code, $entrypoint, $sig) : '';
         $cases = [];
         foreach ($tests as $test) {
             // SQL varies the whole source per test (schema + query + checker); the
-            // function scenario shares one harness and feeds the args on stdin; the
-            // stdin/stdout scenario feeds the input on stdin against one program.
+            // function scenario shares one harness and feeds the args on stdin (JSON
+            // for dynamic languages, the typed line protocol for static ones).
             if ($issql) {
                 $cases[] = ['source' => self::sql_source($schemasql, $code, $test)];
             } else if ($isfunction) {
-                $cases[] = ['source' => $functionsource, 'input' => (string) $test->input];
+                $input = $isstaticfn
+                    ? $sig->encode_args(self::decode_args($test->input))
+                    : (string) $test->input;
+                $cases[] = ['source' => $functionsource, 'input' => $input];
             } else {
                 $cases[] = ['input' => $test->input];
             }
@@ -134,9 +142,12 @@ class judge_grader {
             } else if ($issql && self::is_resultset_mode($tests[$i]->matchmode)) {
                 $graderresults[] = ['rows' => self::parse_csv_rows($result['stdout'])];
             } else if ($isfunction) {
-                // The harness prints the JSON-encoded return on stdout; feed it as
-                // the return value so the shared `structured` matcher compares it.
-                $graderresults[] = ['returnvalue' => $result['stdout']];
+                // Dynamic: the harness prints JSON; feed the string and let the
+                // structured matcher decode it. Static: decode the typed protocol
+                // into the native return value the matcher compares.
+                $graderresults[] = ['returnvalue' => $isstaticfn
+                    ? $sig->decode_return($result['stdout'])
+                    : $result['stdout']];
             } else {
                 $graderresults[] = ['stdout' => $result['stdout']];
             }
@@ -220,17 +231,22 @@ class judge_grader {
      * @return array per-test [{index, output, ok, error}], aligned with the tests
      */
     public function run_outputs(string $code, string $language, array $tests, string $schemasql = '',
-            string $scenario = 'stdinstdout', string $entrypoint = ''): array {
+            string $scenario = 'stdinstdout', string $entrypoint = '', string $signature = ''): array {
         $tests = array_values($tests);
         $issql = ($language === 'sql');
         $isfunction = ($scenario === 'function');
-        $functionsource = $isfunction ? function_harness::source($language, $code, $entrypoint) : '';
+        $isstaticfn = $isfunction && function_harness::needs_signature($language);
+        $sig = $isstaticfn ? signature::parse($signature) : null;
+        $functionsource = $isfunction ? function_harness::source($language, $code, $entrypoint, $sig) : '';
         $cases = [];
         foreach ($tests as $test) {
             if ($issql) {
                 $cases[] = ['source' => self::sql_source($schemasql, $code, $test)];
             } else if ($isfunction) {
-                $cases[] = ['source' => $functionsource, 'input' => (string) $test->input];
+                $input = $isstaticfn
+                    ? $sig->encode_args(self::decode_args($test->input))
+                    : (string) $test->input;
+                $cases[] = ['source' => $functionsource, 'input' => $input];
             } else {
                 $cases[] = ['input' => $test->input];
             }
@@ -242,9 +258,14 @@ class judge_grader {
         foreach ($runresults as $i => $result) {
             $outcome = $result['outcome'];
             if ($outcome === 'ran') {
-                $output = ($issql && self::is_resultset_mode($tests[$i]->matchmode))
-                    ? json_encode(self::parse_csv_rows($result['stdout']))
-                    : (string) $result['stdout'];
+                if ($issql && self::is_resultset_mode($tests[$i]->matchmode)) {
+                    $output = json_encode(self::parse_csv_rows($result['stdout']));
+                } else if ($isstaticfn) {
+                    // Capture the canonical JSON of the typed return for the Expected field.
+                    $output = json_encode($sig->decode_return($result['stdout']));
+                } else {
+                    $output = (string) $result['stdout'];
+                }
                 $outputs[] = ['index' => $i, 'output' => $output, 'ok' => true, 'error' => ''];
             } else {
                 // A compile error, timeout, runtime error or unreachable sandbox
@@ -302,6 +323,21 @@ class judge_grader {
             ];
         }
         return $rows;
+    }
+
+    /**
+     * Decode a function test's authored input (a JSON array of arguments) into a
+     * PHP array of argument values. A bare non-array value is a single argument.
+     *
+     * @param string $input the authored input
+     * @return array the arguments
+     */
+    private static function decode_args(string $input): array {
+        $decoded = json_decode($input, true);
+        if (is_array($decoded)) {
+            return array_values($decoded);
+        }
+        return ($decoded === null && trim($input) === '') ? [] : [$decoded];
     }
 
     /**
