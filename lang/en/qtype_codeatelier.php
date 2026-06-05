@@ -51,6 +51,8 @@ $string['judge0memorylimit_desc'] = 'The default per-run memory limit for judge-
 
 // Student attempt UI.
 $string['answerlabel'] = 'Your code';
+$string['chooselanguage'] = 'Language';
+$string['languageused'] = 'Language used: {$a}';
 $string['loadingeditor'] = 'Loading editor…';
 $string['runlabel'] = 'Run';
 $string['checklabel'] = 'Check';
@@ -121,7 +123,9 @@ $string['tier_judge'] = 'Judge (server sandbox, authoritative)';
 
 // Authoring: language.
 $string['language'] = 'Language';
-$string['language_help'] = 'The language the student writes in. Practice tier: Python (Pyodide), SQL (sql.js) or JavaScript, run in the browser. Judge tier: C, C++, Java, Python or JavaScript, run in the server sandbox.';
+$string['language_help'] = 'The primary (default) language the student writes in. Practice tier: Python (Pyodide), SQL (sql.js) or JavaScript, run in the browser. Judge tier: C, C++, Java, Python or JavaScript, run in the server sandbox. When you allow several languages below, this is the one selected by default.';
+$string['languages'] = 'Allowed languages';
+$string['languages_help'] = 'The set of languages the student may choose from when attempting the question. Leave empty for a single-language question (the Language above). All chosen languages must belong to the same tier. SQL questions are single-language; function-scenario questions support Python and JavaScript.';
 $string['lang_python'] = 'Python';
 $string['lang_sql'] = 'SQL';
 $string['lang_javascript'] = 'JavaScript';
@@ -143,7 +147,9 @@ $string['testfeedback'] = 'Feedback (shown for this test)';
 $string['entrypoint'] = 'Function name';
 $string['entrypoint_help'] = 'The name of the function the student must define. Each test\'s Input is a **JSON array of the arguments** passed to the call: `[2, 3]` calls `f(2, 3)`, while a function taking a single list needs it wrapped, `[[1, 2, 3]]`, to call `f([1, 2, 3])`. The function\'s return value is compared with Expected.';
 $string['startercode'] = 'Starter code';
-$string['startercode_help'] = 'Optional code pre-filled in the student\'s editor — for example a function signature to complete.';
+$string['startercode_help'] = 'Optional code pre-filled in the student\'s editor for the primary language — for example a function signature to complete.';
+$string['starterlang'] = 'Starter for language';
+$string['starterother'] = 'Starter code for this language';
 $string['cputimelimit'] = 'CPU-time limit (seconds)';
 $string['cputimelimit_help'] = 'Judge tier only. The CPU-time limit for each run of this question, in seconds. Leave blank to use the site default.';
 $string['memorylimit'] = 'Memory limit (KB)';
@@ -188,3 +194,6 @@ $string['entrypointrequired'] = 'Enter the function name for a function question
 $string['limitpositive'] = 'Enter a positive number, or leave blank for the site default.';
 $string['languagenotjudge'] = 'The judge tier supports C, C++, Java, Python and JavaScript. SQL is a practice-tier language.';
 $string['languagenotpractice'] = 'The practice tier supports Python, SQL and JavaScript. C, C++ and Java require the judge tier.';
+$string['sqlsinglelanguage'] = 'A SQL question is single-language: set Language to SQL and leave the allowed languages empty.';
+$string['functionlanguageset'] = 'A function-scenario question supports Python and JavaScript only.';
+$string['startersinvalidjson'] = 'The per-language starter code could not be saved. Please reload the form and try again.';
