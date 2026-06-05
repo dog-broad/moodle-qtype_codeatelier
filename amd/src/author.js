@@ -23,7 +23,9 @@
 import {create as createEditor} from 'qtype_codeatelier/editor';
 import {init as initControl} from 'qtype_codeatelier/control';
 import {run as runCode} from 'qtype_codeatelier/runner';
+import {grade} from 'qtype_codeatelier/grader';
 import {render as renderTemplate} from 'core/templates';
+import Ajax from 'core/ajax';
 
 const byId = (id) => document.getElementById(id);
 
@@ -69,7 +71,7 @@ const gatherTests = () => {
 /**
  * The non-blank test rows with their form elements, for run-to-capture.
  *
- * @return {Array} {input, checkerquery, expectedEl}
+ * @return {Array} {input, expected, matchmode, checkerquery, expectedEl}
  */
 const activeRows = () => {
     const rows = [];
@@ -80,13 +82,23 @@ const activeRows = () => {
         }
         const i = match[1];
         const expectedEl = document.querySelector('[name="testexpected[' + i + ']"]');
+        const matchEl = document.querySelector('[name="matchmode[' + i + ']"]');
         const checkerEl = document.querySelector('[name="checkerquery[' + i + ']"]');
         const input = ta.value;
         const expected = expectedEl ? expectedEl.value : '';
-        if (input.trim() === '' && expected.trim() === '') {
+        const checkerquery = checkerEl ? checkerEl.value : '';
+        // A row is active if any of its inputs is set (SQL SELECT rows have no
+        // stdin, so a checker query or an expected value also counts).
+        if (input.trim() === '' && expected.trim() === '' && checkerquery.trim() === '') {
             return;
         }
-        rows.push({input: input, checkerquery: checkerEl ? checkerEl.value : '', expectedEl: expectedEl});
+        rows.push({
+            input: input,
+            expected: expected,
+            matchmode: matchEl ? matchEl.value : 'trimmed',
+            checkerquery: checkerquery,
+            expectedEl: expectedEl,
+        });
     });
     return rows;
 };
@@ -267,6 +279,23 @@ export const init = (config) => {
         }
     }
 
+    // CodeMirror on the reference-solution field (in the primary language).
+    const refSolTa = byId(config.referencesolutionid);
+    let refEditor = null;
+    if (refSolTa) {
+        const mountRef = () => {
+            if (refEditor) {
+                refEditor.destroy();
+            }
+            refEditor = createEditor(refSolTa, langSel ? langSel.value : 'python', {});
+        };
+        mountRef();
+        if (langSel) {
+            langSel.addEventListener('change', mountRef);
+        }
+    }
+    const referenceValue = () => (refEditor ? refEditor.getValue() : (refSolTa ? refSolTa.value : ''));
+
     const btn = byId(config.previewbtnid);
     const container = byId(config.previewid);
     if (!btn || !container) {
@@ -313,66 +342,149 @@ export const init = (config) => {
         });
     });
 
-    // Run-to-capture: run the solution written in the preview editor against every
-    // test input and write the captured output into the Expected fields.
+    // Run-to-capture + validate: run the REFERENCE solution against every test and
+    // write each produced output into the Expected fields. Practice runs in the
+    // browser; judge runs server-side via Judge0 (so it covers compiled languages).
     const captureBtn = byId(config.captureid);
     const statusEl = byId(config.statusid);
-    const strings = config.strings || {};
+    const tierSel = byId(config.tierid);
+    const cstr = config.capturestrings || {};
+    const isJudge = () => !!(tierSel && tierSel.value === 'judge');
     const setStatus = (text) => {
         if (statusEl) {
             statusEl.textContent = text;
         }
     };
+
+    // Run the reference in-browser; one captured-output string (or null) per row.
+    const capturePractice = (code, rows) => {
+        const scenario = scenSel ? scenSel.value : 'stdinstdout';
+        const cases = rows.map((row) => ({input: row.input, checkerquery: row.checkerquery}));
+        return runCode(code, langSel ? langSel.value : 'python', cases, {
+            scenario: scenario,
+            entrypoint: byId(config.entrypointid) ? byId(config.entrypointid).value : '',
+            schemasql: schemaTa ? schemaTa.value : '',
+            pyodideBaseUrl: config.pyodidebaseurl,
+            sqljsBaseUrl: config.sqljsbaseurl,
+            timeoutMs: config.timeoutms,
+        }).then((res) => {
+            const results = res.results || [];
+            return rows.map((row, k) => capturedExpected(results[k], scenario));
+        });
+    };
+
+    // Run the reference server-side (Judge0) against all rows; one produced-output
+    // string (or null on a per-test error) per row.
+    const captureJudge = (code, rows) => {
+        return Ajax.call([{
+            methodname: 'qtype_codeatelier_run_reference',
+            args: {
+                contextid: config.contextid,
+                code: code,
+                language: langSel ? langSel.value : 'python',
+                scenario: scenSel ? scenSel.value : 'stdinstdout',
+                schemasql: schemaTa ? schemaTa.value : '',
+                cputimelimit: byId('id_cputimelimit') ? byId('id_cputimelimit').value : '',
+                memorylimit: byId('id_memorylimit') ? byId('id_memorylimit').value : '',
+                tests: rows.map((row) => ({
+                    input: row.input,
+                    matchmode: row.matchmode,
+                    checkerquery: row.checkerquery,
+                })),
+            },
+        }])[0].then((res) => (res.results || []).map((r) => (r.ok ? r.output : null)));
+    };
+
+    const reportCapture = (ok, failed, total) => {
+        if (failed === 0) {
+            setStatus((cstr.capturedone || 'Captured {$a} test(s).').replace('{$a}', String(ok)));
+        } else {
+            const tmpl = cstr.captureerrors || 'Captured {$a->ok} of {$a->total}; {$a->failed} errored.';
+            setStatus(tmpl.replace('{$a->ok}', String(ok))
+                .replace('{$a->total}', String(total))
+                .replace('{$a->failed}', String(failed)));
+        }
+    };
+
     if (captureBtn) {
         captureBtn.addEventListener('click', () => {
-            const refTa = container.querySelector('[data-role="answer"]');
-            if (!refTa) {
-                setStatus(strings.capturepreviewfirst || 'Refresh the preview and write a solution first.');
+            const code = referenceValue();
+            if (!code || code.trim() === '') {
+                setStatus(cstr.capturenoreference || 'Write a reference solution first.');
                 return;
             }
             const rows = activeRows();
             if (!rows.length) {
-                setStatus(strings.capturenotests || 'Add at least one test case first.');
+                setStatus(cstr.capturenotests || 'Add at least one test case first.');
                 return;
             }
-            const scenario = scenSel ? scenSel.value : 'stdinstdout';
-            const cases = rows.map((row) => ({input: row.input, checkerquery: row.checkerquery}));
-            setStatus(strings.running || 'Running…');
+            setStatus(cstr.running || 'Running…');
             captureBtn.disabled = true;
-            runCode(refTa.value, langSel ? langSel.value : 'python', cases, {
-                scenario: scenario,
+            (isJudge() ? captureJudge(code, rows) : capturePractice(code, rows)).then((outputs) => {
+                let ok = 0;
+                let failed = 0;
+                rows.forEach((row, k) => {
+                    const out = outputs[k];
+                    if (out === null || out === undefined || !row.expectedEl) {
+                        failed++;
+                        return;
+                    }
+                    row.expectedEl.value = out;
+                    row.expectedEl.dispatchEvent(new Event('change', {bubbles: true}));
+                    ok++;
+                });
+                reportCapture(ok, failed, rows.length);
+                return null;
+            }).catch((err) => {
+                setStatus(String(err && err.message ? err.message : err));
+            }).then(() => {
+                captureBtn.disabled = false;
+            });
+        });
+    }
+
+    // Practice validate-on-save: warn (never block) if the reference fails a
+    // visible test. Judge questions are validated server-side on save instead.
+    const refForm = refSolTa ? refSolTa.closest('form') : null;
+    if (refForm) {
+        let warned = false;
+        refForm.addEventListener('submit', (e) => {
+            // Skip cancel (and any non-save submitter) and judge (server-validated).
+            if (warned || isJudge() || (e.submitter && e.submitter.name === 'cancel')) {
+                return;
+            }
+            const code = referenceValue();
+            const tests = gatherTests().filter((t) => Number(t.visibility) === 1);
+            if (!code || code.trim() === '' || !tests.length) {
+                return;
+            }
+            e.preventDefault();
+            warned = true;
+            const submitter = e.submitter;
+            const resubmit = () => (submitter ? refForm.requestSubmit(submitter) : refForm.requestSubmit());
+            const cases = tests.map((t) => ({input: t.input, checkerquery: t.checkerquery}));
+            runCode(code, langSel ? langSel.value : 'python', cases, {
+                scenario: scenSel ? scenSel.value : 'stdinstdout',
                 entrypoint: byId(config.entrypointid) ? byId(config.entrypointid).value : '',
                 schemasql: schemaTa ? schemaTa.value : '',
                 pyodideBaseUrl: config.pyodidebaseurl,
                 sqljsBaseUrl: config.sqljsbaseurl,
                 timeoutMs: config.timeoutms,
             }).then((res) => {
-                const results = res.results || [];
-                let ok = 0;
-                let failed = 0;
-                rows.forEach((row, k) => {
-                    const expected = capturedExpected(results[k], scenario);
-                    if (expected === null || !row.expectedEl) {
-                        failed++;
-                        return;
-                    }
-                    row.expectedEl.value = expected;
-                    row.expectedEl.dispatchEvent(new Event('change', {bubbles: true}));
-                    ok++;
-                });
-                if (failed === 0) {
-                    setStatus((strings.capturedone || 'Captured {$a} test(s).').replace('{$a}', String(ok)));
-                } else {
-                    const tmpl = strings.captureerrors || 'Captured {$a->ok} of {$a->total}; {$a->failed} errored.';
-                    setStatus(tmpl.replace('{$a->ok}', String(ok))
-                        .replace('{$a->total}', String(rows.length))
-                        .replace('{$a->failed}', String(failed)));
+                const graded = grade(res.results || [], tests);
+                if (graded.fraction >= 1) {
+                    resubmit();
+                    return null;
                 }
+                // A failing reference only warns; clicking Save again proceeds.
+                const fail = graded.testresults.find((tr) => !tr.passed);
+                setStatus((cstr.referencewarning || 'Warning: the reference fails test {$a}.')
+                    .replace('{$a}', String((fail ? fail.index : 0) + 1)));
                 return null;
-            }).catch((err) => {
-                setStatus((strings.runerror || 'Could not run') + ': ' + String(err));
-            }).then(() => {
-                captureBtn.disabled = false;
+            }).catch(() => {
+                // Could not verify (the runtime did not load): allow the save.
+                setStatus(cstr.referenceverifyfail || 'Could not verify the reference; saving anyway.');
+                resubmit();
             });
         });
     }

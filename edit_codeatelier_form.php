@@ -86,6 +86,14 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->addHelpButton('schemasql', 'schemasql', 'qtype_codeatelier');
         $mform->hideIf('schemasql', 'scenario', 'neq', 'sql');
 
+        // A reference solution (in the primary language). The authoring JS can run
+        // it to capture the Expected outputs and to validate the question; on the
+        // judge tier a reference that fails any test blocks the save.
+        $mform->addElement('textarea', 'referencesolution', get_string('referencesolution', 'qtype_codeatelier'),
+                array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
+        $mform->setType('referencesolution', PARAM_RAW);
+        $mform->addHelpButton('referencesolution', 'referencesolution', 'qtype_codeatelier');
+
         // Per-question judge limits (blank = site default). Judge tier only.
         $mform->addElement('text', 'cputimelimit', get_string('cputimelimit', 'qtype_codeatelier'),
                 array('size' => 10));
@@ -141,6 +149,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'starterlangid' => 'id_starterlang',
             'startereditid' => 'id_starteredit',
             'startersid' => 'id_starters',
+            'referencesolutionid' => 'id_referencesolution',
+            'tierid' => 'id_tier',
             'scenarioid' => 'id_scenario',
             'entrypointid' => 'id_entrypoint',
             'startercodeid' => 'id_startercode',
@@ -150,8 +160,18 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'captureid' => $previewid . '_capture',
             'statusid' => $previewid . '_status',
             'previewid' => $previewid,
+            'contextid' => $this->context->id,
             'previewcontext' => qtype_codeatelier::ui_labels(),
             'strings' => qtype_codeatelier::ui_strings(),
+            'capturestrings' => array(
+                'running' => get_string('running', 'qtype_codeatelier'),
+                'capturedone' => get_string('capturedone', 'qtype_codeatelier'),
+                'captureerrors' => get_string('captureerrors', 'qtype_codeatelier'),
+                'capturenotests' => get_string('capturenotests', 'qtype_codeatelier'),
+                'capturenoreference' => get_string('capturenoreference', 'qtype_codeatelier'),
+                'referencewarning' => get_string('referencewarning', 'qtype_codeatelier'),
+                'referenceverifyfail' => get_string('referenceverifyfail', 'qtype_codeatelier'),
+            ),
             'pyodidebaseurl' => get_config('qtype_codeatelier', 'pyodidebaseurl'),
             'sqljsbaseurl' => get_config('qtype_codeatelier', 'sqljsbaseurl'),
             'timeoutms' => 5000,

@@ -148,6 +148,8 @@ $string['entrypoint'] = 'Function name';
 $string['entrypoint_help'] = 'The name of the function the student must define. Each test\'s Input is a **JSON array of the arguments** passed to the call: `[2, 3]` calls `f(2, 3)`, while a function taking a single list needs it wrapped, `[[1, 2, 3]]`, to call `f([1, 2, 3])`. The function\'s return value is compared with Expected.';
 $string['startercode'] = 'Starter code';
 $string['startercode_help'] = 'Optional code pre-filled in the student\'s editor for the primary language — for example a function signature to complete.';
+$string['referencesolution'] = 'Reference solution';
+$string['referencesolution_help'] = 'A correct solution in the primary language. Use **Capture expected outputs** to fill the Expected fields by running it against every test. On the judge tier the reference is run on save and the save is blocked if it does not pass every test; on the practice tier a failing reference only warns.';
 $string['starterlang'] = 'Starter for language';
 $string['starterother'] = 'Starter code for this language';
 $string['cputimelimit'] = 'CPU-time limit (seconds)';
@@ -165,6 +167,9 @@ $string['capturepreviewfirst'] = 'Refresh the preview and write a solution in it
 $string['capturenotests'] = 'Add at least one test case with an input first.';
 $string['capturedone'] = 'Captured expected output for {$a} test case(s) — review them before saving.';
 $string['captureerrors'] = 'Captured {$a->ok} of {$a->total} — {$a->failed} case(s) errored and were left unchanged.';
+$string['capturenoreference'] = 'Write a reference solution first.';
+$string['referencewarning'] = 'Warning: your reference solution does not pass test {$a}. Students may not be able to score full marks.';
+$string['referenceverifyfail'] = 'Could not verify the reference solution (the runtime did not load). Saving anyway.';
 
 // Authoring: test cases.
 $string['testcases'] = 'Test cases';
