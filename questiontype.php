@@ -40,9 +40,12 @@ require_once($CFG->libdir . '/questionlib.php');
  */
 class qtype_codeatelier extends question_type {
 
+    /** @var string[] every language code the question type knows, in picker order. */
+    const ALL_LANGUAGES = array('python', 'sql', 'javascript', 'c', 'cpp', 'java');
+
     public function extra_question_fields() {
         return array('qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint',
-                'startercode', 'schemasql', 'cputimelimit', 'memorylimit');
+                'startercode', 'schemasql', 'cputimelimit', 'memorylimit', 'languages', 'starters');
     }
 
     public function get_question_options($question) {
@@ -67,6 +70,34 @@ class qtype_codeatelier extends question_type {
                 ? (float) $question->cputimelimit : null;
         $question->memorylimit = (isset($question->memorylimit) && trim((string) $question->memorylimit) !== '')
                 ? (int) $question->memorylimit : null;
+
+        // The allowed-language set is stored as a comma-separated string (the form
+        // sends an array); the primary language is always a member. Per-language
+        // starter code is a JSON map, pruned to the languages actually allowed.
+        $primary = isset($question->language) ? $question->language : 'python';
+        $allowed = array();
+        foreach ((array) ($question->languages ?? array()) as $lang) {
+            $lang = trim((string) $lang);
+            if ($lang !== '' && in_array($lang, self::ALL_LANGUAGES, true) && !in_array($lang, $allowed, true)) {
+                $allowed[] = $lang;
+            }
+        }
+        if (!in_array($primary, $allowed, true)) {
+            array_unshift($allowed, $primary);
+        }
+        $question->languages = implode(',', $allowed);
+
+        $decoded = isset($question->starters) && trim((string) $question->starters) !== ''
+                ? json_decode((string) $question->starters, true) : null;
+        $starters = array();
+        if (is_array($decoded)) {
+            foreach ($allowed as $lang) {
+                if (isset($decoded[$lang]) && trim((string) $decoded[$lang]) !== '') {
+                    $starters[$lang] = (string) $decoded[$lang];
+                }
+            }
+        }
+        $question->starters = $starters ? json_encode($starters) : null;
 
         // Saves the language/tier/scenario options into qtype_codeatelier_options.
         parent::save_question_options($question);
