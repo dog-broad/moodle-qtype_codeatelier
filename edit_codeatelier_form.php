@@ -62,6 +62,12 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->addHelpButton('entrypoint', 'entrypoint', 'qtype_codeatelier');
         $mform->hideIf('entrypoint', 'scenario', 'neq', 'function');
 
+        $mform->addElement('text', 'functionsignature', get_string('functionsignature', 'qtype_codeatelier'),
+                array('size' => 40));
+        $mform->setType('functionsignature', PARAM_RAW_TRIMMED);
+        $mform->addHelpButton('functionsignature', 'functionsignature', 'qtype_codeatelier');
+        $mform->hideIf('functionsignature', 'scenario', 'neq', 'function');
+
         $mform->addElement('textarea', 'startercode', get_string('startercode', 'qtype_codeatelier'),
                 array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
         $mform->setType('startercode', PARAM_RAW);
@@ -401,10 +407,23 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 $functionlangs = ($tier === 'judge')
                     ? \qtype_codeatelier\judge\function_harness::LANGUAGES
                     : array('python', 'javascript');
+                $needssig = false;
                 foreach ($allowed as $lang) {
                     if (!in_array($lang, $functionlangs, true)) {
                         $errors['languages'] = get_string('functionlanguageset', 'qtype_codeatelier');
                         break;
+                    }
+                    if (\qtype_codeatelier\judge\function_harness::needs_signature($lang)) {
+                        $needssig = true;
+                    }
+                }
+                // A static-language function question needs a valid typed signature.
+                if (!isset($errors['languages']) && $needssig) {
+                    $sig = isset($data['functionsignature']) ? trim($data['functionsignature']) : '';
+                    if ($sig === '') {
+                        $errors['functionsignature'] = get_string('signaturerequired', 'qtype_codeatelier');
+                    } else if (!\qtype_codeatelier\judge\signature::is_valid($sig)) {
+                        $errors['functionsignature'] = get_string('signatureinvalid', 'qtype_codeatelier');
                     }
                 }
             }

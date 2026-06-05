@@ -174,6 +174,12 @@ $string['checkerquery_help'] = 'For questions that change data (INSERT/UPDATE/DE
 $string['testfeedback'] = 'Feedback (shown for this test)';
 $string['entrypoint'] = 'Function name';
 $string['entrypoint_help'] = 'The name of the function the student must define. Each test\'s Input is a **JSON array of the arguments** passed to the call: `[2, 3]` calls `f(2, 3)`, while a function taking a single list needs it wrapped, `[[1, 2, 3]]`, to call `f([1, 2, 3])`. The function\'s return value is compared with Expected.';
+$string['functionsignature'] = 'Function signature';
+$string['functionsignature_help'] = 'Required for compiled/static languages (Java, C++, Go, Rust, C#, Kotlin), which cannot be called without knowing the types. Declare the parameter types and return type, for example `int, int -> int`, `string -> bool`, or `list<int> -> list<int>`.
+
+Types: `int`, `long`, `double`, `bool`, `string`, and one-dimensional lists `list<int>`, `list<double>`, `list<bool>`, `list<string>`. Dynamic languages (Python, JavaScript, Ruby, PHP, TypeScript) ignore this field.';
+$string['signaturerequired'] = 'A function signature is required when a compiled/static language is allowed.';
+$string['signatureinvalid'] = 'Invalid signature. Use a form like "int, int -> int" with the supported types.';
 $string['startercode'] = 'Starter code';
 $string['startercode_help'] = 'Optional code pre-filled in the student\'s editor for the primary language — for example a function signature to complete.';
 $string['referencesolution'] = 'Reference solution';
@@ -233,7 +239,7 @@ $string['limitpositive'] = 'Enter a positive number, or leave blank for the site
 $string['languagenotjudge'] = 'The judge tier supports C, C++, Java, Python and JavaScript. SQL is a practice-tier language.';
 $string['languagenotpractice'] = 'The practice tier supports Python, SQL and JavaScript. C, C++ and Java require the judge tier.';
 $string['sqlsinglelanguage'] = 'A SQL question is single-language: set Language to SQL and leave the allowed languages empty.';
-$string['functionlanguageset'] = 'A function-scenario question supports Python and JavaScript on the practice tier, and Python, JavaScript, Ruby and PHP on the judge tier.';
+$string['functionlanguageset'] = 'A function-scenario question supports Python and JavaScript on the practice tier. On the judge tier it supports Python, JavaScript, Ruby, PHP, TypeScript (no signature), and Java, C++, Go, Rust, C#, Kotlin (with a typed signature).';
 $string['referencefailed'] = 'The reference solution does not pass test {$a}. Fix the solution or the expected output before saving.';
 $string['referencecompileerror'] = 'The reference solution did not compile: {$a}';
 $string['startersinvalidjson'] = 'The per-language starter code could not be saved. Please reload the form and try again.';
