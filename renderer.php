@@ -49,9 +49,9 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         $allowed = $question->get_allowed_languages();
         $chosen = $question->resolve_language($qa->get_last_qt_var('language', ''));
         $startermap = $this->starter_map($question, $allowed);
-        // The judge tier is always the stdin/stdout shape (see the question type).
-        $scenario = $isjudge ? 'stdinstdout'
-            : (!empty($question->scenario) ? $question->scenario : 'stdinstdout');
+        // The scenario drives the harness + the client UI on both tiers (the judge
+        // tier now supports stdin/stdout and SQL).
+        $scenario = !empty($question->scenario) ? $question->scenario : 'stdinstdout';
 
         $answername = $qa->get_qt_field_name('answer');
         $scorename = $qa->get_qt_field_name('score');
@@ -157,7 +157,11 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'starters' => $startermap,
             'scenario' => $scenario,
             'entrypoint' => $question->entrypoint,
-            'schemasql' => $isjudge ? null : $question->schemasql,
+            // Ship the schema for any SQL question so the client schema viewer
+            // renders. A judge attempt has no Check button, so control.js never
+            // wires client-side grading — the schema is the visible data, while the
+            // expected rows and checker queries (hidden tests) are never shipped.
+            'schemasql' => ($scenario === 'sql') ? $question->schemasql : null,
             'pyodidebaseurl' => get_config('qtype_codeatelier', 'pyodidebaseurl'),
             'sqljsbaseurl' => get_config('qtype_codeatelier', 'sqljsbaseurl'),
             'tests' => $tests,
