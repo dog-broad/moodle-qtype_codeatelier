@@ -197,4 +197,6 @@ $string['languagenotpractice'] = 'The practice tier supports Python, SQL and Jav
 $string['sqlsinglelanguage'] = 'A SQL question is single-language: set Language to SQL and leave the allowed languages empty.';
 $string['functionlanguageset'] = 'A function-scenario question supports Python and JavaScript only.';
 $string['functionnotjudge'] = 'The judge tier supports the stdin/stdout and SQL scenarios. The function scenario is practice-tier only.';
+$string['referencefailed'] = 'The reference solution does not pass test {$a}. Fix the solution or the expected output before saving.';
+$string['referencecompileerror'] = 'The reference solution did not compile: {$a}';
 $string['startersinvalidjson'] = 'The per-language starter code could not be saved. Please reload the form and try again.';

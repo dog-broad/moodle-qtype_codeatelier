@@ -410,7 +410,97 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             $errors['testinput[0]'] = get_string('notenoughtests', 'qtype_codeatelier');
         }
 
+        // Validate-on-save: a judge-tier reference solution must pass every test or
+        // the save is rejected (the practice tier is warned client-side instead — the
+        // server cannot run browser code). Skips silently with no endpoint or an
+        // unreachable sandbox; the grade memo makes an unchanged re-save instant.
+        if ($tier === 'judge' && $count > 0 && !isset($errors['languages'])
+                && trim((string) ($data['referencesolution'] ?? '')) !== '') {
+            $errors = $this->validate_reference($data, $errors);
+        }
+
         return $errors;
+    }
+
+    /**
+     * Run the judge-tier reference solution against every authored test and add an
+     * error if it does not pass them all.
+     *
+     * @param array $data the submitted form data
+     * @param array $errors the errors collected so far
+     * @return array the errors, possibly with a referencesolution entry added
+     */
+    protected function validate_reference($data, $errors) {
+        question_bank::load_question_definition_classes('codeatelier');
+        $question = new qtype_codeatelier_question();
+        $question->language = $data['language'];
+        $question->tier = 'judge';
+        $question->scenario = $data['scenario'];
+        $question->schemasql = ($data['scenario'] === 'sql') ? ($data['schemasql'] ?? '') : null;
+        $question->cputimelimit = (isset($data['cputimelimit']) && trim($data['cputimelimit']) !== '')
+                ? (float) $data['cputimelimit'] : null;
+        $question->memorylimit = (isset($data['memorylimit']) && trim($data['memorylimit']) !== '')
+                ? (int) $data['memorylimit'] : null;
+        $question->languages = null;
+        $question->tests = $this->tests_from_form($data);
+
+        $result = $question->get_judge_result($data['referencesolution'], $data['language']);
+        if ($result === null || !empty($result['infrastructure'])) {
+            // No endpoint, or the sandbox is unreachable: cannot validate, so allow
+            // the save rather than block on infrastructure.
+            return $errors;
+        }
+        if (($result['verdict'] ?? '') !== 'AC' || ($result['fraction'] ?? 0) < 1.0) {
+            $errors['referencesolution'] = $this->reference_error_message($result);
+        }
+        return $errors;
+    }
+
+    /**
+     * Build test-case objects from the submitted form data, skipping blank rows
+     * exactly as {@see qtype_codeatelier::save_question_options()} does.
+     *
+     * @param array $data the submitted form data
+     * @return array test-case stdClass objects
+     */
+    protected function tests_from_form($data) {
+        $tests = array();
+        foreach ($data['testinput'] as $key => $input) {
+            $expected = $data['testexpected'][$key];
+            if (trim($input) === '' && trim($expected) === '') {
+                continue;
+            }
+            $tests[] = (object) array(
+                'input' => $input,
+                'expected' => $expected,
+                'matchmode' => $data['matchmode'][$key],
+                'tolerance' => isset($data['tolerance'][$key]) ? $data['tolerance'][$key] : null,
+                'weight' => $data['testweight'][$key],
+                'visibility' => $data['testvisibility'][$key],
+                'checkerquery' => isset($data['checkerquery'][$key]) ? $data['checkerquery'][$key] : null,
+            );
+        }
+        return $tests;
+    }
+
+    /**
+     * A localised "the reference failed" message naming the first failing test, or
+     * surfacing the compiler output on a compile error.
+     *
+     * @param array $result a judge_grader result
+     * @return string
+     */
+    protected function reference_error_message($result) {
+        if (($result['verdict'] ?? '') === 'CE') {
+            return get_string('referencecompileerror', 'qtype_codeatelier',
+                    shorten_text(trim((string) ($result['compileoutput'] ?? '')), 200));
+        }
+        foreach ($result['testresults'] as $tr) {
+            if (empty($tr['passed'])) {
+                return get_string('referencefailed', 'qtype_codeatelier', $tr['index'] + 1);
+            }
+        }
+        return get_string('referencefailed', 'qtype_codeatelier', 1);
     }
 
     public function qtype() {
