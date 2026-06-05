@@ -469,6 +469,23 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 // Judge0 compiles the public class named Main.
                 return "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n"
                     . "        Scanner sc = new Scanner(System.in);\n        // Read input, print output\n    }\n}\n";
+            case 'go':
+                return "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n)\n\n"
+                    . "func main() {\n\treader := bufio.NewReader(os.Stdin)\n\t_ = reader\n\t// Read input, print output\n\t_ = fmt.Println\n}\n";
+            case 'rust':
+                return "use std::io::{self, Read};\n\nfn main() {\n    let mut input = String::new();\n"
+                    . "    io::stdin().read_to_string(&mut input).unwrap();\n    // Read input, print output\n}\n";
+            case 'php':
+                return "<?php\n// Read input with fgets(STDIN); print output with echo.\n";
+            case 'typescript':
+                return "// TypeScript. Read stdin via require('fs').readFileSync(0, 'utf8'); print with console.log.\n";
+            case 'csharp':
+                return "using System;\n\nclass Program {\n    static void Main() {\n"
+                    . "        // Read input with Console.ReadLine(); print with Console.WriteLine().\n    }\n}\n";
+            case 'kotlin':
+                return "fun main() {\n    // Read input with readLine(); print with println().\n}\n";
+            case 'ruby':
+                return "# Read input with gets; print with puts.\n";
             case 'python':
             default:
                 return "# Write your Python code here\n";

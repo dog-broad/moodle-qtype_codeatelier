@@ -46,6 +46,13 @@ class judge0_runner {
         'python' => 71,
         'javascript' => 63,
         'sql' => 82,
+        'go' => 60,
+        'rust' => 73,
+        'php' => 68,
+        'typescript' => 74,
+        'csharp' => 51,
+        'kotlin' => 78,
+        'ruby' => 72,
     ];
 
     /** @var string base URL of the Judge0 instance (no trailing slash). */

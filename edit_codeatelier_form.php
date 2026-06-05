@@ -267,6 +267,13 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'c' => get_string('lang_c', 'qtype_codeatelier'),
             'cpp' => get_string('lang_cpp', 'qtype_codeatelier'),
             'java' => get_string('lang_java', 'qtype_codeatelier'),
+            'go' => get_string('lang_go', 'qtype_codeatelier'),
+            'rust' => get_string('lang_rust', 'qtype_codeatelier'),
+            'php' => get_string('lang_php', 'qtype_codeatelier'),
+            'typescript' => get_string('lang_typescript', 'qtype_codeatelier'),
+            'csharp' => get_string('lang_csharp', 'qtype_codeatelier'),
+            'kotlin' => get_string('lang_kotlin', 'qtype_codeatelier'),
+            'ruby' => get_string('lang_ruby', 'qtype_codeatelier'),
         );
     }
 
@@ -274,7 +281,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
     const PRACTICE_LANGUAGES = array('python', 'sql', 'javascript');
 
     /** @var array languages that run in the server sandbox (judge tier). */
-    const JUDGE_LANGUAGES = array('c', 'cpp', 'java', 'python', 'javascript', 'sql');
+    const JUDGE_LANGUAGES = array('c', 'cpp', 'java', 'python', 'javascript', 'sql',
+            'go', 'rust', 'php', 'typescript', 'csharp', 'kotlin', 'ruby');
 
     /**
      * @return array matching-mode code => display name

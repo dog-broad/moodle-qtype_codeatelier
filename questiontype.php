@@ -41,7 +41,8 @@ require_once($CFG->libdir . '/questionlib.php');
 class qtype_codeatelier extends question_type {
 
     /** @var string[] every language code the question type knows, in picker order. */
-    const ALL_LANGUAGES = array('python', 'sql', 'javascript', 'c', 'cpp', 'java');
+    const ALL_LANGUAGES = array('python', 'sql', 'javascript', 'c', 'cpp', 'java',
+            'go', 'rust', 'php', 'typescript', 'csharp', 'kotlin', 'ruby');
 
     public function extra_question_fields() {
         return array('qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint',
