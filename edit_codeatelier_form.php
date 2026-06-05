@@ -77,7 +77,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->addElement('textarea', 'starteredit', get_string('starterother', 'qtype_codeatelier'),
                 array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
         $mform->setType('starteredit', PARAM_RAW);
-        $mform->addElement('hidden', 'starters');
+        $mform->addElement('hidden', 'starters', '', array('id' => 'id_starters'));
         $mform->setType('starters', PARAM_RAW);
 
         $mform->addElement('textarea', 'schemasql', get_string('schemasql', 'qtype_codeatelier'),
