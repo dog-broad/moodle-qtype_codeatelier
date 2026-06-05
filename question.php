@@ -290,14 +290,15 @@ class qtype_codeatelier_question extends question_graded_automatically {
         }
         $language = $this->resolve_language($language);
         $limits = $this->judge_limits($runner);
+        $schemasql = (string) $this->schemasql;
         $hash = \qtype_codeatelier\judge\result_cache::key(
-                $language, (string) $code, $this->tests, $limits);
+                $language, (string) $code, $this->tests, $limits, $schemasql);
         $cached = \qtype_codeatelier\judge\result_cache::get($hash);
         if ($cached !== null) {
             return $cached;
         }
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
-        $result = $grader->grade((string) $code, $language, $this->tests);
+        $result = $grader->grade((string) $code, $language, $this->tests, $schemasql);
         if (empty($result['infrastructure'])) {
             \qtype_codeatelier\judge\result_cache::put($hash, $result);
         }
@@ -329,7 +330,8 @@ class qtype_codeatelier_question extends question_graded_automatically {
             return array('verdict' => 'AC', 'compileoutput' => '', 'testresults' => array());
         }
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
-        return $grader->grade((string) $code, $this->resolve_language($language), $visible);
+        return $grader->grade((string) $code, $this->resolve_language($language), $visible,
+                (string) $this->schemasql);
     }
 
     /**
@@ -343,7 +345,8 @@ class qtype_codeatelier_question extends question_graded_automatically {
     public function cached_judge_result($code, $language = null) {
         $limits = $this->judge_limits($this->judge_runner());
         $hash = \qtype_codeatelier\judge\result_cache::key(
-                $this->resolve_language($language), (string) $code, $this->tests, $limits);
+                $this->resolve_language($language), (string) $code, $this->tests, $limits,
+                (string) $this->schemasql);
         return \qtype_codeatelier\judge\result_cache::get($hash);
     }
 }
