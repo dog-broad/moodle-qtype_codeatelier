@@ -210,6 +210,29 @@ final class question_type_test extends \advanced_testcase {
         $this->assertEquals(0, (int) $qo->testvisibility[1]);
     }
 
+    public function test_new_language_and_all_or_nothing_round_trip(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        // A judge question in Go with an additional Rust option and all-or-nothing on.
+        $question = $qgen->create_question('codeatelier', 'judge', array(
+            'category' => $cat->id, 'language' => 'go',
+            'languages' => array('go', 'rust'), 'allornothing' => 1));
+        $data = question_bank::load_question_data($question->id);
+
+        $this->assertEquals('go', $data->options->language);
+        $this->assertEquals(1, (int) $data->options->allornothing);
+        $langs = explode(',', $data->options->languages);
+        sort($langs);
+        $this->assertEquals(array('go', 'rust'), $langs);
+    }
+
     public function test_single_language_question_stores_just_the_primary(): void {
         $this->resetAfterTest();
         $this->setAdminUser();

@@ -479,7 +479,9 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             case 'php':
                 return "<?php\n// Read input with fgets(STDIN); print output with echo.\n";
             case 'typescript':
-                return "// TypeScript. Read stdin via require('fs').readFileSync(0, 'utf8'); print with console.log.\n";
+                // 'declare' keeps the older tsc on Judge0 happy without @types/node.
+                return "declare const require: any;\nconst input: string = require('fs').readFileSync(0, 'utf8');\n"
+                    . "// Parse input; print with console.log.\n";
             case 'csharp':
                 return "using System;\n\nclass Program {\n    static void Main() {\n"
                     . "        // Read input with Console.ReadLine(); print with Console.WriteLine().\n    }\n}\n";

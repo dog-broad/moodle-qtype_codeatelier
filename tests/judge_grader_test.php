@@ -307,6 +307,38 @@ final class judge_grader_test extends \advanced_testcase {
         $this->assertSame('[[1,"amy"],[2,"bo"]]', $outputs[0]['output']);
     }
 
+    public function test_all_or_nothing_zeroes_a_partial(): void {
+        // One test passes, one fails -> partial 0.5 normally, but 0 all-or-nothing.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+            qtype_codeatelier_stub_runner::row('ran', "999\n"),
+        ));
+        $partial = (new judge_grader($runner))->grade('code', 'python', $this->sum_tests());
+        $this->assertEquals(0.5, $partial['fraction']);
+
+        $aon = (new judge_grader($runner))->grade('code', 'python', $this->sum_tests(), '', true);
+        $this->assertEquals(0.0, $aon['fraction']);
+        $this->assertSame('WA', $aon['verdict']);
+    }
+
+    public function test_all_or_nothing_keeps_full_marks_when_all_pass(): void {
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+            qtype_codeatelier_stub_runner::row('ran', "30\n"),
+        ));
+        $aon = (new judge_grader($runner))->grade('code', 'python', $this->sum_tests(), '', true);
+        $this->assertEquals(1.0, $aon['fraction']);
+        $this->assertSame('AC', $aon['verdict']);
+    }
+
+    public function test_cache_key_depends_on_all_or_nothing(): void {
+        $tests = $this->sum_tests();
+        $limits = array('cputime' => 2.0, 'memory' => 128000);
+        $partial = result_cache::key('python', 'code', $tests, $limits, '', false);
+        $aon = result_cache::key('python', 'code', $tests, $limits, '', true);
+        $this->assertNotEquals($partial, $aon);
+    }
+
     public function test_run_outputs_reports_a_failing_reference(): void {
         // A reference that errors yields no output and surfaces why.
         $runner = new qtype_codeatelier_stub_runner(array(

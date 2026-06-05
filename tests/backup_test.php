@@ -135,9 +135,11 @@ final class backup_test extends \advanced_testcase {
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
         $cat = $qgen->create_question_category(array('contextid' => $context->id));
-        // A multi-language judge question with explicit per-question limits.
+        // A multi-language judge question with explicit per-question limits and
+        // all-or-nothing grading.
         $qgen->create_question('codeatelier', 'multilang', array(
-                'category' => $cat->id, 'cputimelimit' => '1.5', 'memorylimit' => '64000'));
+                'category' => $cat->id, 'cputimelimit' => '1.5', 'memorylimit' => '64000',
+                'allornothing' => 1));
 
         $bc = new backup_controller(backup::TYPE_1COURSE, $course->id, backup::FORMAT_MOODLE,
                 backup::INTERACTIVE_NO, backup::MODE_IMPORT, $USER->id);
@@ -166,8 +168,10 @@ final class backup_test extends \advanced_testcase {
         // ...as must the per-question limits (previously dropped by the backup step)...
         $this->assertEquals(1.5, (float) $restored->cputimelimit);
         $this->assertEquals(64000, (int) $restored->memorylimit);
-        // ...and the reference solution.
+        // ...and the reference solution...
         $this->assertStringContainsString('input().split()', $restored->referencesolution);
+        // ...and the all-or-nothing flag.
+        $this->assertEquals(1, (int) $restored->allornothing);
     }
 
     /**
