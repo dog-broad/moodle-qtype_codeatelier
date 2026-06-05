@@ -161,5 +161,15 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026062100, 'qtype', 'codeatelier');
     }
 
+    if ($oldversion < 2026062200) {
+        // A reference solution for validate-on-save and run-to-capture.
+        $table = new xmldb_table('qtype_codeatelier_options');
+        $field = new xmldb_field('referencesolution', XMLDB_TYPE_TEXT, null, null, null, null, null, 'starters');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        upgrade_plugin_savepoint(true, 2026062200, 'qtype', 'codeatelier');
+    }
+
     return true;
 }

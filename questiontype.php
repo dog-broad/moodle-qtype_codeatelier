@@ -45,7 +45,8 @@ class qtype_codeatelier extends question_type {
 
     public function extra_question_fields() {
         return array('qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint',
-                'startercode', 'schemasql', 'cputimelimit', 'memorylimit', 'languages', 'starters');
+                'startercode', 'schemasql', 'cputimelimit', 'memorylimit', 'languages', 'starters',
+                'referencesolution');
     }
 
     public function get_question_options($question) {
@@ -93,6 +94,11 @@ class qtype_codeatelier extends question_type {
             }
         }
         $question->starters = $starters ? json_encode($starters) : null;
+
+        // The reference solution is a scalar; store null when blank.
+        $question->referencesolution = (isset($question->referencesolution)
+                && trim((string) $question->referencesolution) !== '')
+                ? (string) $question->referencesolution : null;
 
         // Saves the language/tier/scenario options into qtype_codeatelier_options.
         parent::save_question_options($question);
