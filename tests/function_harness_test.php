@@ -28,14 +28,14 @@ defined('MOODLE_INTERNAL') || die();
  */
 final class function_harness_test extends \advanced_testcase {
 
-    public function test_supports_dynamic_languages_only(): void {
-        $this->assertTrue(function_harness::supports('python'));
-        $this->assertTrue(function_harness::supports('javascript'));
-        $this->assertTrue(function_harness::supports('ruby'));
-        $this->assertTrue(function_harness::supports('php'));
-        // Static languages need a signature; not yet supported.
-        $this->assertFalse(function_harness::supports('java'));
-        $this->assertFalse(function_harness::supports('cpp'));
+    public function test_supports(): void {
+        // Dynamic and static function languages are both supported.
+        foreach (['python', 'javascript', 'ruby', 'php', 'typescript',
+                'java', 'cpp', 'go', 'rust', 'csharp', 'kotlin'] as $lang) {
+            $this->assertTrue(function_harness::supports($lang), $lang);
+        }
+        // C and SQL have no function harness.
+        $this->assertFalse(function_harness::supports('c'));
         $this->assertFalse(function_harness::supports('sql'));
     }
 
@@ -69,8 +69,45 @@ final class function_harness_test extends \advanced_testcase {
         $this->assertStringContainsString('json_encode', $src);
     }
 
+    public function test_typescript_harness(): void {
+        $src = function_harness::source('typescript', 'function f(x: number){return x;}', 'f');
+        $this->assertStringContainsString('declare const require', $src);
+        $this->assertStringContainsString('(f as any)(..._ca_args)', $src);
+    }
+
+    public function test_needs_signature(): void {
+        foreach (['java', 'cpp', 'go', 'rust', 'csharp', 'kotlin'] as $lang) {
+            $this->assertTrue(function_harness::needs_signature($lang), $lang);
+        }
+        foreach (['python', 'javascript', 'ruby', 'php', 'typescript'] as $lang) {
+            $this->assertFalse(function_harness::needs_signature($lang), $lang);
+        }
+    }
+
+    public function test_static_language_without_signature_throws(): void {
+        $this->expectException(\coding_exception::class);
+        function_harness::source('java', 'static int f(int x){return x;}', 'f', null);
+    }
+
+    public function test_java_static_harness_reads_calls_prints(): void {
+        $sig = signature::parse('int,int->int');
+        $src = function_harness::source('java', 'static int add(int a, int b){return a+b;}', 'add', $sig);
+        $this->assertStringContainsString('public class Main', $src);
+        $this->assertStringContainsString('Integer.parseInt', $src);
+        $this->assertStringContainsString('add(p0, p1)', $src);
+        $this->assertStringContainsString('System.out.print(_r)', $src);
+    }
+
+    public function test_cpp_list_harness(): void {
+        $sig = signature::parse('list<int>->list<int>');
+        $src = function_harness::source('cpp', 'vector<int> rev(vector<int> xs){return xs;}', 'rev', $sig);
+        $this->assertStringContainsString('vector<int> p0', $src);
+        $this->assertStringContainsString('rev(p0)', $src);
+        $this->assertStringContainsString('_r.size()', $src);
+    }
+
     public function test_unsupported_language_throws(): void {
         $this->expectException(\coding_exception::class);
-        function_harness::source('java', 'code', 'f');
+        function_harness::source('haskell', 'code', 'f');
     }
 }
