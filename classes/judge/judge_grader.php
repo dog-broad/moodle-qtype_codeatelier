@@ -255,17 +255,34 @@ class judge_grader {
     private static function sql_source(string $schemasql, string $answer, $test): string {
         // CSV output quotes embedded separators/quotes/newlines and distinguishes
         // NULL (empty field) from '' (a quoted empty string) — unlike the default
-        // pipe-separated list mode. Judge0's SQLite rejects '.mode json'.
+        // pipe-separated list mode. Judge0's SQLite rejects '.mode json'. Each SQL
+        // fragment is statement-terminated so a non-terminated student query does
+        // not merge with the checker into one malformed statement.
         $parts = ['.mode csv', '.headers off'];
         if (trim($schemasql) !== '') {
-            $parts[] = $schemasql;
+            $parts[] = self::terminate($schemasql);
         }
-        $parts[] = $answer;
+        $parts[] = self::terminate($answer);
         $checker = isset($test->checkerquery) ? (string) $test->checkerquery : '';
         if (trim($checker) !== '') {
-            $parts[] = $checker;
+            $parts[] = self::terminate($checker);
         }
         return implode("\n", $parts) . "\n";
+    }
+
+    /**
+     * Ensure a SQL fragment ends with a statement terminator, putting the semicolon
+     * on its own line so a trailing line comment cannot swallow it.
+     *
+     * @param string $sql the fragment
+     * @return string
+     */
+    private static function terminate(string $sql): string {
+        $sql = rtrim($sql);
+        if ($sql === '' || substr($sql, -1) === ';') {
+            return $sql;
+        }
+        return $sql . "\n;";
     }
 
     /**
