@@ -235,6 +235,12 @@ class qtype_codeatelier extends question_type {
             }
             $output .= "    </testcase>\n";
         }
+
+        // The support/data files travel as base64 <file> elements.
+        $datafiles = get_file_storage()->get_area_files($question->contextid, 'qtype_codeatelier',
+                'datafiles', $question->id, 'filepath, filename', false);
+        $output .= $format->write_files($datafiles);
+
         return $output;
     }
 
@@ -289,7 +295,44 @@ class qtype_codeatelier extends question_type {
             $qo->checkerquery[] = $format->getpath($tc, array('#', 'checkerquery', 0, '#'), '');
             $qo->testfeedback[] = $format->getpath($tc, array('#', 'feedback', 0, '#'), '');
         }
+
+        // Rebuild the support/data files into a draft area so the normal save path
+        // stores them on the imported question.
+        $qo->datafiles = $this->import_datafiles($data);
         return $qo;
+    }
+
+    /**
+     * Recreate the support/data <file> nodes of an imported question into a fresh
+     * draft area, returning its item id (an empty draft when there are no files).
+     *
+     * @param array $data the xmlized question element
+     * @return int the draft area item id
+     */
+    protected function import_datafiles($data) {
+        global $USER;
+        $draftid = file_get_unused_draft_itemid();
+        $files = isset($data['#']['file']) ? $data['#']['file'] : array();
+        if (!$files) {
+            return $draftid;
+        }
+        $fs = get_file_storage();
+        $usercontext = context_user::instance($USER->id);
+        foreach ($files as $filexml) {
+            if (empty($filexml['@']['name'])) {
+                continue;
+            }
+            $record = (object) array(
+                'contextid' => $usercontext->id,
+                'component' => 'user',
+                'filearea' => 'draft',
+                'itemid' => $draftid,
+                'filepath' => isset($filexml['@']['path']) ? $filexml['@']['path'] : '/',
+                'filename' => $filexml['@']['name'],
+            );
+            $fs->create_file_from_string($record, base64_decode(isset($filexml['#']) ? $filexml['#'] : ''));
+        }
+        return $draftid;
     }
 
     /**
