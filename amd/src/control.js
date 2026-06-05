@@ -233,6 +233,14 @@ const renderExamples = (element, config, strings) => {
         element.appendChild(heading);
     }
 
+    // The scratch input to load an example into ("Use this input"): the judge-tier
+    // run-with-my-own-input box, or the practice-tier Run box. Absent on review and
+    // for SQL (no per-input scratch), so the affordance simply does not appear.
+    const wrapper = config.wrapperid ? document.getElementById(config.wrapperid) : null;
+    const scratch = (wrapper && !config.readonly && config.scenario !== 'sql')
+        ? wrapper.querySelector('[data-role="scratchinput"], [data-role="scratch"]')
+        : null;
+
     visible.forEach((test, i) => {
         const block = document.createElement('div');
         block.className = 'codeatelier-example';
@@ -252,6 +260,21 @@ const renderExamples = (element, config, strings) => {
                 addBlock(block, strings.input || 'Input', String(test.input));
             }
             addBlock(block, strings.expected || 'Expected', String(test.expected));
+        }
+
+        // Let the student load this example's input into the scratch box with one
+        // click, so they have a correct, runnable starting point to tweak.
+        if (scratch) {
+            const use = document.createElement('button');
+            use.type = 'button';
+            use.className = 'btn btn-link btn-sm codeatelier-use-input';
+            use.textContent = strings.useinput || 'Use this input';
+            use.addEventListener('click', () => {
+                scratch.value = String(test.input);
+                scratch.dispatchEvent(new Event('input', {bubbles: true}));
+                scratch.focus();
+            });
+            block.appendChild(use);
         }
         element.appendChild(block);
     });

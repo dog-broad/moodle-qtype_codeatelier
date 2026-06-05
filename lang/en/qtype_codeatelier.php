@@ -67,6 +67,7 @@ $string['outputtabs'] = 'Output and test results';
 $string['scratchargs'] = 'Arguments (JSON array)';
 $string['scratchstdin'] = 'Run with your own input';
 $string['scratchnooutput'] = '(no output)';
+$string['useinput'] = 'Use this input';
 $string['output'] = 'Output';
 $string['stopped'] = 'Stopped.';
 $string['noresult'] = 'No rows returned.';

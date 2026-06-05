@@ -360,6 +360,7 @@ class qtype_codeatelier extends question_type {
             'focus' => 'focus',
             'exitfocus' => 'exitfocus',
             'focusmode' => 'focusmode',
+            'useinput' => 'useinput',
         );
         $strings = array();
         foreach ($keys as $jskey => $stringid) {
