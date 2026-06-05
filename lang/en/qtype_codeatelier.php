@@ -48,6 +48,10 @@ $string['judge0cputimelimit'] = 'Default CPU-time limit (seconds)';
 $string['judge0cputimelimit_desc'] = 'The default per-run CPU-time limit for judge-tier questions, in seconds. Individual questions may override this.';
 $string['judge0memorylimit'] = 'Default memory limit (KB)';
 $string['judge0memorylimit_desc'] = 'The default per-run memory limit for judge-tier questions, in kilobytes. Individual questions may override this.';
+$string['runexamplescooldown'] = 'Run-examples cooldown (seconds)';
+$string['runexamplescooldown_desc'] = 'The minimum number of seconds a student must wait between formative "run against examples" requests, which run on the server sandbox. Throttles on-demand sandbox load; the authoritative grading at submit is unaffected. Set to 0 to disable the cooldown.';
+$string['judgecacheretention'] = 'Grading cache retention (days)';
+$string['judgecacheretention_desc'] = 'How long memoised judge-tier grading results are kept before a daily cleanup task removes them. The cache only speeds up review and regrade; a removed entry is recomputed when next needed. Set to 0 to keep entries forever.';
 
 // Student attempt UI.
 $string['answerlabel'] = 'Your code';
@@ -91,6 +95,8 @@ $string['judgeverdict'] = 'Verdict:';
 $string['judgenoresult'] = 'No graded result is available for this attempt.';
 $string['judgepending'] = 'Awaiting automatic grading. Your submission has been received and will be graded shortly — refresh in a moment.';
 $string['task_grade_pending'] = 'Grade pending judge-tier submissions';
+$string['task_prune_judgecache'] = 'Prune old judge-tier grading cache entries';
+$string['runexamplestoofast'] = 'Please wait {$a} second(s) before running the examples again.';
 $string['verdict_AC'] = 'Accepted';
 $string['verdict_WA'] = 'Wrong answer';
 $string['verdict_TLE'] = 'Time limit exceeded';
@@ -104,6 +110,21 @@ $string['judgememory'] = '{$a}';
 $string['runexamples'] = 'Run examples';
 $string['notjudgequestion'] = 'This is not a judge-tier CodeAtelier question.';
 $string['judgenotconfigured'] = 'No judge endpoint is configured. Ask your administrator to set the Judge0 base URL.';
+
+// Admin status page.
+$string['statuspagetitle'] = 'Judge tier status';
+$string['status_metric'] = 'Metric';
+$string['status_value'] = 'Value';
+$string['status_endpoint'] = 'Judge0 endpoint';
+$string['status_endpointnotset'] = 'Not configured';
+$string['status_health'] = 'Judge0 health';
+$string['status_reachable'] = 'Reachable (version {$a})';
+$string['status_unreachable'] = 'Unreachable: {$a}';
+$string['status_workers'] = 'Sandbox workers';
+$string['status_workerline'] = 'Queue "{$a->queue}": {$a->size} worker(s), {$a->available} available, {$a->idle} idle';
+$string['status_queuedepth'] = 'Submissions awaiting grading';
+$string['status_cachesize'] = 'Cached grading results';
+$string['status_cacheoldest'] = 'Oldest cached result';
 
 // Soft anti-cheat (judge tier).
 $string['proctornote'] = 'Switching away from this question and paste attempts are recorded for your teacher.';

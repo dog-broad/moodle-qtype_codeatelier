@@ -77,4 +77,28 @@ if ($ADMIN->fulltree) {
         '128000',
         PARAM_INT
     ));
+
+    $settings->add(new admin_setting_configtext(
+        'qtype_codeatelier/runexamplescooldown',
+        get_string('runexamplescooldown', 'qtype_codeatelier'),
+        get_string('runexamplescooldown_desc', 'qtype_codeatelier'),
+        '5',
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'qtype_codeatelier/judgecacheretention',
+        get_string('judgecacheretention', 'qtype_codeatelier'),
+        get_string('judgecacheretention_desc', 'qtype_codeatelier'),
+        '30',
+        PARAM_INT
+    ));
 }
+
+// A read-only diagnostics page: Judge0 health, needs-grading queue depth, cache size.
+$ADMIN->add('qtypesettings', new admin_externalpage(
+    'qtypecodeatelierstatus',
+    get_string('statuspagetitle', 'qtype_codeatelier'),
+    new moodle_url('/question/type/codeatelier/status.php'),
+    'moodle/site:config'
+));
