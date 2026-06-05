@@ -167,6 +167,29 @@ class judge0_runner {
     const POLL_INTERVAL_MS = 500;
 
     /**
+     * Probe the Judge0 instance for the admin status page.
+     *
+     * Calls /about (reachable? what version?) and, when reachable, /workers (the
+     * sandbox's own queue depth). Read-only; never touches a submission.
+     *
+     * @return array {ok: bool, version?: string, workers?: array, error?: string}
+     */
+    public function ping(): array {
+        $about = $this->request('GET', '/about', null);
+        if (isset($about['_error'])) {
+            return ['ok' => false, 'error' => (string) $about['_error']];
+        }
+        $result = ['ok' => true, 'version' => (string) ($about['version'] ?? '')];
+        $workers = $this->request('GET', '/workers', null);
+        // /workers is a list of queue descriptors (available/active/idle counts);
+        // a deployment may not expose it, so its absence is not a failure.
+        if (is_array($workers) && !isset($workers['_error'])) {
+            $result['workers'] = $workers;
+        }
+        return $result;
+    }
+
+    /**
      * Run student code against a set of cases.
      *
      * All cases are submitted to Judge0 in a single BATCH and run in parallel
