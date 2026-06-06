@@ -131,6 +131,7 @@ $string['status_cacheoldest'] = 'Oldest cached result';
 
 // Insight: the per-question submissions report.
 $string['report_title'] = 'Submissions report';
+$string['viewreport'] = 'View the submissions report for this question';
 $string['notcodeatelierquestion'] = 'That is not a CodeAtelier question.';
 $string['report_nosubmissions'] = 'No student submissions yet. (Teacher previews are not counted.)';
 $string['report_attempts'] = 'Submissions';
