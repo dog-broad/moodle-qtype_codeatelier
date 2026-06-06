@@ -39,10 +39,14 @@
             <td><span class="badge badge-secondary">{{tierlabel}}</span></td>
             <td class="text-right">{{totalattempts}}</td>
             <td class="text-right {{#hasneedsgrading}}text-warning{{/hasneedsgrading}}">{{needsgrading}}</td>
-            <td class="text-right">{{#hasmean}}{{meanscorepct}}%{{/hasmean}}{{^hasmean}}&mdash;{{/hasmean}}</td>
+            <td class="text-right">{{#hasmean}}{{meanscorepct}}%{{/hasmean}}{{^hasmean}}&mdash;{{/hasmean}}{{#ispractice}}
+                <span class="badge badge-warning ml-1">{{#str}}report_selfreported, qtype_codeatelier{{/str}}</span>{{/ispractice}}</td>
         </tr>
         {{/questions}}
         </tbody>
     </table>
+    {{#haspractice}}
+        <div class="alert alert-warning small">{{#str}}report_selfreported_note, qtype_codeatelier{{/str}}</div>
+    {{/haspractice}}
     {{/hasquestions}}
 </div>
