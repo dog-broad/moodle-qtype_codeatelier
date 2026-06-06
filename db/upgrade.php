@@ -191,5 +191,20 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026062404, 'qtype', 'codeatelier');
     }
 
+    if ($oldversion < 2026062701) {
+        // Multi-file projects: the starter file set (JSON) and the entry file name.
+        $table = new xmldb_table('qtype_codeatelier_options');
+        $projectfiles = new xmldb_field('projectfiles', XMLDB_TYPE_TEXT, null, null, null, null, null,
+                'functionsignature');
+        if (!$dbman->field_exists($table, $projectfiles)) {
+            $dbman->add_field($table, $projectfiles);
+        }
+        $entryfile = new xmldb_field('entryfile', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'projectfiles');
+        if (!$dbman->field_exists($table, $entryfile)) {
+            $dbman->add_field($table, $entryfile);
+        }
+        upgrade_plugin_savepoint(true, 2026062701, 'qtype', 'codeatelier');
+    }
+
     return true;
 }
