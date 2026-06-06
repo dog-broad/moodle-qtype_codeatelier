@@ -338,4 +338,36 @@ final class question_type_test extends \advanced_testcase {
         $this->assertEquals('resultset_ordered', $tests[0]->matchmode);
         $this->assertEquals(0, (int) $tests[1]->visibility);
     }
+
+    public function test_project_scenario_round_trips(): void {
+        // A multi-file project stores its scenario, entry file and the starter file
+        // set (canonical JSON) through save/load.
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        $projectfiles = json_encode(array(
+            array('name' => 'main.cpp', 'content' => "#include \"helper.h\"\nint main(){}\n"),
+            array('name' => 'helper.h', 'content' => "int add(int,int);\n"),
+        ));
+        $question = $qgen->create_question('codeatelier', 'judge', array(
+            'category' => $cat->id, 'scenario' => 'project', 'language' => 'cpp',
+            'projectfiles' => $projectfiles, 'entryfile' => 'main.cpp',
+        ));
+        $data = question_bank::load_question_data($question->id);
+
+        $this->assertEquals('judge', $data->options->tier);
+        $this->assertEquals('project', $data->options->scenario);
+        $this->assertEquals('cpp', $data->options->language);
+        $this->assertEquals('main.cpp', $data->options->entryfile);
+        // The file set round-trips as the same canonical set.
+        $files = \qtype_codeatelier\judge\project_packager::decode_files($data->options->projectfiles);
+        $this->assertSame(array('main.cpp', 'helper.h'), array_keys($files));
+        $this->assertStringContainsString('int add(int,int);', $files['helper.h']);
+    }
 }
