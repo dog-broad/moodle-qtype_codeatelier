@@ -129,6 +129,44 @@ $string['status_queuedepth'] = 'Submissions awaiting grading';
 $string['status_cachesize'] = 'Cached grading results';
 $string['status_cacheoldest'] = 'Oldest cached result';
 
+// Insight: the per-question submissions report.
+$string['report_title'] = 'Submissions report';
+$string['viewreport'] = 'View the submissions report for this question';
+$string['notcodeatelierquestion'] = 'That is not a CodeAtelier question.';
+$string['report_nosubmissions'] = 'No student submissions yet. (Teacher previews are not counted.)';
+$string['report_attempts'] = 'Submissions';
+$string['report_graded'] = 'Graded';
+$string['report_needsgrading'] = 'Awaiting grading';
+$string['report_meanscore'] = 'Mean score';
+$string['report_scoredist'] = 'Score distribution';
+$string['report_score_zero'] = 'Scored nothing';
+$string['report_score_partial'] = 'Partial';
+$string['report_score_full'] = 'Full marks';
+$string['report_verdicts'] = 'Verdicts';
+$string['report_pertest'] = 'Per-test pass rates';
+$string['report_pertest_help'] = 'How many graded submissions passed each test. A test almost everyone fails often means a wrong expected output.';
+$string['report_test'] = 'Test';
+$string['report_passrate'] = 'Pass rate';
+$string['report_passes'] = 'Passes';
+$string['report_outof'] = 'Out of';
+$string['report_suspect'] = 'check this test';
+$string['report_languages'] = 'Languages used';
+$string['report_maxtime'] = 'Slowest run';
+$string['report_maxmemory'] = 'Peak memory';
+$string['report_proctor'] = 'Submissions with activity flags';
+$string['report_coverage'] = 'Detailed results (verdicts, per-test pass rates, time and memory) are available for {$a->with} of {$a->total} submissions; the rest were graded against an earlier version of the question or have aged out of the result cache.';
+$string['report_exportcsv'] = 'Export per-test table (CSV)';
+$string['report_quiztitle'] = 'CodeAtelier submissions';
+$string['report_quiz_noquestions'] = 'This quiz has no CodeAtelier questions added directly. (Randomly-selected questions are not listed here.)';
+$string['report_question'] = 'Question';
+$string['report_backtoquiz'] = '« Back to the quiz overview';
+$string['report_recent'] = 'Recent submissions';
+$string['report_user'] = 'Student';
+$string['report_verdict'] = 'Verdict';
+$string['report_when'] = 'Submitted';
+$string['report_review'] = 'Review';
+$string['judgegrading'] = 'Grading your submission…';
+
 // Soft anti-cheat (judge tier).
 $string['proctornote'] = 'Switching away from this question and paste attempts are recorded for your teacher.';
 $string['proctorsummary'] = 'Activity flags';

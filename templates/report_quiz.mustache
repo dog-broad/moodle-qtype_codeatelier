@@ -1,0 +1,48 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template qtype_codeatelier/report_quiz
+
+    The per-quiz overview of CodeAtelier questions.
+}}
+<div class="qtype_codeatelier-report">
+    {{^hasquestions}}
+        <div class="alert alert-info">{{#str}}report_quiz_noquestions, qtype_codeatelier{{/str}}</div>
+    {{/hasquestions}}
+    {{#hasquestions}}
+    <table class="table table-sm">
+        <thead><tr>
+            <th>{{#str}}report_question, qtype_codeatelier{{/str}}</th>
+            <th>{{#str}}tier, qtype_codeatelier{{/str}}</th>
+            <th class="text-right">{{#str}}report_attempts, qtype_codeatelier{{/str}}</th>
+            <th class="text-right">{{#str}}report_needsgrading, qtype_codeatelier{{/str}}</th>
+            <th class="text-right">{{#str}}report_meanscore, qtype_codeatelier{{/str}}</th>
+        </tr></thead>
+        <tbody>
+        {{#questions}}
+        <tr>
+            <td><a href="{{reporturl}}">{{name}}</a></td>
+            <td><span class="badge badge-secondary">{{tierlabel}}</span></td>
+            <td class="text-right">{{totalattempts}}</td>
+            <td class="text-right {{#hasneedsgrading}}text-warning{{/hasneedsgrading}}">{{needsgrading}}</td>
+            <td class="text-right">{{#hasmean}}{{meanscorepct}}%{{/hasmean}}{{^hasmean}}&mdash;{{/hasmean}}</td>
+        </tr>
+        {{/questions}}
+        </tbody>
+    </table>
+    {{/hasquestions}}
+</div>

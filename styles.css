@@ -618,3 +618,16 @@
     padding-left: 1.1rem;
     font-size: 0.85rem;
 }
+
+/* Insight report: score-distribution bars. */
+.qtype_codeatelier-report .codeatelier-bar-full {
+    background-color: #1f7a3d;
+}
+
+.qtype_codeatelier-report .codeatelier-bar-partial {
+    background-color: #8a5a00;
+}
+
+.qtype_codeatelier-report .codeatelier-bar-zero {
+    background-color: #b02a37;
+}

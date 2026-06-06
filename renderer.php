@@ -90,12 +90,16 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         // (computed at submit time) — never re-run the sandbox from a render path.
         $judgereviewhtml = '';
         $proctorreviewhtml = '';
+        $gradingpending = false;
         if ($isjudge && $options->readonly) {
             $cached = $question->cached_judge_result($currentcode, $chosen);
             if ($cached === null && $qa->get_state() == question_state::$needsgrading) {
-                // Graded off-request: the scheduled task has not reached this attempt yet.
+                // Graded off-request: the scheduled task has not reached this attempt
+                // yet. A live indicator polls and refreshes when the grade lands.
+                $gradingpending = true;
                 $judgereviewhtml = html_writer::div(get_string('judgepending', 'qtype_codeatelier'),
-                        'codeatelier-judge-review codeatelier-judge-pending');
+                        'codeatelier-judge-review codeatelier-judge-pending',
+                        array('data-role' => 'gradestatus'));
             } else {
                 $judgereviewhtml = $this->render_judge_review($cached);
             }
@@ -190,6 +194,17 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         if ($isjudge && !$options->readonly) {
             $PAGE->requires->js_call_amd('qtype_codeatelier/proctor', 'init',
                     array(array('wrapperid' => $wrapperid)));
+        }
+
+        // Live grade status: poll while a submitted judge attempt awaits the
+        // background task, and refresh the page once the grade lands.
+        if ($gradingpending) {
+            $PAGE->requires->js_call_amd('qtype_codeatelier/gradestatus', 'init', array(array(
+                'wrapperid' => $wrapperid,
+                'qubaid' => (int) $qa->get_usage_id(),
+                'slot' => (int) $qa->get_slot(),
+                'grading' => get_string('judgegrading', 'qtype_codeatelier'),
+            )));
         }
 
         // The formative "run against examples" loop for the judge tier.
@@ -507,5 +522,159 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             default:
                 return "# Write your Python code here\n";
         }
+    }
+
+    /**
+     * Render the per-question Insight report.
+     *
+     * @param \stdClass $stats the aggregate from question_stats::for_question
+     * @param \moodle_url $baseurl the report page URL
+     * @return string HTML
+     */
+    public function render_question_report($stats, \moodle_url $baseurl, array $recent = array()) {
+        $context = $this->report_context($stats, $baseurl);
+        $context['recent'] = $this->recent_rows($recent);
+        $context['hasrecent'] = !empty($context['recent']);
+        return $this->render_from_template('qtype_codeatelier/report', $context);
+    }
+
+    /**
+     * Shape the recent-submissions rows for the template.
+     *
+     * @param \stdClass[] $recent rows from question_stats::recent_submissions
+     * @return array
+     */
+    protected function recent_rows(array $recent) {
+        $rows = array();
+        foreach ($recent as $r) {
+            $rows[] = array(
+                'user' => $r->userfullname !== null ? $r->userfullname : '—',
+                'language' => $r->language,
+                'graded' => $r->graded,
+                'scorepct' => $r->fraction !== null ? round($r->fraction * 100, 1) : null,
+                'verdict' => $r->verdict,
+                'verdictlabel' => $r->verdict ? $this->verdict_label($r->verdict) : '',
+                'time' => userdate($r->submittedtime, get_string('strftimedatetimeshort')),
+                'reviewurl' => $r->quizattemptid
+                        ? (new \moodle_url('/mod/quiz/review.php', array('attempt' => $r->quizattemptid)))->out(false)
+                        : null,
+            );
+        }
+        return $rows;
+    }
+
+    /**
+     * Render the per-quiz overview: each CodeAtelier question in the quiz with its
+     * headline figures and a link to the full per-question report.
+     *
+     * @param \stdClass[] $summaries one stats object per question (from for_quiz)
+     * @param int $cmid the quiz course-module id
+     * @return string HTML
+     */
+    public function render_quiz_report(array $summaries, $cmid) {
+        $rows = array();
+        foreach ($summaries as $stats) {
+            $rows[] = array(
+                'name' => format_string($stats->name),
+                'reporturl' => (new \moodle_url('/question/type/codeatelier/report.php',
+                        array('id' => $stats->questionid, 'cmid' => $cmid)))->out(false),
+                'tierlabel' => $stats->tier ? get_string('tier_' . $stats->tier, 'qtype_codeatelier') : '',
+                'totalattempts' => $stats->totalattempts,
+                'graded' => $stats->graded,
+                'needsgrading' => $stats->needsgrading,
+                'hasneedsgrading' => $stats->needsgrading > 0,
+                'meanscorepct' => $stats->meanscore !== null ? round($stats->meanscore * 100, 1) : null,
+                'hasmean' => $stats->meanscore !== null,
+            );
+        }
+        return $this->render_from_template('qtype_codeatelier/report_quiz',
+                array('questions' => $rows, 'hasquestions' => !empty($rows)));
+    }
+
+    /**
+     * Build the Mustache context for the report from the raw aggregate.
+     *
+     * @param \stdClass $stats
+     * @param \moodle_url $baseurl
+     * @return array
+     */
+    protected function report_context($stats, \moodle_url $baseurl) {
+        $graded = $stats->graded;
+
+        $scoredist = array();
+        foreach (array('zero' => 'report_score_zero', 'partial' => 'report_score_partial',
+                'full' => 'report_score_full') as $key => $stringid) {
+            $count = $stats->scoredist->$key;
+            $scoredist[] = array(
+                'label' => get_string($stringid, 'qtype_codeatelier'),
+                'count' => $count,
+                'pct' => $graded > 0 ? round($count / $graded * 100) : 0,
+                'key' => $key,
+            );
+        }
+
+        $verdicts = array();
+        $seen = $stats->verdicts;
+        foreach (array('AC', 'WA', 'TLE', 'MLE', 'RE', 'CE', 'INTERNAL') as $v) {
+            if (!empty($seen[$v])) {
+                $verdicts[] = array('code' => $v, 'label' => $this->verdict_label($v), 'count' => $seen[$v]);
+                unset($seen[$v]);
+            }
+        }
+        foreach ($seen as $v => $c) {
+            $verdicts[] = array('code' => $v, 'label' => $v, 'count' => $c);
+        }
+
+        $pertest = array();
+        foreach ($stats->pertest as $row) {
+            $pct = $row->passrate === null ? null : round($row->passrate * 100, 1);
+            $pertest[] = array(
+                'num' => $row->index + 1,
+                'visible' => $row->visible,
+                'visiblelabel' => $row->visible ? get_string('visible_shown', 'qtype_codeatelier')
+                        : get_string('visible_hidden', 'qtype_codeatelier'),
+                'passes' => $row->passes,
+                'total' => $row->total,
+                'passratepct' => $pct,
+                'haspassrate' => $pct !== null,
+                // Flag a test almost everyone fails — often a wrong expected value.
+                'suspect' => $row->total >= 5 && $row->passrate !== null && $row->passrate < 0.2,
+            );
+        }
+
+        $languages = array();
+        arsort($stats->languages);
+        foreach ($stats->languages as $lang => $count) {
+            $languages[] = array('language' => $lang, 'count' => $count);
+        }
+
+        return array(
+            'name' => format_string($stats->name),
+            'isjudge' => $stats->tier === 'judge',
+            'tierlabel' => $stats->tier ? get_string('tier_' . $stats->tier, 'qtype_codeatelier') : '',
+            'hasattempts' => $stats->totalattempts > 0,
+            'totalattempts' => $stats->totalattempts,
+            'graded' => $graded,
+            'needsgrading' => $stats->needsgrading,
+            'hasneedsgrading' => $stats->needsgrading > 0,
+            'meanscorepct' => $stats->meanscore !== null ? round($stats->meanscore * 100, 1) : null,
+            'hasmean' => $stats->meanscore !== null,
+            'scoredist' => $scoredist,
+            'verdicts' => $verdicts,
+            'hasverdicts' => !empty($verdicts),
+            'pertest' => $pertest,
+            'languages' => $languages,
+            'multilang' => count($languages) > 1,
+            'maxtimems' => $stats->timing->maxtimems > 0 ? round($stats->timing->maxtimems) : null,
+            'maxmemory' => $stats->timing->maxmemorykb > 0
+                    ? display_size((int) $stats->timing->maxmemorykb * 1024) : null,
+            'proctorflagged' => $stats->proctorflagged,
+            'hasproctor' => $stats->proctorflagged > 0,
+            'coveragepartial' => $stats->detailcoverage->withresult < $stats->detailcoverage->total,
+            'coveragenote' => get_string('report_coverage', 'qtype_codeatelier', (object) array(
+                    'with' => $stats->detailcoverage->withresult,
+                    'total' => $stats->detailcoverage->total)),
+            'csvurl' => (new \moodle_url($baseurl, array('format' => 'csv')))->out(false),
+        );
     }
 }

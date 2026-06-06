@@ -33,6 +33,14 @@ defined('MOODLE_INTERNAL') || die();
 class qtype_codeatelier_edit_form extends question_edit_form {
 
     protected function definition_inner($mform) {
+        // When editing an existing question, link to its submissions report.
+        if (!empty($this->question->id)) {
+            $reporturl = new moodle_url('/question/type/codeatelier/report.php',
+                    array('id' => $this->question->id));
+            $mform->addElement('static', 'reportlink', '',
+                    html_writer::link($reporturl, get_string('viewreport', 'qtype_codeatelier')));
+        }
+
         $mform->addElement('select', 'tier', get_string('tier', 'qtype_codeatelier'),
                 $this->tier_options());
         $mform->addHelpButton('tier', 'tier', 'qtype_codeatelier');
