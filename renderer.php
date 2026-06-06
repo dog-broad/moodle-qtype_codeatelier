@@ -522,6 +522,34 @@ class qtype_codeatelier_renderer extends qtype_renderer {
     }
 
     /**
+     * Render the per-quiz overview: each CodeAtelier question in the quiz with its
+     * headline figures and a link to the full per-question report.
+     *
+     * @param \stdClass[] $summaries one stats object per question (from for_quiz)
+     * @param int $cmid the quiz course-module id
+     * @return string HTML
+     */
+    public function render_quiz_report(array $summaries, $cmid) {
+        $rows = array();
+        foreach ($summaries as $stats) {
+            $rows[] = array(
+                'name' => format_string($stats->name),
+                'reporturl' => (new \moodle_url('/question/type/codeatelier/report.php',
+                        array('id' => $stats->questionid, 'cmid' => $cmid)))->out(false),
+                'tierlabel' => $stats->tier ? get_string('tier_' . $stats->tier, 'qtype_codeatelier') : '',
+                'totalattempts' => $stats->totalattempts,
+                'graded' => $stats->graded,
+                'needsgrading' => $stats->needsgrading,
+                'hasneedsgrading' => $stats->needsgrading > 0,
+                'meanscorepct' => $stats->meanscore !== null ? round($stats->meanscore * 100, 1) : null,
+                'hasmean' => $stats->meanscore !== null,
+            );
+        }
+        return $this->render_from_template('qtype_codeatelier/report_quiz',
+                array('questions' => $rows, 'hasquestions' => !empty($rows)));
+    }
+
+    /**
      * Build the Mustache context for the report from the raw aggregate.
      *
      * @param \stdClass $stats

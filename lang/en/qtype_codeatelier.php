@@ -156,6 +156,10 @@ $string['report_maxmemory'] = 'Peak memory';
 $string['report_proctor'] = 'Submissions with activity flags';
 $string['report_coverage'] = 'Detailed results (verdicts, per-test pass rates, time and memory) are available for {$a->with} of {$a->total} submissions; the rest were graded against an earlier version of the question or have aged out of the result cache.';
 $string['report_exportcsv'] = 'Export per-test table (CSV)';
+$string['report_quiztitle'] = 'CodeAtelier submissions';
+$string['report_quiz_noquestions'] = 'This quiz has no CodeAtelier questions added directly. (Randomly-selected questions are not listed here.)';
+$string['report_question'] = 'Question';
+$string['report_backtoquiz'] = '« Back to the quiz overview';
 
 // Soft anti-cheat (judge tier).
 $string['proctornote'] = 'Switching away from this question and paste attempts are recorded for your teacher.';

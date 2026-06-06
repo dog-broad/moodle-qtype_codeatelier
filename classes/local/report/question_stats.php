@@ -43,10 +43,12 @@ class question_stats {
      * Compute the statistics for a single question.
      *
      * @param int $questionid the CodeAtelier question id
+     * @param int|null $usagecontextid restrict to attempts whose question usage is in
+     *     this context (e.g. one quiz's module context); null aggregates every use
      * @return \stdClass the aggregate (see the build_* methods for the shape), or an
      *     empty aggregate if the question is not a CodeAtelier question
      */
-    public static function for_question(int $questionid): \stdClass {
+    public static function for_question(int $questionid, ?int $usagecontextid = null): \stdClass {
         global $CFG;
         require_once($CFG->dirroot . '/question/engine/lib.php');
 
@@ -57,7 +59,7 @@ class question_stats {
 
         $stats = self::empty_stats($questionid, $question);
 
-        $basics = self::load_basics($questionid);
+        $basics = self::load_basics($questionid, $usagecontextid);
         if (!$basics) {
             return $stats;
         }
@@ -131,17 +133,58 @@ class question_stats {
     }
 
     /**
+     * The per-question stats for every CodeAtelier question used in a quiz,
+     * scoped to that quiz's attempts, in slot order.
+     *
+     * Covers questions added directly to the quiz; randomly-selected questions
+     * (question sets) are not enumerated here.
+     *
+     * @param int $quizid the quiz instance id
+     * @param int $usagecontextid the quiz module context id
+     * @return \stdClass[] one stats object per question
+     */
+    public static function for_quiz(int $quizid, int $usagecontextid): array {
+        global $DB;
+        $sql = "SELECT q.id AS qid, MIN(qs.slot) AS slot
+                  FROM {quiz_slots} qs
+                  JOIN {question_references} qr ON qr.itemid = qs.id
+                   AND qr.component = 'mod_quiz' AND qr.questionarea = 'slot'
+                  JOIN {question_bank_entries} qbe ON qbe.id = qr.questionbankentryid
+                  JOIN {question_versions} qv ON qv.questionbankentryid = qbe.id
+                  JOIN {question} q ON q.id = qv.questionid
+                 WHERE qs.quizid = :quizid
+                   AND q.qtype = 'codeatelier'
+                   AND qv.version = (
+                       SELECT MAX(v.version) FROM {question_versions} v
+                        WHERE v.questionbankentryid = qbe.id)
+              GROUP BY q.id
+              ORDER BY slot ASC";
+        $rows = $DB->get_records_sql($sql, ['quizid' => $quizid]);
+        $out = [];
+        foreach ($rows as $row) {
+            $out[] = self::for_question((int) $row->qid, $usagecontextid);
+        }
+        return $out;
+    }
+
+    /**
      * Per attempt, the latest step's fraction and state — but only for attempts
      * whose latest state is a real submission.
      *
      * @param int $questionid
+     * @param int|null $usagecontextid restrict to usages in this context, or null for all
      * @return array qaid => {fraction, state}
      */
-    private static function load_basics(int $questionid): array {
+    private static function load_basics(int $questionid, ?int $usagecontextid = null): array {
         global $DB;
         list($insql, $params) = $DB->get_in_or_equal(self::SUBMITTED_STATES, SQL_PARAMS_NAMED, 'st');
         $params['qid'] = $questionid;
         $params['preview'] = 'core_question_preview';
+        $contextwhere = '';
+        if ($usagecontextid !== null) {
+            $contextwhere = ' AND qu.contextid = :ctxid';
+            $params['ctxid'] = $usagecontextid;
+        }
         // Exclude teacher previews (their own trial runs) — those are not student
         // submissions and would otherwise inflate the figures.
         $sql = "SELECT qa.id AS qaid, qas.fraction AS fraction, qas.state AS state
@@ -149,7 +192,7 @@ class question_stats {
                   JOIN {question_usages} qu ON qu.id = qa.questionusageid
                   JOIN {question_attempt_steps} qas ON qas.questionattemptid = qa.id
                  WHERE qa.questionid = :qid
-                   AND qu.component <> :preview
+                   AND qu.component <> :preview" . $contextwhere . "
                    AND qas.sequencenumber = (
                        SELECT MAX(s.sequencenumber)
                          FROM {question_attempt_steps} s

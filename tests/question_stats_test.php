@@ -73,9 +73,9 @@ final class question_stats_test extends \advanced_testcase {
      *
      * @param string $answer
      */
-    private function attempt(string $answer, string $component = 'mod_quiz'): void {
+    private function attempt(string $answer, string $component = 'mod_quiz', $context = null): void {
         $question = \question_bank::load_question($this->questionid);
-        $quba = \question_engine::make_questions_usage_by_activity($component, $this->context);
+        $quba = \question_engine::make_questions_usage_by_activity($component, $context ?? $this->context);
         $quba->set_preferred_behaviour('deferredfeedback');
         $slot = $quba->add_question($question, 1);
         $quba->start_all_questions();
@@ -136,6 +136,24 @@ final class question_stats_test extends \advanced_testcase {
         $this->assertFalse($stats->pertest[1]->visible);
         $this->assertSame(2, $stats->pertest[1]->passes);
         $this->assertEqualsWithDelta(2 / 3, $stats->pertest[1]->passrate, 1e-9);
+    }
+
+    public function test_scoped_to_usage_context(): void {
+        $allpass = array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+            qtype_codeatelier_stub_runner::row('ran', "30\n"),
+        );
+        $this->warm('shared', $allpass);
+
+        // The same answer attempted in two different course contexts.
+        $course2 = $this->getDataGenerator()->create_course();
+        $other = \context_course::instance($course2->id);
+        $this->attempt('shared', 'mod_quiz', $this->context);
+        $this->attempt('shared', 'mod_quiz', $other);
+
+        $this->assertSame(2, question_stats::for_question($this->questionid)->totalattempts);
+        $this->assertSame(1, question_stats::for_question($this->questionid, $this->context->id)->totalattempts);
+        $this->assertSame(1, question_stats::for_question($this->questionid, $other->id)->totalattempts);
     }
 
     public function test_empty_question_has_zeroed_stats(): void {
