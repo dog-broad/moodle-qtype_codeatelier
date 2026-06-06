@@ -44,6 +44,13 @@ export default [
         plugins: [nodeResolve(), terser()],
     },
     {
+        // Live grade-status poller for submitted judge attempts (core/ajax external).
+        input: 'amd/src/gradestatus.js',
+        external: (id) => id.startsWith('core/'),
+        output: {file: 'amd/build/gradestatus.min.js', format: 'amd', sourcemap: true, sourcemapExcludeSources: true},
+        plugins: [nodeResolve(), terser()],
+    },
+    {
         // The controller depends on the other plugin modules as AMD modules
         // (kept external so CodeMirror is not duplicated into this bundle).
         input: 'amd/src/control.js',

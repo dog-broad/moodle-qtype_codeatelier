@@ -47,4 +47,11 @@ $functions = [
         'ajax' => true,
         'capabilities' => 'moodle/question:add',
     ],
+    'qtype_codeatelier_grade_status' => [
+        'classname' => 'qtype_codeatelier\external\grade_status',
+        'methodname' => 'execute',
+        'description' => 'Whether a submitted judge-tier attempt has finished background grading.',
+        'type' => 'read',
+        'ajax' => true,
+    ],
 ];

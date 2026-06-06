@@ -90,12 +90,16 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         // (computed at submit time) — never re-run the sandbox from a render path.
         $judgereviewhtml = '';
         $proctorreviewhtml = '';
+        $gradingpending = false;
         if ($isjudge && $options->readonly) {
             $cached = $question->cached_judge_result($currentcode, $chosen);
             if ($cached === null && $qa->get_state() == question_state::$needsgrading) {
-                // Graded off-request: the scheduled task has not reached this attempt yet.
+                // Graded off-request: the scheduled task has not reached this attempt
+                // yet. A live indicator polls and refreshes when the grade lands.
+                $gradingpending = true;
                 $judgereviewhtml = html_writer::div(get_string('judgepending', 'qtype_codeatelier'),
-                        'codeatelier-judge-review codeatelier-judge-pending');
+                        'codeatelier-judge-review codeatelier-judge-pending',
+                        array('data-role' => 'gradestatus'));
             } else {
                 $judgereviewhtml = $this->render_judge_review($cached);
             }
@@ -190,6 +194,17 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         if ($isjudge && !$options->readonly) {
             $PAGE->requires->js_call_amd('qtype_codeatelier/proctor', 'init',
                     array(array('wrapperid' => $wrapperid)));
+        }
+
+        // Live grade status: poll while a submitted judge attempt awaits the
+        // background task, and refresh the page once the grade lands.
+        if ($gradingpending) {
+            $PAGE->requires->js_call_amd('qtype_codeatelier/gradestatus', 'init', array(array(
+                'wrapperid' => $wrapperid,
+                'qubaid' => (int) $qa->get_usage_id(),
+                'slot' => (int) $qa->get_slot(),
+                'grading' => get_string('judgegrading', 'qtype_codeatelier'),
+            )));
         }
 
         // The formative "run against examples" loop for the judge tier.

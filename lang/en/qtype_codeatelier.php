@@ -160,6 +160,7 @@ $string['report_quiztitle'] = 'CodeAtelier submissions';
 $string['report_quiz_noquestions'] = 'This quiz has no CodeAtelier questions added directly. (Randomly-selected questions are not listed here.)';
 $string['report_question'] = 'Question';
 $string['report_backtoquiz'] = '« Back to the quiz overview';
+$string['judgegrading'] = 'Grading your submission…';
 
 // Soft anti-cheat (judge tier).
 $string['proctornote'] = 'Switching away from this question and paste attempts are recorded for your teacher.';
