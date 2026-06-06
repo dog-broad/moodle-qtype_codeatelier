@@ -55,6 +55,9 @@ class judge0_runner {
         'ruby' => 72,
     ];
 
+    /** @var int the Judge0 "Multi-file program" language id (project scenario). */
+    const MULTIFILE_LANGUAGE_ID = 89;
+
     /** @var string base URL of the Judge0 instance (no trailing slash). */
     private $baseurl;
 
@@ -241,6 +244,46 @@ class judge0_runner {
             return array_fill(0, count($cases), self::internal_result($responses['_error']));
         }
 
+        $results = [];
+        foreach ($cases as $i => $case) {
+            $results[] = (isset($responses[$i]) && is_array($responses[$i]))
+                ? $this->map_response($responses[$i])
+                : self::internal_result('judge0 returned no result for a case');
+        }
+        return $results;
+    }
+
+    /**
+     * Run a multi-file project (Judge0 language 89): the same source package is run
+     * for every case with the case's stdin. The package is a base64 ZIP of the
+     * project's source files plus a compile and run script (see project_packager).
+     * Correctness against the expected output is the grader's job.
+     *
+     * @param string $base64zip the project package (additional_files for every case)
+     * @param array $cases the test cases, each ['input' => stdin]
+     * @return array per-case results aligned by index (same shape as {@see run()})
+     */
+    public function run_multifile(string $base64zip, array $cases): array {
+        $cases = array_values($cases);
+        if (!$cases) {
+            return [];
+        }
+        $submissions = [];
+        foreach ($cases as $case) {
+            $stdin = isset($case['input']) ? (string) $case['input'] : '';
+            $submissions[] = [
+                'source_code' => base64_encode(''),
+                'language_id' => self::MULTIFILE_LANGUAGE_ID,
+                'additional_files' => $base64zip,
+                'stdin' => base64_encode($stdin),
+                'cpu_time_limit' => $this->cputimelimit,
+                'memory_limit' => $this->memorylimit,
+            ];
+        }
+        $responses = $this->submit_batch($submissions);
+        if (isset($responses['_error'])) {
+            return array_fill(0, count($cases), self::internal_result($responses['_error']));
+        }
         $results = [];
         foreach ($cases as $i => $case) {
             $results[] = (isset($responses[$i]) && is_array($responses[$i]))
