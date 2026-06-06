@@ -1,0 +1,139 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template qtype_codeatelier/report
+
+    The per-question Insight analytics report.
+}}
+<div class="qtype_codeatelier-report">
+    <p class="text-muted">
+        <span class="badge badge-secondary">{{tierlabel}}</span>
+    </p>
+
+    {{^hasattempts}}
+        <div class="alert alert-info">{{#str}}report_nosubmissions, qtype_codeatelier{{/str}}</div>
+    {{/hasattempts}}
+
+    {{#hasattempts}}
+    <div class="row mb-3">
+        <div class="col-sm-3 col-6 mb-2">
+            <div class="card h-100"><div class="card-body text-center">
+                <div class="h3 mb-0">{{totalattempts}}</div>
+                <div class="text-muted small">{{#str}}report_attempts, qtype_codeatelier{{/str}}</div>
+            </div></div>
+        </div>
+        <div class="col-sm-3 col-6 mb-2">
+            <div class="card h-100"><div class="card-body text-center">
+                <div class="h3 mb-0">{{graded}}</div>
+                <div class="text-muted small">{{#str}}report_graded, qtype_codeatelier{{/str}}</div>
+            </div></div>
+        </div>
+        {{#hasneedsgrading}}
+        <div class="col-sm-3 col-6 mb-2">
+            <div class="card h-100"><div class="card-body text-center">
+                <div class="h3 mb-0 text-warning">{{needsgrading}}</div>
+                <div class="text-muted small">{{#str}}report_needsgrading, qtype_codeatelier{{/str}}</div>
+            </div></div>
+        </div>
+        {{/hasneedsgrading}}
+        {{#hasmean}}
+        <div class="col-sm-3 col-6 mb-2">
+            <div class="card h-100"><div class="card-body text-center">
+                <div class="h3 mb-0">{{meanscorepct}}%</div>
+                <div class="text-muted small">{{#str}}report_meanscore, qtype_codeatelier{{/str}}</div>
+            </div></div>
+        </div>
+        {{/hasmean}}
+    </div>
+
+    <h4>{{#str}}report_scoredist, qtype_codeatelier{{/str}}</h4>
+    <div class="mb-4">
+        {{#scoredist}}
+        <div class="d-flex align-items-center mb-1">
+            <div class="mr-2" style="width: 8rem;">{{label}}</div>
+            <div class="progress flex-grow-1" style="height: 1.1rem;">
+                <div class="progress-bar codeatelier-bar-{{key}}" role="progressbar"
+                    style="width: {{pct}}%;" aria-valuenow="{{pct}}" aria-valuemin="0" aria-valuemax="100">{{pct}}%</div>
+            </div>
+            <div class="ml-2 text-muted small" style="width: 3rem;">{{count}}</div>
+        </div>
+        {{/scoredist}}
+    </div>
+
+    {{#isjudge}}{{#hasverdicts}}
+    <h4>{{#str}}report_verdicts, qtype_codeatelier{{/str}}</h4>
+    <p class="mb-4">
+        {{#verdicts}}
+        <span class="badge badge-pill codeatelier-verdict-{{code}} border mr-1">{{label}}: {{count}}</span>
+        {{/verdicts}}
+    </p>
+    {{/hasverdicts}}{{/isjudge}}
+
+    {{#isjudge}}
+    <h4>{{#str}}report_pertest, qtype_codeatelier{{/str}}</h4>
+    <p class="text-muted small">{{#str}}report_pertest_help, qtype_codeatelier{{/str}}</p>
+    <table class="table table-sm w-auto mb-4">
+        <thead><tr>
+            <th>{{#str}}report_test, qtype_codeatelier{{/str}}</th>
+            <th>{{#str}}visibility, qtype_codeatelier{{/str}}</th>
+            <th class="text-right">{{#str}}report_passrate, qtype_codeatelier{{/str}}</th>
+            <th class="text-right">{{#str}}report_passes, qtype_codeatelier{{/str}}</th>
+        </tr></thead>
+        <tbody>
+        {{#pertest}}
+        <tr class="{{#suspect}}table-danger{{/suspect}}">
+            <td>{{num}}</td>
+            <td>{{visiblelabel}}</td>
+            <td class="text-right">{{#haspassrate}}{{passratepct}}%{{/haspassrate}}{{^haspassrate}}&mdash;{{/haspassrate}}
+                {{#suspect}}<span class="badge badge-danger ml-1">{{#str}}report_suspect, qtype_codeatelier{{/str}}</span>{{/suspect}}</td>
+            <td class="text-right text-muted">{{passes}} / {{total}}</td>
+        </tr>
+        {{/pertest}}
+        </tbody>
+    </table>
+    {{/isjudge}}
+
+    {{#multilang}}
+    <h4>{{#str}}report_languages, qtype_codeatelier{{/str}}</h4>
+    <ul class="list-inline mb-4">
+        {{#languages}}<li class="list-inline-item"><span class="badge badge-light border">{{language}}: {{count}}</span></li>{{/languages}}
+    </ul>
+    {{/multilang}}
+
+    {{#isjudge}}
+    <div class="row mb-4">
+        {{#maxtimems}}
+        <div class="col-auto"><span class="text-muted small">{{#str}}report_maxtime, qtype_codeatelier{{/str}}:</span> {{maxtimems}} ms</div>
+        {{/maxtimems}}
+        {{#maxmemory}}
+        <div class="col-auto"><span class="text-muted small">{{#str}}report_maxmemory, qtype_codeatelier{{/str}}:</span> {{maxmemory}}</div>
+        {{/maxmemory}}
+        {{#hasproctor}}
+        <div class="col-auto"><span class="text-muted small">{{#str}}report_proctor, qtype_codeatelier{{/str}}:</span> {{proctorflagged}}</div>
+        {{/hasproctor}}
+    </div>
+    {{/isjudge}}
+
+    {{#coveragepartial}}
+    <div class="alert alert-secondary small">{{coveragenote}}</div>
+    {{/coveragepartial}}
+
+    {{#isjudge}}
+    <a href="{{csvurl}}" class="btn btn-outline-secondary btn-sm">{{#str}}report_exportcsv, qtype_codeatelier{{/str}}</a>
+    {{/isjudge}}
+    {{/hasattempts}}
+</div>

@@ -508,4 +508,103 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 return "# Write your Python code here\n";
         }
     }
+
+    /**
+     * Render the per-question Insight report.
+     *
+     * @param \stdClass $stats the aggregate from question_stats::for_question
+     * @param \moodle_url $baseurl the report page URL
+     * @return string HTML
+     */
+    public function render_question_report($stats, \moodle_url $baseurl) {
+        return $this->render_from_template('qtype_codeatelier/report',
+                $this->report_context($stats, $baseurl));
+    }
+
+    /**
+     * Build the Mustache context for the report from the raw aggregate.
+     *
+     * @param \stdClass $stats
+     * @param \moodle_url $baseurl
+     * @return array
+     */
+    protected function report_context($stats, \moodle_url $baseurl) {
+        $graded = $stats->graded;
+
+        $scoredist = array();
+        foreach (array('zero' => 'report_score_zero', 'partial' => 'report_score_partial',
+                'full' => 'report_score_full') as $key => $stringid) {
+            $count = $stats->scoredist->$key;
+            $scoredist[] = array(
+                'label' => get_string($stringid, 'qtype_codeatelier'),
+                'count' => $count,
+                'pct' => $graded > 0 ? round($count / $graded * 100) : 0,
+                'key' => $key,
+            );
+        }
+
+        $verdicts = array();
+        $seen = $stats->verdicts;
+        foreach (array('AC', 'WA', 'TLE', 'MLE', 'RE', 'CE', 'INTERNAL') as $v) {
+            if (!empty($seen[$v])) {
+                $verdicts[] = array('code' => $v, 'label' => $this->verdict_label($v), 'count' => $seen[$v]);
+                unset($seen[$v]);
+            }
+        }
+        foreach ($seen as $v => $c) {
+            $verdicts[] = array('code' => $v, 'label' => $v, 'count' => $c);
+        }
+
+        $pertest = array();
+        foreach ($stats->pertest as $row) {
+            $pct = $row->passrate === null ? null : round($row->passrate * 100, 1);
+            $pertest[] = array(
+                'num' => $row->index + 1,
+                'visible' => $row->visible,
+                'visiblelabel' => $row->visible ? get_string('visible_shown', 'qtype_codeatelier')
+                        : get_string('visible_hidden', 'qtype_codeatelier'),
+                'passes' => $row->passes,
+                'total' => $row->total,
+                'passratepct' => $pct,
+                'haspassrate' => $pct !== null,
+                // Flag a test almost everyone fails — often a wrong expected value.
+                'suspect' => $row->total >= 5 && $row->passrate !== null && $row->passrate < 0.2,
+            );
+        }
+
+        $languages = array();
+        arsort($stats->languages);
+        foreach ($stats->languages as $lang => $count) {
+            $languages[] = array('language' => $lang, 'count' => $count);
+        }
+
+        return array(
+            'name' => format_string($stats->name),
+            'isjudge' => $stats->tier === 'judge',
+            'tierlabel' => $stats->tier ? get_string('tier_' . $stats->tier, 'qtype_codeatelier') : '',
+            'hasattempts' => $stats->totalattempts > 0,
+            'totalattempts' => $stats->totalattempts,
+            'graded' => $graded,
+            'needsgrading' => $stats->needsgrading,
+            'hasneedsgrading' => $stats->needsgrading > 0,
+            'meanscorepct' => $stats->meanscore !== null ? round($stats->meanscore * 100, 1) : null,
+            'hasmean' => $stats->meanscore !== null,
+            'scoredist' => $scoredist,
+            'verdicts' => $verdicts,
+            'hasverdicts' => !empty($verdicts),
+            'pertest' => $pertest,
+            'languages' => $languages,
+            'multilang' => count($languages) > 1,
+            'maxtimems' => $stats->timing->maxtimems > 0 ? round($stats->timing->maxtimems) : null,
+            'maxmemory' => $stats->timing->maxmemorykb > 0
+                    ? display_size((int) $stats->timing->maxmemorykb * 1024) : null,
+            'proctorflagged' => $stats->proctorflagged,
+            'hasproctor' => $stats->proctorflagged > 0,
+            'coveragepartial' => $stats->detailcoverage->withresult < $stats->detailcoverage->total,
+            'coveragenote' => get_string('report_coverage', 'qtype_codeatelier', (object) array(
+                    'with' => $stats->detailcoverage->withresult,
+                    'total' => $stats->detailcoverage->total)),
+            'csvurl' => (new \moodle_url($baseurl, array('format' => 'csv')))->out(false),
+        );
+    }
 }
