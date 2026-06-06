@@ -573,12 +573,16 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      */
     public function render_quiz_report(array $summaries, $cmid) {
         $rows = array();
+        $haspractice = false;
         foreach ($summaries as $stats) {
+            $ispractice = $stats->tier === 'practice';
+            $haspractice = $haspractice || $ispractice;
             $rows[] = array(
                 'name' => format_string($stats->name),
                 'reporturl' => (new \moodle_url('/question/type/codeatelier/report.php',
                         array('id' => $stats->questionid, 'cmid' => $cmid)))->out(false),
                 'tierlabel' => $stats->tier ? get_string('tier_' . $stats->tier, 'qtype_codeatelier') : '',
+                'ispractice' => $ispractice,
                 'totalattempts' => $stats->totalattempts,
                 'graded' => $stats->graded,
                 'needsgrading' => $stats->needsgrading,
@@ -588,7 +592,8 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             );
         }
         return $this->render_from_template('qtype_codeatelier/report_quiz',
-                array('questions' => $rows, 'hasquestions' => !empty($rows)));
+                array('questions' => $rows, 'hasquestions' => !empty($rows),
+                        'haspractice' => $haspractice));
     }
 
     /**
@@ -651,6 +656,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         return array(
             'name' => format_string($stats->name),
             'isjudge' => $stats->tier === 'judge',
+            'ispractice' => $stats->tier === 'practice',
             'tierlabel' => $stats->tier ? get_string('tier_' . $stats->tier, 'qtype_codeatelier') : '',
             'hasattempts' => $stats->totalattempts > 0,
             'totalattempts' => $stats->totalattempts,

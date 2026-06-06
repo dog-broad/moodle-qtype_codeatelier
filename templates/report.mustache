@@ -24,6 +24,10 @@
         <span class="badge badge-secondary">{{tierlabel}}</span>
     </p>
 
+    {{#ispractice}}
+        <div class="alert alert-warning">{{#str}}report_practiceflag, qtype_codeatelier{{/str}}</div>
+    {{/ispractice}}
+
     {{^hasattempts}}
         <div class="alert alert-info">{{#str}}report_nosubmissions, qtype_codeatelier{{/str}}</div>
     {{/hasattempts}}
