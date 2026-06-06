@@ -73,9 +73,9 @@ final class question_stats_test extends \advanced_testcase {
      *
      * @param string $answer
      */
-    private function attempt(string $answer): void {
+    private function attempt(string $answer, string $component = 'mod_quiz'): void {
         $question = \question_bank::load_question($this->questionid);
-        $quba = \question_engine::make_questions_usage_by_activity('mod_quiz', $this->context);
+        $quba = \question_engine::make_questions_usage_by_activity($component, $this->context);
         $quba->set_preferred_behaviour('deferredfeedback');
         $slot = $quba->add_question($question, 1);
         $quba->start_all_questions();
@@ -103,6 +103,8 @@ final class question_stats_test extends \advanced_testcase {
         $this->attempt('correct-b');
         $this->attempt('half');
         $this->attempt('uncached');   // no memo -> needs grading
+        // A teacher preview of the same answer must NOT count as a student attempt.
+        $this->attempt('correct-a', 'core_question_preview');
 
         $stats = question_stats::for_question($this->questionid);
 

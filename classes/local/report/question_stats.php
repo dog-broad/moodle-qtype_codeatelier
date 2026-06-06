@@ -141,10 +141,15 @@ class question_stats {
         global $DB;
         list($insql, $params) = $DB->get_in_or_equal(self::SUBMITTED_STATES, SQL_PARAMS_NAMED, 'st');
         $params['qid'] = $questionid;
+        $params['preview'] = 'core_question_preview';
+        // Exclude teacher previews (their own trial runs) — those are not student
+        // submissions and would otherwise inflate the figures.
         $sql = "SELECT qa.id AS qaid, qas.fraction AS fraction, qas.state AS state
                   FROM {question_attempts} qa
+                  JOIN {question_usages} qu ON qu.id = qa.questionusageid
                   JOIN {question_attempt_steps} qas ON qas.questionattemptid = qa.id
                  WHERE qa.questionid = :qid
+                   AND qu.component <> :preview
                    AND qas.sequencenumber = (
                        SELECT MAX(s.sequencenumber)
                          FROM {question_attempt_steps} s
