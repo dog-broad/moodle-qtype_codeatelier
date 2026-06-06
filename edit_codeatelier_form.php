@@ -46,6 +46,12 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->addHelpButton('tier', 'tier', 'qtype_codeatelier');
         $mform->setDefault('tier', $this->get_default_value('tier', 'practice'));
 
+        // Practice-tier grades are browser-computed and forgeable: warn the author
+        // not to use this tier for graded assessment. Shown only for the practice tier.
+        $mform->addElement('static', 'practicewarning', '',
+                html_writer::div(get_string('practicewarning', 'qtype_codeatelier'), 'alert alert-warning'));
+        $mform->hideIf('practicewarning', 'tier', 'neq', 'practice');
+
         $mform->addElement('select', 'language', get_string('language', 'qtype_codeatelier'),
                 $this->language_options());
         $mform->addHelpButton('language', 'language', 'qtype_codeatelier');

@@ -165,6 +165,9 @@ $string['report_user'] = 'Student';
 $string['report_verdict'] = 'Verdict';
 $string['report_when'] = 'Submitted';
 $string['report_review'] = 'Review';
+$string['report_practiceflag'] = 'Practice tier — the scores below are computed in each student\'s browser and reported back to Moodle. They are self-reported and can be altered by the student, so treat them as formative, not authoritative. Use the judge tier for secure grading.';
+$string['report_selfreported'] = 'Self-reported';
+$string['report_selfreported_note'] = 'Questions marked "Self-reported" are practice-tier: their means are computed in students\' browsers and are not authoritative.';
 $string['judgegrading'] = 'Grading your submission…';
 
 // Soft anti-cheat (judge tier).
@@ -182,6 +185,7 @@ $string['tier_help'] = 'Where the student\'s code runs and how it is graded.
 **Judge (server sandbox)**: code is compiled and run on the server with enforced time and memory limits, and graded against tests that never leave the server. This is the authoritative, secure grading path; it adds compiled languages (C, C++, Java) and is always the standard input/output shape. Requires a configured Judge0 endpoint.';
 $string['tier_practice'] = 'Practice (in-browser, formative)';
 $string['tier_judge'] = 'Judge (server sandbox, authoritative)';
+$string['practicewarning'] = 'Practice tier: the grade is computed in the student\'s browser and can be altered by the student, so it is not secure. Use practice questions for formative practice only — never for graded or summative assessment. For authoritative grading, choose the judge tier.';
 
 // Authoring: language.
 $string['language'] = 'Language';
