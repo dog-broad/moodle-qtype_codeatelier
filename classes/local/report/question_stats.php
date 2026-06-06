@@ -133,6 +133,80 @@ class question_stats {
     }
 
     /**
+     * The most recent submissions of a question, newest first, for drill-down.
+     *
+     * Each row carries the grade, the chosen language, the best-effort verdict
+     * (from the memo), and — for quiz attempts — the student and a link to the
+     * native attempt review (where the full per-test diagnostics already render).
+     *
+     * @param int $questionid
+     * @param int|null $usagecontextid restrict to one quiz's attempts, or null for all
+     * @param int $limit max rows
+     * @return \stdClass[] one row per attempt
+     */
+    public static function recent_submissions(int $questionid, ?int $usagecontextid = null,
+            int $limit = 50): array {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/question/engine/lib.php');
+
+        $question = \question_bank::load_question($questionid);
+        if (!($question instanceof \qtype_codeatelier_question)) {
+            return [];
+        }
+
+        list($insql, $params) = $DB->get_in_or_equal(self::SUBMITTED_STATES, SQL_PARAMS_NAMED, 'st');
+        $params['qid'] = $questionid;
+        $params['preview'] = 'core_question_preview';
+        $contextwhere = '';
+        if ($usagecontextid !== null) {
+            $contextwhere = ' AND qu.contextid = :ctxid';
+            $params['ctxid'] = $usagecontextid;
+        }
+        $userfields = \core_user\fields::for_name()->get_sql('u', false, '', '', false)->selects;
+        $sql = "SELECT qa.id AS qaid, qas.fraction AS fraction, qas.state AS state,
+                       qas.timecreated AS submittedtime, qza.id AS quizattemptid, u.id AS userid,
+                       $userfields
+                  FROM {question_attempts} qa
+                  JOIN {question_usages} qu ON qu.id = qa.questionusageid
+                  JOIN {question_attempt_steps} qas ON qas.questionattemptid = qa.id
+             LEFT JOIN {quiz_attempts} qza ON qza.uniqueid = qu.id
+             LEFT JOIN {user} u ON u.id = qza.userid
+                 WHERE qa.questionid = :qid
+                   AND qu.component <> :preview" . $contextwhere . "
+                   AND qas.sequencenumber = (
+                       SELECT MAX(s.sequencenumber)
+                         FROM {question_attempt_steps} s
+                        WHERE s.questionattemptid = qa.id)
+                   AND qas.state $insql
+              ORDER BY qas.timecreated DESC, qa.id DESC";
+        $records = $DB->get_records_sql($sql, $params, 0, $limit);
+        $responses = self::load_responses(array_keys($records));
+
+        $rows = [];
+        foreach ($records as $qaid => $rec) {
+            $vars = $responses[$qaid] ?? [];
+            $verdict = null;
+            if ($question->is_judge()) {
+                $result = $question->cached_judge_result($vars['answer'] ?? '', $vars['language'] ?? null);
+                if ($result !== null) {
+                    $verdict = (string) ($result['verdict'] ?? '');
+                }
+            }
+            $rows[] = (object) [
+                'language' => $question->resolve_language($vars['language'] ?? null),
+                'graded' => $rec->state !== 'needsgrading',
+                'fraction' => $rec->state !== 'needsgrading' ? (float) $rec->fraction : null,
+                'verdict' => $verdict,
+                'userid' => $rec->userid ? (int) $rec->userid : null,
+                'userfullname' => $rec->userid ? fullname($rec) : null,
+                'quizattemptid' => $rec->quizattemptid ? (int) $rec->quizattemptid : null,
+                'submittedtime' => (int) $rec->submittedtime,
+            ];
+        }
+        return $rows;
+    }
+
+    /**
      * The per-question stats for every CodeAtelier question used in a quiz,
      * scoped to that quiz's attempts, in slot order.
      *

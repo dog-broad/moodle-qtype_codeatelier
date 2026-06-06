@@ -156,6 +156,29 @@ final class question_stats_test extends \advanced_testcase {
         $this->assertSame(1, question_stats::for_question($this->questionid, $other->id)->totalattempts);
     }
 
+    public function test_recent_submissions(): void {
+        $allpass = array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+            qtype_codeatelier_stub_runner::row('ran', "30\n"),
+        );
+        $this->warm('graded-one', $allpass);
+        $this->attempt('graded-one');
+        $this->attempt('not-graded');   // cold -> needs grading
+
+        $rows = question_stats::recent_submissions($this->questionid);
+        $this->assertCount(2, $rows);
+        $this->assertSame('python', $rows[0]->language);
+
+        $verdicts = array_map(function($r) {
+            return $r->verdict;
+        }, $rows);
+        $this->assertContains('AC', $verdicts);
+        $graded = array_filter($rows, function($r) {
+            return $r->graded;
+        });
+        $this->assertCount(1, $graded);
+    }
+
     public function test_empty_question_has_zeroed_stats(): void {
         $stats = question_stats::for_question($this->questionid);
         $this->assertSame(0, $stats->totalattempts);

@@ -128,6 +128,32 @@
     </div>
     {{/isjudge}}
 
+    {{#hasrecent}}
+    <h4>{{#str}}report_recent, qtype_codeatelier{{/str}}</h4>
+    <table class="table table-sm mb-4">
+        <thead><tr>
+            <th>{{#str}}report_user, qtype_codeatelier{{/str}}</th>
+            <th>{{#str}}language, qtype_codeatelier{{/str}}</th>
+            <th class="text-right">{{#str}}result_score, qtype_codeatelier{{/str}}</th>
+            <th>{{#str}}report_verdict, qtype_codeatelier{{/str}}</th>
+            <th>{{#str}}report_when, qtype_codeatelier{{/str}}</th>
+            <th></th>
+        </tr></thead>
+        <tbody>
+        {{#recent}}
+        <tr>
+            <td>{{user}}</td>
+            <td>{{language}}</td>
+            <td class="text-right">{{#graded}}{{scorepct}}%{{/graded}}{{^graded}}&mdash;{{/graded}}</td>
+            <td>{{#verdict}}<span class="codeatelier-verdict codeatelier-verdict-{{verdict}}">{{verdictlabel}}</span>{{/verdict}}</td>
+            <td class="text-muted small">{{time}}</td>
+            <td>{{#reviewurl}}<a href="{{reviewurl}}">{{#str}}report_review, qtype_codeatelier{{/str}}</a>{{/reviewurl}}</td>
+        </tr>
+        {{/recent}}
+        </tbody>
+    </table>
+    {{/hasrecent}}
+
     {{#coveragepartial}}
     <div class="alert alert-secondary small">{{coveragenote}}</div>
     {{/coveragepartial}}

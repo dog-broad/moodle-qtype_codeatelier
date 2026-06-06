@@ -531,9 +531,36 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      * @param \moodle_url $baseurl the report page URL
      * @return string HTML
      */
-    public function render_question_report($stats, \moodle_url $baseurl) {
-        return $this->render_from_template('qtype_codeatelier/report',
-                $this->report_context($stats, $baseurl));
+    public function render_question_report($stats, \moodle_url $baseurl, array $recent = array()) {
+        $context = $this->report_context($stats, $baseurl);
+        $context['recent'] = $this->recent_rows($recent);
+        $context['hasrecent'] = !empty($context['recent']);
+        return $this->render_from_template('qtype_codeatelier/report', $context);
+    }
+
+    /**
+     * Shape the recent-submissions rows for the template.
+     *
+     * @param \stdClass[] $recent rows from question_stats::recent_submissions
+     * @return array
+     */
+    protected function recent_rows(array $recent) {
+        $rows = array();
+        foreach ($recent as $r) {
+            $rows[] = array(
+                'user' => $r->userfullname !== null ? $r->userfullname : '—',
+                'language' => $r->language,
+                'graded' => $r->graded,
+                'scorepct' => $r->fraction !== null ? round($r->fraction * 100, 1) : null,
+                'verdict' => $r->verdict,
+                'verdictlabel' => $r->verdict ? $this->verdict_label($r->verdict) : '',
+                'time' => userdate($r->submittedtime, get_string('strftimedatetimeshort')),
+                'reviewurl' => $r->quizattemptid
+                        ? (new \moodle_url('/mod/quiz/review.php', array('attempt' => $r->quizattemptid)))->out(false)
+                        : null,
+            );
+        }
+        return $rows;
     }
 
     /**

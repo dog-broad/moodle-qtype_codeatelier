@@ -102,7 +102,9 @@ if ($questionid) {
                 new moodle_url('/question/type/codeatelier/report.php', array('cmid' => $cmid)),
                 get_string('report_backtoquiz', 'qtype_codeatelier')), 'mb-2');
     }
-    echo $renderer->render_question_report($stats, $baseurl);
+    $recent = \qtype_codeatelier\local\report\question_stats::recent_submissions(
+            $questionid, $usagecontextid, 50);
+    echo $renderer->render_question_report($stats, $baseurl, $recent);
     echo $OUTPUT->footer();
     exit;
 }
