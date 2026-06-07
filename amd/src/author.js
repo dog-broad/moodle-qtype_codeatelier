@@ -30,6 +30,170 @@ import Ajax from 'core/ajax';
 
 const byId = (id) => document.getElementById(id);
 
+/** @var {String[]} the signature types the builder offers (mirrors signature.php). */
+const SIG_TYPES = ['int', 'long', 'double', 'bool', 'string',
+    'list<int>', 'list<long>', 'list<double>', 'list<bool>', 'list<string>',
+    'map<string,int>', 'map<string,long>', 'map<string,double>', 'map<string,bool>', 'map<string,string>'];
+
+/**
+ * Normalise a type token to a known type (strips whitespace), or null.
+ *
+ * @param {String} token a raw type string
+ * @return {String|null}
+ */
+const normaliseSigType = (token) => {
+    const n = (token || '').replace(/\s+/g, '');
+    return SIG_TYPES.indexOf(n) >= 0 ? n : null;
+};
+
+/**
+ * Split a parameter list on commas that are not inside angle brackets.
+ *
+ * @param {String} list the parameter part of a signature
+ * @return {String[]}
+ */
+const splitSigParams = (list) => {
+    const parts = [];
+    let depth = 0;
+    let cur = '';
+    for (let i = 0; i < list.length; i++) {
+        const ch = list[i];
+        if (ch === '<') {
+            depth++;
+        } else if (ch === '>') {
+            depth--;
+        }
+        if (ch === ',' && depth === 0) {
+            parts.push(cur);
+            cur = '';
+        } else {
+            cur += ch;
+        }
+    }
+    if (cur.trim() !== '') {
+        parts.push(cur);
+    }
+    return parts;
+};
+
+/**
+ * A type <select> preset to the given value.
+ *
+ * @param {String} value the selected type
+ * @return {HTMLSelectElement}
+ */
+const sigTypeSelect = (value) => {
+    const sel = document.createElement('select');
+    sel.className = 'custom-select custom-select-sm codeatelier-sigtype';
+    SIG_TYPES.forEach((t) => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t;
+        if (t === value) {
+            opt.selected = true;
+        }
+        sel.appendChild(opt);
+    });
+    return sel;
+};
+
+/**
+ * The structured signature builder: parameter/return pickers that write the
+ * signature string into the functionsignature field.
+ *
+ * @param {Object} config the authoring config
+ */
+const initSignatureBuilder = (config) => {
+    const field = byId(config.functionsignatureid);
+    const host = byId(config.signaturebuilderid);
+    if (!field || !host) {
+        return;
+    }
+    const str = config.sigbuilderstrings || {};
+    let params = [];
+    let ret = 'int';
+
+    const writeField = () => {
+        field.value = params.join(', ') + ' -> ' + ret;
+        field.dispatchEvent(new Event('change', {bubbles: true}));
+    };
+
+    const render = () => {
+        host.textContent = '';
+        params.forEach((p, idx) => {
+            const row = document.createElement('div');
+            row.className = 'codeatelier-sigparam';
+            const label = document.createElement('span');
+            label.className = 'codeatelier-block-label mr-1';
+            label.textContent = (str.param || 'Parameter') + ' ' + (idx + 1);
+            const sel = sigTypeSelect(p);
+            sel.addEventListener('change', () => {
+                params[idx] = sel.value;
+                writeField();
+            });
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'btn btn-link btn-sm';
+            remove.textContent = '×';
+            remove.setAttribute('aria-label', (str.removeparam || 'Remove parameter') + ' ' + (idx + 1));
+            remove.addEventListener('click', () => {
+                params.splice(idx, 1);
+                render();
+                writeField();
+            });
+            row.appendChild(label);
+            row.appendChild(sel);
+            row.appendChild(remove);
+            host.appendChild(row);
+        });
+        if (!params.length) {
+            const none = document.createElement('p');
+            none.className = 'text-muted small mb-1';
+            none.textContent = str.noparams || 'No parameters';
+            host.appendChild(none);
+        }
+        const add = document.createElement('button');
+        add.type = 'button';
+        add.className = 'btn btn-secondary btn-sm';
+        add.textContent = str.addparam || 'Add parameter';
+        add.addEventListener('click', () => {
+            params.push('int');
+            render();
+            writeField();
+        });
+        host.appendChild(add);
+
+        const retRow = document.createElement('div');
+        retRow.className = 'codeatelier-sigreturn mt-2';
+        const retLabel = document.createElement('span');
+        retLabel.className = 'codeatelier-block-label mr-1';
+        retLabel.textContent = str.returns || 'Returns';
+        const retSel = sigTypeSelect(ret);
+        retSel.addEventListener('change', () => {
+            ret = retSel.value;
+            writeField();
+        });
+        retRow.appendChild(retLabel);
+        retRow.appendChild(retSel);
+        host.appendChild(retRow);
+    };
+
+    // Populate from the existing signature; default to one int parameter when empty.
+    const text = (field.value || '').trim();
+    const arrow = text.indexOf('->');
+    if (arrow < 0) {
+        params = ['int'];
+        ret = 'int';
+        render();
+        writeField();
+        return;
+    }
+    const before = text.slice(0, arrow).trim();
+    ret = normaliseSigType(text.slice(arrow + 2)) || 'int';
+    params = before === '' ? [] : splitSigParams(before).map((p) => normaliseSigType(p)).filter(Boolean);
+    render();
+};
+
 /**
  * Read the test-case rows out of the repeated form elements, skipping blank
  * rows exactly as the server-side save does.
@@ -151,6 +315,11 @@ export const init = (config) => {
         paintBadge();
         tierSelForBadge.addEventListener('change', paintBadge);
     }
+
+    // Signature builder: structured parameter/return type pickers that write the
+    // signature string into the functionsignature field (which still accepts typed
+    // input — the builder is an enhancement that keeps it in sync).
+    initSignatureBuilder(config);
 
     // CodeMirror on the starter-code field, re-mounted when the language changes.
     if (starterTa) {
