@@ -238,6 +238,11 @@ $string['assertmatch_regex'] = 'matches regex';
 $string['assertactions'] = 'Actions before checking (optional)';
 $string['assertactions_help'] = 'Interaction steps run before the check, one per line: `click SELECTOR` or `type SELECTOR VALUE`. For example `click #add` then check that a new item appeared. Each check starts from a fresh render of the page.';
 $string['assertpropertyinvalid'] = 'Use text, exists, count, attr:NAME or style:PROP.';
+$string['previewpick'] = 'Preview — pick an element to add a check';
+$string['pickelement'] = 'Pick element';
+$string['pickcancel'] = 'Click an element in the preview…';
+$string['pickaddrow'] = 'Add another check row below, then pick again.';
+$string['pickfilled'] = 'Added a check for';
 
 // Web scenario: student-facing check labels (shipped to the workbench JS).
 $string['result_check'] = 'Check';

@@ -140,11 +140,57 @@ const HARNESS = `
     if (a.type === 'click') { el.click(); }
     else if (a.type === 'type') { el.value = a.value; el.dispatchEvent(new Event('input', {bubbles:true})); }
   }
+  // Build a reasonably stable CSS selector for an element: prefer its id, then a
+  // unique class, then a path of tag:nth-of-type steps up to an id or the body.
+  function selectorFor(el){
+    if (!el || el === document.body || el === document.documentElement) return 'body';
+    if (el.id) return '#' + el.id;
+    var tag = el.tagName.toLowerCase();
+    if (el.classList && el.classList.length){
+      var cls = '.' + Array.prototype.slice.call(el.classList).join('.');
+      if (document.querySelectorAll(tag + cls).length === 1) return tag + cls;
+    }
+    var parts = [];
+    var node = el;
+    while (node && node.nodeType === 1 && node !== document.body){
+      if (node.id){ parts.unshift('#' + node.id); break; }
+      var t = node.tagName.toLowerCase();
+      var parent = node.parentNode;
+      if (parent){
+        var sibs = Array.prototype.filter.call(parent.children, function(c){ return c.tagName === node.tagName; });
+        if (sibs.length > 1){ t += ':nth-of-type(' + (sibs.indexOf(node) + 1) + ')'; }
+      }
+      parts.unshift(t);
+      node = parent;
+    }
+    return parts.join(' > ');
+  }
+  var pickHover = null;
+  function clearHover(){ if (pickHover){ pickHover.style.outline = pickHover.__caOutline || ''; pickHover = null; } }
+  function onPickOver(e){ clearHover(); pickHover = e.target; pickHover.__caOutline = pickHover.style.outline; e.target.style.outline = '2px solid #1f6fd6'; }
+  function onPickClick(e){
+    e.preventDefault(); e.stopPropagation();
+    clearHover();
+    send({ kind: 'picked', selector: selectorFor(e.target), text: (e.target.textContent || '').trim().slice(0, 200) }, '*');
+    return false;
+  }
+  function setPick(on){
+    document.removeEventListener('click', onPickClick, true);
+    document.removeEventListener('mouseover', onPickOver, true);
+    clearHover();
+    document.body.style.cursor = on ? 'crosshair' : '';
+    if (on){
+      document.addEventListener('click', onPickClick, true);
+      document.addEventListener('mouseover', onPickOver, true);
+    }
+  }
   window.addEventListener('message', function(ev){
     var msg = ev.data || {};
     if (msg.kind === 'grade') {
       try { (msg.actions || []).forEach(runAction); } catch(e){}
       send({ kind: 'results', results: (msg.assertions || []).map(evalAssertion) }, '*');
+    } else if (msg.kind === 'pickmode') {
+      setPick(!!msg.on);
     }
   });
   window.__caHarness = { ready: function(){ send({ kind: 'ready' }, '*'); } };
@@ -328,6 +374,8 @@ export const gradeWeb = (files, tests, options) => {
  */
 export const setupPreview = (container, answerTa, config, strings) => {
     let timer = null;
+    let pickOn = false;
+    let pickCb = null;
 
     const iframe = document.createElement('iframe');
     iframe.className = 'codeatelier-preview-frame';
@@ -337,8 +385,9 @@ export const setupPreview = (container, answerTa, config, strings) => {
     iframe.setAttribute('title', (strings && strings.preview) || 'Preview');
     container.appendChild(iframe);
 
+    // The preview carries the harness so it can answer pick / highlight requests.
     const render = () => {
-        iframe.srcdoc = compose(parseFiles(answerTa.value));
+        iframe.srcdoc = compose(parseFiles(answerTa.value), {harness: true});
     };
 
     const scheduleRefresh = () => {
@@ -348,15 +397,39 @@ export const setupPreview = (container, answerTa, config, strings) => {
         timer = setTimeout(render, REFRESH_DELAY_MS);
     };
 
+    const onMessage = (ev) => {
+        if (ev.source !== iframe.contentWindow) {
+            return;
+        }
+        const msg = ev.data || {};
+        if (msg.kind === 'ready' && pickOn) {
+            // A fresh render dropped the previous harness; re-arm pick mode.
+            iframe.contentWindow.postMessage({kind: 'pickmode', on: true}, '*');
+        } else if (msg.kind === 'picked' && pickCb) {
+            pickCb(msg.selector, msg.text);
+        }
+    };
+    window.addEventListener('message', onMessage);
+
     render();
 
     return {
         render,
         scheduleRefresh,
+        setPickMode: (on) => {
+            pickOn = !!on;
+            if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage({kind: 'pickmode', on: pickOn}, '*');
+            }
+        },
+        onPick: (cb) => {
+            pickCb = cb;
+        },
         destroy: () => {
             if (timer) {
                 clearTimeout(timer);
             }
+            window.removeEventListener('message', onMessage);
             if (iframe.parentNode) {
                 iframe.parentNode.removeChild(iframe);
             }

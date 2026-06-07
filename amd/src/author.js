@@ -25,6 +25,7 @@ import {init as initControl} from 'qtype_codeatelier/control';
 import {run as runCode} from 'qtype_codeatelier/runner';
 import {grade} from 'qtype_codeatelier/grader';
 import {setup as setupProjectFiles} from 'qtype_codeatelier/projectfiles';
+import {setupPreview} from 'qtype_codeatelier/webruntime';
 import {render as renderTemplate} from 'core/templates';
 import Ajax from 'core/ajax';
 
@@ -350,12 +351,102 @@ export const init = (config) => {
         {name: 'script.js', content: '// Your JavaScript runs when the page loads.\n'},
     ]);
     if (projectfilesTa && scenSel) {
+        const strings = config.strings || {};
         let projectEditor = null;
+        let webPicker = null;
+
+        // Fill the first empty assertion row from a picked element: its selector,
+        // and sensible defaults (check the text equals the element's text).
+        const fillAssertionRow = (selector, text, message) => {
+            const fields = Array.prototype.slice.call(document.querySelectorAll('[name^="selector["]'));
+            const target = fields.find((f) => !f.value.trim());
+            if (!target) {
+                if (message) {
+                    message.textContent = strings.pickaddrow || 'Add another check row, then pick again.';
+                }
+                return;
+            }
+            const idx = target.name.replace(/^selector\[(\d+)\]$/, '$1');
+            const setIfEmpty = (name, value) => {
+                const el = document.querySelector('[name="' + name + '[' + idx + ']"]');
+                if (el && !String(el.value).trim()) {
+                    el.value = value;
+                }
+            };
+            target.value = selector;
+            setIfEmpty('assertproperty', 'text');
+            setIfEmpty('testexpected', text);
+            if (message) {
+                message.textContent = (strings.pickfilled || 'Added a check for') + ' ' + selector;
+            }
+            target.scrollIntoView({block: 'center'});
+            target.focus();
+        };
+
+        // Build the "pick an element" preview + button for a web question.
+        const buildWebPicker = () => {
+            const fitem = projectfilesTa.closest('.fitem') || projectfilesTa.parentNode;
+            const wrap = document.createElement('div');
+            wrap.className = 'codeatelier-webpicker form-group';
+            const label = document.createElement('span');
+            label.className = 'codeatelier-block-label';
+            label.textContent = strings.previewpick || 'Preview — pick an element to add a check';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-secondary codeatelier-pickbtn';
+            btn.textContent = strings.pickelement || 'Pick element';
+            const message = document.createElement('span');
+            message.className = 'codeatelier-pickmsg small text-muted';
+            const host = document.createElement('div');
+            host.className = 'codeatelier-preview-host';
+            wrap.appendChild(label);
+            wrap.appendChild(btn);
+            wrap.appendChild(message);
+            wrap.appendChild(host);
+            fitem.parentNode.insertBefore(wrap, fitem.nextSibling);
+
+            const preview = setupPreview(host, projectfilesTa, {readonly: false}, strings);
+            let picking = false;
+            const stop = () => {
+                picking = false;
+                preview.setPickMode(false);
+                btn.classList.remove('btn-primary');
+                btn.textContent = strings.pickelement || 'Pick element';
+            };
+            preview.onPick((selector, text) => {
+                fillAssertionRow(selector, text, message);
+                stop();
+            });
+            btn.addEventListener('click', () => {
+                picking = !picking;
+                preview.setPickMode(picking);
+                btn.classList.toggle('btn-primary', picking);
+                btn.textContent = picking
+                    ? (strings.pickcancel || 'Click an element in the preview…')
+                    : (strings.pickelement || 'Pick element');
+                if (picking) {
+                    message.textContent = '';
+                }
+            });
+            return {preview: preview, wrap: wrap, refresh: () => preview.scheduleRefresh()};
+        };
+
+        const teardownWebPicker = () => {
+            if (webPicker) {
+                webPicker.preview.destroy();
+                if (webPicker.wrap.parentNode) {
+                    webPicker.wrap.parentNode.removeChild(webPicker.wrap);
+                }
+                webPicker = null;
+            }
+        };
+
         const mountProject = () => {
             if (projectEditor) {
                 projectEditor.destroy();
                 projectEditor = null;
             }
+            teardownWebPicker();
             const scen = scenSel.value;
             if (scen !== 'project' && scen !== 'web') {
                 return;
@@ -363,11 +454,22 @@ export const init = (config) => {
             if (scen === 'web' && projectfilesTa.value.trim() === '') {
                 projectfilesTa.value = WEB_STARTER;
             }
+            // For web, refresh the picker preview as the starter files change.
+            const onChange = scen === 'web'
+                ? () => {
+                    if (webPicker) {
+                        webPicker.refresh();
+                    }
+                }
+                : undefined;
             projectEditor = setupProjectFiles(null, projectfilesTa, {
                 language: scen === 'web' ? 'html' : (langSel ? langSel.value : 'cpp'),
                 entryfile: scen === 'web' ? 'index.html' : (entryfileField ? entryfileField.value.trim() : 'main'),
                 readonly: false,
-            }, config.strings || {});
+            }, config.strings || {}, onChange);
+            if (scen === 'web') {
+                webPicker = buildWebPicker();
+            }
         };
         mountProject();
         scenSel.addEventListener('change', mountProject);

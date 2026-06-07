@@ -751,3 +751,27 @@
     height: 320px;
     border: 0;
 }
+
+/* Web scenario: the author's pick-an-element preview on the edit form. */
+.codeatelier-webpicker {
+    margin-top: 0.5rem;
+}
+
+.codeatelier-webpicker .codeatelier-preview-host {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.codeatelier-webpicker .codeatelier-preview-frame {
+    display: block;
+    width: 100%;
+    height: 280px;
+    border: 0;
+}
+
+.codeatelier-webpicker .codeatelier-pickmsg {
+    margin-left: 0.5rem;
+}
