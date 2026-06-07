@@ -63,6 +63,7 @@ class run_reference extends external_api {
             'scenario' => new external_value(PARAM_ALPHANUMEXT, 'The scenario', VALUE_DEFAULT, 'stdinstdout'),
             'entrypoint' => new external_value(PARAM_RAW_TRIMMED, 'The function name (function scenario)', VALUE_DEFAULT, ''),
             'functionsignature' => new external_value(PARAM_RAW_TRIMMED, 'Typed signature (static-language function)', VALUE_DEFAULT, ''),
+            'entryfile' => new external_value(PARAM_RAW_TRIMMED, 'The entry file name (project scenario)', VALUE_DEFAULT, ''),
             'schemasql' => new external_value(PARAM_RAW, 'SQL scenario schema + seed', VALUE_DEFAULT, ''),
             'cputimelimit' => new external_value(PARAM_RAW_TRIMMED, 'Per-question CPU-time limit, or empty', VALUE_DEFAULT, ''),
             'memorylimit' => new external_value(PARAM_RAW_TRIMMED, 'Per-question memory limit, or empty', VALUE_DEFAULT, ''),
@@ -88,11 +89,12 @@ class run_reference extends external_api {
      * @return array the produced outputs per test
      */
     public static function execute(int $contextid, string $code, string $language, string $scenario = 'stdinstdout',
-            string $entrypoint = '', string $functionsignature = '', string $schemasql = '',
+            string $entrypoint = '', string $functionsignature = '', string $entryfile = '', string $schemasql = '',
             string $cputimelimit = '', string $memorylimit = '', array $tests = []): array {
         $params = self::validate_parameters(self::execute_parameters(), [
             'contextid' => $contextid, 'code' => $code, 'language' => $language, 'scenario' => $scenario,
-            'entrypoint' => $entrypoint, 'functionsignature' => $functionsignature, 'schemasql' => $schemasql,
+            'entrypoint' => $entrypoint, 'functionsignature' => $functionsignature, 'entryfile' => $entryfile,
+            'schemasql' => $schemasql,
             'cputimelimit' => $cputimelimit, 'memorylimit' => $memorylimit, 'tests' => $tests,
         ]);
 
@@ -117,7 +119,8 @@ class run_reference extends external_api {
         $schemasql = ($params['scenario'] === 'sql') ? $params['schemasql'] : '';
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
         $outputs = $grader->run_outputs($params['code'], $params['language'], $testobjects, $schemasql,
-                (string) $params['scenario'], (string) $params['entrypoint'], (string) $params['functionsignature']);
+                (string) $params['scenario'], (string) $params['entrypoint'], (string) $params['functionsignature'],
+                (string) $params['entryfile']);
 
         $results = [];
         foreach ($outputs as $output) {

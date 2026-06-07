@@ -113,6 +113,22 @@ final class judge_grader_test extends \advanced_testcase {
         $this->assertSame('WA', $result['verdict']);
     }
 
+    public function test_run_outputs_project_captures_via_multifile(): void {
+        // Run-to-capture for a project routes through run_multifile and returns each
+        // test's produced stdout, for filling the Expected fields.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+            qtype_codeatelier_stub_runner::row('ran', "30\n"),
+        ));
+        $outputs = (new judge_grader($runner))->run_outputs($this->project_answer(), 'cpp',
+                $this->sum_tests(), '', 'project', '', '', 'main.cpp');
+
+        $this->assertNotNull($runner->last_multifile_zip());
+        $this->assertCount(2, $outputs);
+        $this->assertTrue($outputs[0]['ok']);
+        $this->assertSame("5\n", $outputs[0]['output']);
+    }
+
     public function test_project_scenario_compile_error_fails_all(): void {
         $runner = new qtype_codeatelier_stub_runner(array(
             qtype_codeatelier_stub_runner::row('ce', '', array('compileoutput' => 'error: expected ;')),

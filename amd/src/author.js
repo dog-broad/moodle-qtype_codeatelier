@@ -311,7 +311,9 @@ export const init = (config) => {
         }
     }
 
-    // CodeMirror on the reference-solution field (in the primary language).
+    // The reference solution: a single CodeMirror editor in the primary language,
+    // or — for a project — a file-tab editor on the same field (a complete file set
+    // used for capture and validate-on-save). Re-mounted on a scenario/language change.
     const refSolTa = byId(config.referencesolutionid);
     let refEditor = null;
     if (refSolTa) {
@@ -319,11 +321,22 @@ export const init = (config) => {
             if (refEditor) {
                 refEditor.destroy();
             }
-            refEditor = createEditor(refSolTa, langSel ? langSel.value : 'python', {});
+            if (scenSel && scenSel.value === 'project') {
+                refEditor = setupProjectFiles(null, refSolTa, {
+                    language: langSel ? langSel.value : 'cpp',
+                    entryfile: entryfileField ? entryfileField.value.trim() : 'main',
+                    readonly: false,
+                }, config.strings || {});
+            } else {
+                refEditor = createEditor(refSolTa, langSel ? langSel.value : 'python', {});
+            }
         };
         mountRef();
         if (langSel) {
             langSel.addEventListener('change', mountRef);
+        }
+        if (scenSel) {
+            scenSel.addEventListener('change', mountRef);
         }
     }
     const referenceValue = () => (refEditor ? refEditor.getValue() : (refSolTa ? refSolTa.value : ''));
@@ -417,6 +430,7 @@ export const init = (config) => {
                 scenario: scenSel ? scenSel.value : 'stdinstdout',
                 entrypoint: byId(config.entrypointid) ? byId(config.entrypointid).value : '',
                 functionsignature: byId('id_functionsignature') ? byId('id_functionsignature').value : '',
+                entryfile: entryfileField ? entryfileField.value.trim() : '',
                 schemasql: schemaTa ? schemaTa.value : '',
                 cputimelimit: byId('id_cputimelimit') ? byId('id_cputimelimit').value : '',
                 memorylimit: byId('id_memorylimit') ? byId('id_memorylimit').value : '',
