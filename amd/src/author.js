@@ -336,11 +336,19 @@ export const init = (config) => {
         }
     }
 
-    // The multi-file project starter editor: the same file-tab editor the student
-    // attempt uses, mounted on the projectfiles field while the project scenario is
-    // selected and re-mounted on a scenario or language change.
+    // The file-set starter editor: the same file-tab editor the student attempt
+    // uses, mounted on the projectfiles field while a file-set scenario (project or
+    // web) is selected and re-mounted on a scenario or language change.
     const projectfilesTa = byId(config.projectfilesid);
     const entryfileField = byId(config.entryfileid);
+    // A sensible default frontend file set so a new web question is editable at once.
+    const WEB_STARTER = JSON.stringify([
+        {name: 'index.html', content: '<!doctype html>\n<html>\n<head>\n'
+            + '  <link rel="stylesheet" href="style.css">\n</head>\n<body>\n'
+            + '  <h1>Hello</h1>\n  <script src="script.js"></script>\n</body>\n</html>\n'},
+        {name: 'style.css', content: 'h1 {\n  color: navy;\n}\n'},
+        {name: 'script.js', content: '// Your JavaScript runs when the page loads.\n'},
+    ]);
     if (projectfilesTa && scenSel) {
         let projectEditor = null;
         const mountProject = () => {
@@ -348,13 +356,18 @@ export const init = (config) => {
                 projectEditor.destroy();
                 projectEditor = null;
             }
-            if (scenSel.value === 'project') {
-                projectEditor = setupProjectFiles(null, projectfilesTa, {
-                    language: langSel ? langSel.value : 'cpp',
-                    entryfile: entryfileField ? entryfileField.value.trim() : 'main',
-                    readonly: false,
-                }, config.strings || {});
+            const scen = scenSel.value;
+            if (scen !== 'project' && scen !== 'web') {
+                return;
             }
+            if (scen === 'web' && projectfilesTa.value.trim() === '') {
+                projectfilesTa.value = WEB_STARTER;
+            }
+            projectEditor = setupProjectFiles(null, projectfilesTa, {
+                language: scen === 'web' ? 'html' : (langSel ? langSel.value : 'cpp'),
+                entryfile: scen === 'web' ? 'index.html' : (entryfileField ? entryfileField.value.trim() : 'main'),
+                readonly: false,
+            }, config.strings || {});
         };
         mountProject();
         scenSel.addEventListener('change', mountProject);

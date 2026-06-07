@@ -75,7 +75,15 @@
                 <style>.qtype_codeatelier .codeatelier-answer{display:block}.qtype_codeatelier .codeatelier-skeleton{display:none}</style>
             </noscript>
         </div>
+        {{#isweb}}
+        <div class="codeatelier-preview">
+            <span class="codeatelier-block-label">{{previewlabel}}</span>
+            <div class="codeatelier-preview-host" data-role="preview"></div>
+        </div>
+        <p class="codeatelier-practicenote small text-muted">{{practicenote}}</p>
+        {{/isweb}}
         {{^readonly}}
+        {{^isweb}}
         {{^isjudge}}
         <div class="codeatelier-scratch" data-role="scratchwrap" style="display: none;">
             <label class="codeatelier-block-label" data-role="scratchlabel" for="{{answerid}}_scratch"></label>
@@ -122,9 +130,11 @@
         {{#proctornote}}<p class="codeatelier-proctornote small text-muted">{{proctornote}}</p>{{/proctornote}}
         <input type="hidden" data-role="proctorlog" name="{{proctorname}}" value="{{proctorvalue}}">
         {{/isjudge}}
+        {{/isweb}}
         {{/readonly}}
         <input type="hidden" data-role="score" name="{{scorename}}" value="{{scorevalue}}">
         <input type="hidden" data-role="language" name="{{languagename}}" value="{{languagevalue}}">
+        {{^isweb}}
         {{^isjudge}}
         <div class="codeatelier-console" id="{{wrapperid}}_panel_console" role="tabpanel"
             aria-labelledby="{{wrapperid}}_tab_console" tabindex="0"
@@ -133,6 +143,7 @@
             aria-labelledby="{{wrapperid}}_tab_tests" tabindex="0"
             data-role="results" data-tabpanel="tests" aria-live="polite"></div>
         {{/isjudge}}
+        {{/isweb}}
         {{#isjudge}}
         <div class="codeatelier-judge-results" data-role="judge-results">{{{judgereviewhtml}}}</div>
         {{/isjudge}}

@@ -388,6 +388,7 @@ class qtype_codeatelier extends question_type {
             'exitfocus' => 'exitfocus',
             'focusmode' => 'focusmode',
             'useinput' => 'useinput',
+            'preview' => 'preview',
             'projectfiles' => 'projectfiles',
             'filename' => 'projectfilename',
             'addfile' => 'projectaddfile',

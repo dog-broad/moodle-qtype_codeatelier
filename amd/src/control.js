@@ -29,6 +29,7 @@ import {run, describe, stop} from 'qtype_codeatelier/runner';
 import {grade} from 'qtype_codeatelier/grader';
 import {tokenDiff} from 'qtype_codeatelier/diff';
 import {setup as setupProjectFiles} from 'qtype_codeatelier/projectfiles';
+import {setupPreview} from 'qtype_codeatelier/webruntime';
 
 /**
  * @param {String} value
@@ -455,6 +456,19 @@ export const init = (config) => {
     const scratchinput = root.querySelector('[data-role="scratch"]');
     const scratchlabel = root.querySelector('[data-role="scratchlabel"]');
     const strings = config.strings || {};
+
+    // The web (frontend) scenario is a file-set editor next to a sandboxed live
+    // preview; it has no stdin/Run or test-Check in this tier yet, so it wires its
+    // own panels and returns rather than falling through the code-runner controls.
+    if (config.scenario === 'web') {
+        const previewel = root.querySelector('[data-role="preview"]');
+        const preview = previewel ? setupPreview(previewel, textarea, config, strings) : null;
+        setupProjectFiles(root, textarea, config, strings, preview ? preview.scheduleRefresh : undefined);
+        if (skeleton) {
+            skeleton.style.display = 'none';
+        }
+        return;
+    }
 
     if (examplesel) {
         renderExamples(examplesel, config, strings);

@@ -370,4 +370,35 @@ final class question_type_test extends \advanced_testcase {
         $this->assertSame(array('main.cpp', 'helper.h'), array_keys($files));
         $this->assertStringContainsString('int add(int,int);', $files['helper.h']);
     }
+
+    public function test_web_scenario_round_trips(): void {
+        // A web (frontend) practice question stores its scenario and the HTML/CSS/JS
+        // starter file set (canonical JSON) through save/load, with no test cases.
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        $webfiles = json_encode(array(
+            array('name' => 'index.html', 'content' => "<h1 id=\"t\">Hi</h1>\n"),
+            array('name' => 'style.css', 'content' => "#t { color: red; }\n"),
+            array('name' => 'script.js', 'content' => "document.title = 'hi';\n"),
+        ));
+        $question = $qgen->create_question('codeatelier', 'judge', array(
+            'category' => $cat->id, 'tier' => 'practice', 'scenario' => 'web',
+            'language' => 'javascript', 'projectfiles' => $webfiles,
+        ));
+        $data = question_bank::load_question_data($question->id);
+
+        $this->assertEquals('practice', $data->options->tier);
+        $this->assertEquals('web', $data->options->scenario);
+        // The file set round-trips as the same canonical set.
+        $files = \qtype_codeatelier\judge\project_packager::decode_files($data->options->projectfiles);
+        $this->assertSame(array('index.html', 'style.css', 'script.js'), array_keys($files));
+        $this->assertStringContainsString('color: red', $files['style.css']);
+    }
 }

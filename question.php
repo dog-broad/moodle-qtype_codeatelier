@@ -163,6 +163,17 @@ class qtype_codeatelier_question extends question_graded_automatically {
     }
 
     /**
+     * Whether the student's answer is a canonical JSON file set rather than a
+     * single code string. True for multi-file projects (judge tier) and for web
+     * (frontend) questions (practice tier), which both carry several source files.
+     *
+     * @return bool
+     */
+    public function uses_file_set() {
+        return $this->scenario === 'project' || $this->scenario === 'web';
+    }
+
+    /**
      * Decode the project file set from a response's answer (canonical JSON).
      *
      * @param array $response the response data
@@ -227,7 +238,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
     }
 
     public function summarise_response(array $response) {
-        if ($this->is_project()) {
+        if ($this->uses_file_set()) {
             $files = $this->project_files_from_response($response);
             return $files ? shorten_text(implode(', ', array_keys($files)), 200) : null;
         }

@@ -732,3 +732,22 @@
 .qtype_codeatelier-report .codeatelier-bar-zero {
     background-color: #b02a37;
 }
+
+/* Web (frontend) scenario: the sandboxed live preview pane. */
+.qtype_codeatelier .codeatelier-preview {
+    margin-top: 0.75rem;
+}
+
+.qtype_codeatelier .codeatelier-preview-host {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+    overflow: hidden;
+}
+
+.qtype_codeatelier .codeatelier-preview-frame {
+    display: block;
+    width: 100%;
+    height: 320px;
+    border: 0;
+}
