@@ -62,8 +62,32 @@ final class project_packager_test extends \advanced_testcase {
     public function test_supports_only_project_languages(): void {
         $this->assertTrue(project_packager::supports('cpp'));
         $this->assertTrue(project_packager::supports('java'));
+        // The expanded set (D-260607-03).
+        $this->assertTrue(project_packager::supports('go'));
+        $this->assertTrue(project_packager::supports('rust'));
+        $this->assertTrue(project_packager::supports('kotlin'));
+        // SQL is never a project language (a single statement, no file set).
         $this->assertFalse(project_packager::supports('sql'));
-        $this->assertFalse(project_packager::supports('kotlin'));
+    }
+
+    public function test_package_new_language_scripts_locate_the_compiler(): void {
+        // The new languages are not on the multi-file box's default PATH, so the
+        // generated scripts prepend the versioned bin dir (D-260607-03).
+        $go = $this->zip_entries(project_packager::package('go',
+                array('main.go' => "package main\nfunc main(){}\n"), 'main.go'));
+        $this->assertStringContainsString('/usr/local/go-*/bin', $go['compile']);
+        $this->assertStringContainsString('go build', $go['compile']);
+
+        // Kotlin runs the entry file's JVM class name (Main.kt -> MainKt).
+        $kt = $this->zip_entries(project_packager::package('kotlin',
+                array('Main.kt' => "fun main(){}\n"), 'Main.kt'));
+        $this->assertStringContainsString("java -cp a.jar 'MainKt'", $kt['run']);
+
+        // PHP/Ruby run the entry file directly via the located interpreter.
+        $rb = $this->zip_entries(project_packager::package('ruby',
+                array('app.rb' => "puts 1\n"), 'app.rb'));
+        $this->assertStringContainsString('/usr/local/ruby-*/bin', $rb['run']);
+        $this->assertStringContainsString("ruby 'app.rb'", $rb['run']);
     }
 
     public function test_package_zip_contains_sources_and_scripts(): void {
@@ -104,7 +128,7 @@ final class project_packager_test extends \advanced_testcase {
 
     public function test_package_rejects_unsupported_language(): void {
         $this->expectException(\coding_exception::class);
-        project_packager::package('kotlin', array('a.kt' => 'fun main(){}'), 'a.kt');
+        project_packager::package('sql', array('q.sql' => 'SELECT 1;'), 'q.sql');
     }
 
     /**
