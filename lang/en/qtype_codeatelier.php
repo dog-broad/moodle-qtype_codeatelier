@@ -234,7 +234,7 @@ $string['entrypoint_help'] = 'The name of the function the student must define. 
 $string['functionsignature'] = 'Function signature';
 $string['functionsignature_help'] = 'Required for compiled/static languages (Java, C++, Go, Rust, C#, Kotlin), which cannot be called without knowing the types. Declare the parameter types and return type, for example `int, int -> int`, `string -> bool`, or `list<int> -> list<int>`.
 
-Types: `int`, `long`, `double`, `bool`, `string`, and one-dimensional lists `list<int>`, `list<double>`, `list<bool>`, `list<string>`. Dynamic languages (Python, JavaScript, Ruby, PHP, TypeScript) ignore this field.';
+Types: `int`, `long`, `double`, `bool`, `string`; one-dimensional lists `list<int>`, `list<double>`, `list<bool>`, `list<string>`; and string-keyed maps `map<string, int>`, `map<string, double>`, `map<string, bool>`, `map<string, string>`. (C supports scalar types only.) Dynamic languages (Python, JavaScript, Ruby, PHP, TypeScript) ignore this field.';
 $string['signaturerequired'] = 'A function signature is required when a compiled/static language is allowed.';
 $string['signatureinvalid'] = 'Invalid signature. Use a form like "int, int -> int" with the supported types.';
 $string['startercode'] = 'Starter code';
