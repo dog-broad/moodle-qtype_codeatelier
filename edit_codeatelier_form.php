@@ -87,6 +87,12 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->addHelpButton('functionsignature', 'functionsignature', 'qtype_codeatelier');
         $mform->hideIf('functionsignature', 'scenario', 'neq', 'function');
 
+        // A structured builder (parameter/return type pickers) the authoring JS
+        // renders here and keeps the signature field above in sync.
+        $mform->addElement('static', 'signaturebuilder', '',
+                html_writer::div('', 'codeatelier-sigbuilder', array('id' => 'id_signaturebuilder')));
+        $mform->hideIf('signaturebuilder', 'scenario', 'neq', 'function');
+
         $mform->addElement('textarea', 'startercode', get_string('startercode', 'qtype_codeatelier'),
                 array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
         $mform->setType('startercode', PARAM_RAW);
@@ -221,6 +227,15 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'tierbadges' => array(
                 'judge' => get_string('tierbadge_judge', 'qtype_codeatelier'),
                 'practice' => get_string('tierbadge_practice', 'qtype_codeatelier'),
+            ),
+            'functionsignatureid' => 'id_functionsignature',
+            'signaturebuilderid' => 'id_signaturebuilder',
+            'sigbuilderstrings' => array(
+                'returns' => get_string('sigbuilder_returns', 'qtype_codeatelier'),
+                'addparam' => get_string('sigbuilder_addparam', 'qtype_codeatelier'),
+                'removeparam' => get_string('sigbuilder_removeparam', 'qtype_codeatelier'),
+                'noparams' => get_string('sigbuilder_noparams', 'qtype_codeatelier'),
+                'param' => get_string('sigbuilder_param', 'qtype_codeatelier'),
             ),
             'questiontextid' => 'id_questiontext',
             'previewbtnid' => $previewid . '_btn',

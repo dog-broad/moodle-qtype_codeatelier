@@ -170,6 +170,23 @@
     align-self: center;
 }
 
+/* Authoring: the structured function-signature builder. */
+.codeatelier-sigbuilder {
+    margin: 0.25rem 0 0.5rem;
+}
+
+.codeatelier-sigparam,
+.codeatelier-sigreturn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.35rem;
+}
+
+.codeatelier-sigtype {
+    width: auto;
+}
+
 /* Run / status / results. */
 .qtype_codeatelier .codeatelier-actions {
     display: flex;
