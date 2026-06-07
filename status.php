@@ -92,6 +92,26 @@ if ($endpoint === '') {
     }
 }
 
+// Web-judge service endpoint + live health probe.
+$webrunner = \qtype_codeatelier\judge\web_judge_runner::from_config();
+if ($webrunner === null) {
+    $rows[] = [get_string('status_webendpoint', 'qtype_codeatelier'),
+            html_writer::span(get_string('status_endpointnotset', 'qtype_codeatelier'), 'badge badge-secondary')];
+} else {
+    $rows[] = [get_string('status_webendpoint', 'qtype_codeatelier'),
+            s(get_config('qtype_codeatelier', 'webjudgebaseurl'))];
+    $webping = $webrunner->ping();
+    if (!empty($webping['ok'])) {
+        $rows[] = [get_string('status_webhealth', 'qtype_codeatelier'),
+                html_writer::span(get_string('status_reachable', 'qtype_codeatelier',
+                        s($webping['version'])), 'badge badge-success')];
+    } else {
+        $rows[] = [get_string('status_webhealth', 'qtype_codeatelier'),
+                html_writer::span(get_string('status_unreachable', 'qtype_codeatelier',
+                        s($webping['error'] ?? '')), 'badge badge-danger')];
+    }
+}
+
 // Async grading queue depth.
 $rows[] = [get_string('status_queuedepth', 'qtype_codeatelier'), (string) $queuedepth];
 
