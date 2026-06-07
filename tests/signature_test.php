@@ -59,6 +59,29 @@ final class signature_test extends \advanced_testcase {
         $this->assertTrue(signature::is_scalar('int'));
         $this->assertTrue(signature::is_scalar('string'));
         $this->assertFalse(signature::is_scalar('list<int>'));
+        $this->assertFalse(signature::is_scalar('map<string,int>'));
+    }
+
+    public function test_parse_maps(): void {
+        // The comma inside map<string,int> must not split the parameter.
+        $s = signature::parse('map<string, int>, int -> map<string, double>');
+        $this->assertSame(['map<string,int>', 'int'], $s->params());
+        $this->assertSame('map<string,double>', $s->return_type());
+        $this->assertSame('int', signature::map_value('map<string,int>'));
+        $this->assertNull(signature::map_value('list<int>'));
+
+        $this->assertTrue(signature::is_valid('map<string,int> -> map<string,bool>'));
+        $this->assertFalse(signature::is_valid('map<int,int> -> int'));
+        $this->assertFalse(signature::is_valid('map<string,foo> -> int'));
+    }
+
+    public function test_encode_decode_maps(): void {
+        // A map argument: count, then a key line and a value line per entry.
+        $this->assertSame("2\na\n1\nb\n2\n",
+                signature::parse('map<string,int>->int')->encode_args([['a' => 1, 'b' => 2]]));
+        // A map return decodes to an object (to deep-equal the JSON-object expected).
+        $out = signature::parse('->map<string,int>')->decode_return("2\na\n1\nb\n2");
+        $this->assertEquals((object) ['a' => 1, 'b' => 2], $out);
     }
 
     public function test_encode_args(): void {

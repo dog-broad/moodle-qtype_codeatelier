@@ -53,6 +53,16 @@ final class function_harness_test extends \advanced_testcase {
         function_harness::source('c', "int f(){ return 0; }", 'f', $sig);
     }
 
+    public function test_static_harness_map(): void {
+        $sig = \qtype_codeatelier\judge\signature::parse('map<string,int> -> map<string,int>');
+        $cpp = function_harness::source('cpp', "map<string,int> f(map<string,int> m){ return m; }", 'f', $sig);
+        $this->assertStringContainsString('map<string,int> p0', $cpp);
+        $this->assertStringContainsString('p0[_key]', $cpp);
+        $java = function_harness::source('java', "static java.util.Map<String,Integer> f(java.util.Map<String,Integer> m){ return m; }", 'f', $sig);
+        $this->assertStringContainsString('java.util.Map<String,Integer>', $java);
+        $this->assertStringContainsString('entrySet()', $java);
+    }
+
     public function test_python_harness_reads_args_and_prints_return(): void {
         $src = function_harness::source('python', "def add(a, b):\n    return a + b", 'add');
         $this->assertStringContainsString("def add(a, b)", $src);

@@ -301,6 +301,10 @@ class function_harness {
      * @return string
      */
     private static function java_type(string $type): string {
+        $mapv = signature::map_value($type);
+        if ($mapv !== null) {
+            return 'java.util.Map<String,' . self::java_boxed($mapv) . '>';
+        }
         $element = signature::list_element($type);
         if ($element !== null) {
             return self::java_scalar($element) . '[]';
@@ -317,6 +321,17 @@ class function_harness {
     private static function java_scalar(string $scalar): string {
         return ['int' => 'int', 'long' => 'long', 'double' => 'double',
             'bool' => 'boolean', 'string' => 'String'][$scalar];
+    }
+
+    /**
+     * The boxed Java type (for map values, which need a reference type).
+     *
+     * @param string $scalar a scalar type
+     * @return string
+     */
+    private static function java_boxed(string $scalar): string {
+        return ['int' => 'Integer', 'long' => 'Long', 'double' => 'Double',
+            'bool' => 'Boolean', 'string' => 'String'][$scalar];
     }
 
     /**
@@ -349,6 +364,13 @@ class function_harness {
      * @return string
      */
     private static function java_read(string $type, int $i): string {
+        $mapv = signature::map_value($type);
+        if ($mapv !== null) {
+            $vt = self::java_boxed($mapv);
+            return "int _n{$i} = Integer.parseInt(_l().trim()); java.util.Map<String,{$vt}> p{$i} = "
+                . "new java.util.HashMap<>(); for (int _m = 0; _m < _n{$i}; _m++) { String _key = _l(); "
+                . "p{$i}.put(_key, " . self::java_parse($mapv, '_l()') . "); }";
+        }
         $element = signature::list_element($type);
         if ($element === null) {
             return self::java_scalar($type) . " p{$i} = " . self::java_parse($type, '_l()') . ';';
@@ -365,6 +387,14 @@ class function_harness {
      * @return string
      */
     private static function java_print(string $type): string {
+        $mapv = signature::map_value($type);
+        if ($mapv !== null) {
+            $vt = self::java_boxed($mapv);
+            $val = $mapv === 'bool' ? '(_e.getValue() ? 1 : 0)' : '_e.getValue()';
+            return "System.out.print(_r.size()); for (java.util.Map.Entry<String,{$vt}> _e : _r.entrySet()) { "
+                . "System.out.print(\"\\n\"); System.out.print(_e.getKey()); System.out.print(\"\\n\"); "
+                . "System.out.print({$val}); }";
+        }
         $element = signature::list_element($type);
         if ($element === null) {
             return $type === 'bool'
@@ -399,6 +429,12 @@ class function_harness {
     }
 
     private static function cpp_read(string $type, int $i): string {
+        $mapv = signature::map_value($type);
+        if ($mapv !== null) {
+            $vt = self::cpp_scalar($mapv);
+            return "int _n{$i} = stoi(_l()); map<string,{$vt}> p{$i}; for (int _m = 0; _m < _n{$i}; _m++) { "
+                . "string _key = _l(); p{$i}[_key] = " . self::cpp_parse($mapv, '_l()') . "; }";
+        }
         $element = signature::list_element($type);
         if ($element === null) {
             return self::cpp_scalar($type) . " p{$i} = " . self::cpp_parse($type, '_l()') . ';';
@@ -409,6 +445,11 @@ class function_harness {
     }
 
     private static function cpp_print(string $type): string {
+        $mapv = signature::map_value($type);
+        if ($mapv !== null) {
+            $val = $mapv === 'bool' ? '(_e.second ? 1 : 0)' : '_e.second';
+            return "cout << _r.size(); for (auto& _e : _r) { cout << \"\\n\" << _e.first << \"\\n\" << {$val}; }";
+        }
         $element = signature::list_element($type);
         if ($element === null) {
             return $type === 'bool' ? 'cout << (_r ? 1 : 0);' : 'cout << _r;';
@@ -426,6 +467,13 @@ class function_harness {
     }
 
     private static function go_read(string $type, int $i): string {
+        $mapv = signature::map_value($type);
+        if ($mapv !== null) {
+            $gt = self::go_scalar($mapv);
+            return "_n{$i}, _ := strconv.Atoi(strings.TrimSpace(_l())); p{$i} := make(map[string]{$gt}); "
+                . "for _m := 0; _m < _n{$i}; _m++ { _key := _l(); " . self::go_read_scalar($mapv, '_v')
+                . " p{$i}[_key] = _v }";
+        }
         $element = signature::list_element($type);
         if ($element === null) {
             return self::go_read_scalar($type, "p{$i}");
@@ -456,6 +504,12 @@ class function_harness {
     }
 
     private static function go_print(string $type): string {
+        $mapv = signature::map_value($type);
+        if ($mapv !== null) {
+            $body = $mapv === 'bool' ? 'if _v { fmt.Print(1) } else { fmt.Print(0) }' : 'fmt.Print(_v);';
+            return "fmt.Print(len(_r)); for _key, _v := range _r { fmt.Print(\"\\n\"); fmt.Print(_key); "
+                . "fmt.Print(\"\\n\"); {$body} }";
+        }
         $element = signature::list_element($type);
         if ($element === null) {
             return $type === 'bool' ? 'if _r { fmt.Print(1) } else { fmt.Print(0) }' : 'fmt.Print(_r);';
@@ -474,6 +528,14 @@ class function_harness {
     }
 
     private static function rust_read(string $type, int $i): string {
+        $mapv = signature::map_value($type);
+        if ($mapv !== null) {
+            $rt = self::rust_scalar($mapv);
+            return "let _n{$i}: usize = _it.next().unwrap().trim().parse().unwrap(); "
+                . "let mut p{$i}: std::collections::HashMap<String,{$rt}> = std::collections::HashMap::new(); "
+                . "for _ in 0.._n{$i} { let _key = _it.next().unwrap().to_string(); "
+                . "let _v: {$rt} = " . self::rust_value($mapv) . "; p{$i}.insert(_key, _v); }";
+        }
         $element = signature::list_element($type);
         if ($element === null) {
             return self::rust_read_scalar($type, "p{$i}");
@@ -502,6 +564,11 @@ class function_harness {
     }
 
     private static function rust_print(string $type): string {
+        $mapv = signature::map_value($type);
+        if ($mapv !== null) {
+            $val = $mapv === 'bool' ? 'if *_v {1} else {0}' : '_v';
+            return "print!(\"{}\", _r.len()); for (_key, _v) in &_r { print!(\"\\n{}\\n{}\", _key, {$val}); }";
+        }
         $element = signature::list_element($type);
         if ($element === null) {
             return $type === 'bool'
@@ -535,6 +602,14 @@ class function_harness {
     }
 
     private static function csharp_read(string $type, int $i): string {
+        $mapv = signature::map_value($type);
+        if ($mapv !== null) {
+            $ct = self::csharp_scalar($mapv);
+            return "int _n{$i} = int.Parse(_l().Trim()); var p{$i} = "
+                . "new System.Collections.Generic.Dictionary<string,{$ct}>(); "
+                . "for (int _m = 0; _m < _n{$i}; _m++) { string _key = _l(); p{$i}[_key] = "
+                . self::csharp_parse($mapv, '_l()') . "; }";
+        }
         $element = signature::list_element($type);
         if ($element === null) {
             return self::csharp_scalar($type) . " p{$i} = " . self::csharp_parse($type, '_l()') . ';';
@@ -555,6 +630,11 @@ class function_harness {
             }
             return $expr;
         };
+        $mapv = signature::map_value($type);
+        if ($mapv !== null) {
+            return "Console.Write(_r.Count); foreach (var _e in _r) { Console.Write(\"\\n\"); "
+                . "Console.Write(_e.Key); Console.Write(\"\\n\"); Console.Write(" . $fmt('_e.Value', $mapv) . "); }";
+        }
         if ($element === null) {
             return 'Console.Write(' . $fmt('_r', $type) . ');';
         }
@@ -585,7 +665,18 @@ class function_harness {
         }
     }
 
+    private static function kotlin_boxed(string $scalar): string {
+        return ['int' => 'Int', 'long' => 'Long', 'double' => 'Double',
+            'bool' => 'Boolean', 'string' => 'String'][$scalar];
+    }
+
     private static function kotlin_read(string $type, int $i): string {
+        $mapv = signature::map_value($type);
+        if ($mapv !== null) {
+            $kt = self::kotlin_boxed($mapv);
+            return "val _n{$i} = _l().trim().toInt(); val p{$i} = HashMap<String,{$kt}>(); "
+                . "repeat(_n{$i}) { val _key = _l(); p{$i}[_key] = " . self::kotlin_value($mapv) . ' }';
+        }
         $element = signature::list_element($type);
         if ($element === null) {
             return "val p{$i} = " . self::kotlin_value($type);
@@ -597,6 +688,11 @@ class function_harness {
     }
 
     private static function kotlin_print(string $type): string {
+        $mapv = signature::map_value($type);
+        if ($mapv !== null) {
+            $val = $mapv === 'bool' ? 'print(if (_v) 1 else 0)' : 'print(_v)';
+            return "print(_r.size); for ((_key, _v) in _r) { print(\"\\n\"); print(_key); print(\"\\n\"); {$val} }";
+        }
         $element = signature::list_element($type);
         if ($element === null) {
             return $type === 'bool' ? 'print(if (_r) 1 else 0)' : 'print(_r)';

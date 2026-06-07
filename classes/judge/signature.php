@@ -72,11 +72,47 @@ class signature {
         }
         [$parampart, $returnpart] = explode('->', $text, 2);
         $params = [];
-        foreach (array_filter(array_map('trim', explode(',', $parampart)), 'strlen') as $p) {
-            $params[] = self::valid_type($p);
+        // Split on top-level commas only, so a comma inside map<string,int> does not
+        // break the type apart.
+        foreach (self::split_params($parampart) as $p) {
+            $p = trim($p);
+            if ($p !== '') {
+                $params[] = self::valid_type($p);
+            }
         }
         $return = self::valid_type(trim($returnpart));
         return new self($params, $return);
+    }
+
+    /**
+     * Split a parameter list on commas that are not inside angle brackets.
+     *
+     * @param string $list the parameter part of the signature
+     * @return string[] the raw type tokens
+     */
+    private static function split_params(string $list): array {
+        $parts = [];
+        $depth = 0;
+        $current = '';
+        $length = strlen($list);
+        for ($i = 0; $i < $length; $i++) {
+            $ch = $list[$i];
+            if ($ch === '<') {
+                $depth++;
+            } else if ($ch === '>') {
+                $depth--;
+            }
+            if ($ch === ',' && $depth === 0) {
+                $parts[] = $current;
+                $current = '';
+            } else {
+                $current .= $ch;
+            }
+        }
+        if (trim($current) !== '') {
+            $parts[] = $current;
+        }
+        return $parts;
     }
 
     /**
@@ -108,6 +144,10 @@ class signature {
         if (preg_match('/^list<(\w+)>$/', $type, $m) && in_array($m[1], self::SCALARS, true)) {
             return $type;
         }
+        if (preg_match('/^map<\s*string\s*,\s*(\w+)\s*>$/', $type, $m) && in_array($m[1], self::SCALARS, true)) {
+            // Keys are always strings; the value is a scalar.
+            return 'map<string,' . $m[1] . '>';
+        }
         throw new \invalid_parameter_exception("unsupported type: {$type}");
     }
 
@@ -132,6 +172,16 @@ class signature {
     }
 
     /**
+     * Whether a type is a string-keyed map, and of which value scalar.
+     *
+     * @param string $type a validated type
+     * @return string|null the value scalar, or null if the type is not a map
+     */
+    public static function map_value(string $type): ?string {
+        return preg_match('/^map<string,(\w+)>$/', $type, $m) ? $m[1] : null;
+    }
+
+    /**
      * Whether a type is a bare scalar (not a list or map).
      *
      * @param string $type a validated type
@@ -153,8 +203,17 @@ class signature {
         $lines = [];
         foreach ($this->params as $i => $type) {
             $value = $args[$i] ?? null;
+            $mapvalue = self::map_value($type);
             $element = self::list_element($type);
-            if ($element === null) {
+            if ($mapvalue !== null) {
+                // A map: a count line, then a key line and a value line per entry.
+                $entries = is_object($value) ? (array) $value : (is_array($value) ? $value : []);
+                $lines[] = (string) count($entries);
+                foreach ($entries as $k => $v) {
+                    $lines[] = (string) $k;
+                    $lines[] = self::encode_scalar($v, $mapvalue);
+                }
+            } else if ($element === null) {
                 $lines[] = self::encode_scalar($value, $type);
             } else {
                 $items = is_array($value) ? array_values($value) : [];
@@ -175,13 +234,24 @@ class signature {
      * @return mixed the native return value
      */
     public function decode_return(string $stdout) {
+        $mapvalue = self::map_value($this->return);
         $element = self::list_element($this->return);
-        if ($element === null) {
+        if ($mapvalue === null && $element === null) {
             return self::decode_scalar($stdout, $this->return, true);
         }
         $stdout = str_replace("\r\n", "\n", $stdout);
         $lines = explode("\n", rtrim($stdout, "\n"));
         $count = (int) array_shift($lines);
+        if ($mapvalue !== null) {
+            // A map: a key line then a value line per entry. Return an object so it
+            // deep-equals the json_decode of the expected (a JSON object -> stdClass).
+            $out = [];
+            for ($i = 0; $i < $count; $i++) {
+                $key = $lines[$i * 2] ?? '';
+                $out[$key] = self::decode_scalar($lines[$i * 2 + 1] ?? '', $mapvalue, false);
+            }
+            return (object) $out;
+        }
         $out = [];
         for ($i = 0; $i < $count; $i++) {
             $out[] = self::decode_scalar($lines[$i] ?? '', $element, false);
