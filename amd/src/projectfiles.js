@@ -101,8 +101,10 @@ export const setup = (root, answerTa, config, strings) => {
     }
     let active = 0;
     let cm = null;
-    // The rename input, created below only on a live attempt (null on review).
+    // The rename input and the actions bar are created below only on a live
+    // attempt (both null on review). Tracked so destroy() can remove them.
     let nameInput = null;
+    let actions = null;
 
     const container = answerTa.closest('.codeatelier-editor') || answerTa.parentNode;
     answerTa.style.display = 'none';
@@ -211,7 +213,7 @@ export const setup = (root, answerTa, config, strings) => {
     const validName = (name) => name !== '' && !/[\\/]/.test(name) && !nameTaken(name);
 
     if (!readonly) {
-        const actions = document.createElement('div');
+        actions = document.createElement('div');
         actions.className = 'codeatelier-fileactions';
 
         const nameLabel = document.createElement('label');
@@ -312,6 +314,14 @@ export const setup = (root, answerTa, config, strings) => {
             if (cm && cm.destroy) {
                 cm.destroy();
             }
+            // Remove the UI this widget built so it can be re-mounted cleanly
+            // (the authoring form re-mounts on a scenario/language change).
+            [tablist, actions, fileEditor].forEach((el) => {
+                if (el && el.parentNode) {
+                    el.parentNode.removeChild(el);
+                }
+            });
+            answerTa.style.display = '';
         },
     };
 };
