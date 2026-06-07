@@ -24,6 +24,7 @@ import {create as createEditor} from 'qtype_codeatelier/editor';
 import {init as initControl} from 'qtype_codeatelier/control';
 import {run as runCode} from 'qtype_codeatelier/runner';
 import {grade} from 'qtype_codeatelier/grader';
+import {setup as setupProjectFiles} from 'qtype_codeatelier/projectfiles';
 import {render as renderTemplate} from 'core/templates';
 import Ajax from 'core/ajax';
 
@@ -148,6 +149,37 @@ export const init = (config) => {
         mountStarter();
         if (langSel) {
             langSel.addEventListener('change', mountStarter);
+        }
+    }
+
+    // The multi-file project starter editor: the same file-tab editor the student
+    // attempt uses, mounted on the projectfiles field while the project scenario is
+    // selected and re-mounted on a scenario or language change.
+    const projectfilesTa = byId(config.projectfilesid);
+    const entryfileField = byId(config.entryfileid);
+    if (projectfilesTa && scenSel) {
+        let projectEditor = null;
+        const mountProject = () => {
+            if (projectEditor) {
+                projectEditor.destroy();
+                projectEditor = null;
+            }
+            if (scenSel.value === 'project') {
+                projectEditor = setupProjectFiles(null, projectfilesTa, {
+                    language: langSel ? langSel.value : 'cpp',
+                    entryfile: entryfileField ? entryfileField.value.trim() : 'main',
+                    readonly: false,
+                }, config.strings || {});
+            }
+        };
+        mountProject();
+        scenSel.addEventListener('change', mountProject);
+        if (langSel) {
+            langSel.addEventListener('change', () => {
+                if (scenSel.value === 'project') {
+                    mountProject();
+                }
+            });
         }
     }
 

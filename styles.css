@@ -96,7 +96,8 @@
 #fitem_id_startercode .cm-editor,
 #fitem_id_starteredit .cm-editor,
 #fitem_id_referencesolution .cm-editor,
-#fitem_id_schemasql .cm-editor {
+#fitem_id_schemasql .cm-editor,
+#fitem_id_projectfiles .cm-editor {
     width: 100%;
     border: 1px solid #ced4da;
     border-radius: 0.375rem;
@@ -107,12 +108,18 @@
 #fitem_id_startercode .cm-scroller,
 #fitem_id_starteredit .cm-scroller,
 #fitem_id_referencesolution .cm-scroller,
-#fitem_id_schemasql .cm-scroller {
+#fitem_id_schemasql .cm-scroller,
+#fitem_id_projectfiles .cm-scroller {
     overflow: auto;
 }
 
-/* Multi-file project: the file-tab list and its actions. */
-.qtype_codeatelier .codeatelier-filetabs {
+/*
+ * Multi-file project: the file-tab list and its actions. The class names are
+ * CodeAtelier-specific, so they are left unscoped — the same widget renders both
+ * in the student attempt (inside .qtype_codeatelier) and on the edit form's
+ * projectfiles field (outside it).
+ */
+.codeatelier-filetabs {
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem;
@@ -120,7 +127,7 @@
     margin-bottom: 0.5rem;
 }
 
-.qtype_codeatelier .codeatelier-filetab {
+.codeatelier-filetab {
     border: 1px solid transparent;
     border-bottom: none;
     border-radius: 0.375rem 0.375rem 0 0;
@@ -132,14 +139,14 @@
     cursor: pointer;
 }
 
-.qtype_codeatelier .codeatelier-filetab-active {
+.codeatelier-filetab-active {
     background: #fff;
     border-color: #dee2e6;
     color: #1f2933;
     font-weight: 600;
 }
 
-.qtype_codeatelier .codeatelier-fileactions {
+.codeatelier-fileactions {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
@@ -147,19 +154,19 @@
     margin-bottom: 0.5rem;
 }
 
-.qtype_codeatelier .codeatelier-filename-group {
+.codeatelier-filename-group {
     display: flex;
     flex-direction: column;
 }
 
-.qtype_codeatelier .codeatelier-filename {
+.codeatelier-filename {
     width: 16rem;
     max-width: 100%;
     font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 0.85rem;
 }
 
-.qtype_codeatelier .codeatelier-fileerror {
+.codeatelier-fileerror {
     align-self: center;
 }
 
