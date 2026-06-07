@@ -577,13 +577,9 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                         || !\qtype_codeatelier\judge\project_packager::supports($allowed[0])) {
                     $errors['language'] = get_string('projectlanguageset', 'qtype_codeatelier');
                 }
-            } else if ($scenario === 'web') {
-                // Web (frontend) questions run in the browser, so they are practice
-                // tier only (the secure frontend tier is a separate milestone).
-                if ($tier !== 'practice') {
-                    $errors['scenario'] = get_string('webpracticeonly', 'qtype_codeatelier');
-                }
             }
+            // Web (frontend) questions grade on either tier: Practice mode in the
+            // browser (formative), or Secure mode via the web-judge service.
         }
 
         // A project must carry a valid file set with the entry file among the files.

@@ -119,7 +119,9 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
         // A judge attempt can offer "run against examples" only when an endpoint is
         // configured (and never on review).
-        $canrunexamples = $isjudge && !$options->readonly
+        // The web scenario grades through the web-judge service, not Judge0, and has
+        // no stdin/examples run — its formative feedback is the live preview.
+        $canrunexamples = $isjudge && !$options->readonly && $scenario !== 'web'
                 && !empty(get_config('qtype_codeatelier', 'judge0baseurl'));
         // "Run with my own input" — a scratch console for stdin/stdout and function
         // judge questions (SQL has no stdin; it uses run-against-examples instead).
@@ -366,7 +368,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
         $detail = '';
         if ($visible && !$passed) {
-            if (($status === 're' || $status === 'mle') && !empty($tr['stderr'])) {
+            if (isset($tr['check'])) {
+                // A web (DOM-assertion) row: the check and the produced value.
+                $detail = $this->render_web_test_detail($tr);
+            } else if (($status === 're' || $status === 'mle') && !empty($tr['stderr'])) {
                 $detail = html_writer::tag('pre', s($tr['stderr']), array('class' => 'codeatelier-test-error'));
             } else if ($status === 'fail') {
                 $detail = $this->render_test_diff($tr);
@@ -410,6 +415,20 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         }
         $rows .= $this->diff_line(get_string('expected', 'qtype_codeatelier'),
                 isset($tr['expected']) ? $tr['expected'] : '', 'expected');
+        $rows .= $this->diff_line(get_string('result_got', 'qtype_codeatelier'),
+                isset($tr['actual']) ? $tr['actual'] : '', 'got');
+        return html_writer::div($rows, 'codeatelier-test-diff');
+    }
+
+    /**
+     * The check / got detail for a failed visible web (DOM-assertion) test.
+     *
+     * @param array $tr a per-test result carrying 'check' and 'actual'
+     * @return string HTML
+     */
+    protected function render_web_test_detail(array $tr) {
+        $rows = $this->diff_line(get_string('assertexpect', 'qtype_codeatelier'),
+                isset($tr['check']) ? $tr['check'] : '', 'expected');
         $rows .= $this->diff_line(get_string('result_got', 'qtype_codeatelier'),
                 isset($tr['actual']) ? $tr['actual'] : '', 'got');
         return html_writer::div($rows, 'codeatelier-test-diff');

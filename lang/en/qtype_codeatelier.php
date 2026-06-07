@@ -231,7 +231,6 @@ $string['scenario_sql'] = 'SQL (query a database)';
 $string['scenario_project'] = 'Project (multi-file program)';
 $string['scenario_web'] = 'Web page (HTML / CSS / JavaScript)';
 $string['preview'] = 'Live preview';
-$string['webpracticeonly'] = 'Web page questions run in the browser, so they must use Practice mode.';
 $string['webnohtml'] = 'Add an HTML file (for example index.html) — it is the page the preview renders.';
 $string['noassertions'] = 'Add at least one check (a CSS selector and what to check).';
 
