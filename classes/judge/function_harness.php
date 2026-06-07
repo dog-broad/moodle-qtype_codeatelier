@@ -150,24 +150,105 @@ class function_harness {
      * @return string the full program
      */
     private static function static_source(string $language, string $code, string $entrypoint, signature $sig): string {
-        switch ($language) {
-            case 'java':
-                return self::java($code, $entrypoint, $sig);
-            case 'cpp':
-                return self::cpp($code, $entrypoint, $sig);
-            case 'go':
-                return self::go($code, $entrypoint, $sig);
-            case 'rust':
-                return self::rust($code, $entrypoint, $sig);
-            case 'csharp':
-                return self::csharp($code, $entrypoint, $sig);
-            case 'kotlin':
-                return self::kotlin($code, $entrypoint, $sig);
-            case 'c':
-                return self::c($code, $entrypoint, $sig);
-            default:
-                throw new \coding_exception("Unsupported static function language: {$language}");
+        $d = self::static_dialect($language);
+        if ($d === null) {
+            throw new \coding_exception("Unsupported static function language: {$language}");
         }
+        $reads = [];
+        $args = [];
+        foreach ($sig->params() as $i => $type) {
+            $reads[] = call_user_func($d['read'], $type, $i);
+            $args[] = "p{$i}";
+        }
+        $call = call_user_func($d['call'], $entrypoint, implode(', ', $args), $sig);
+        $print = call_user_func($d['print'], $sig->return_type());
+        // Whitespace is insignificant in these languages, so a uniform 4-space body
+        // indent is fine; the per-language read/print methods produce the real logic.
+        $body = implode("\n    ", array_merge($reads, [$call, $print]));
+        return $d['preamble'] . "\n\n" . $code . "\n\n"
+            . $d['open'] . "\n    " . $body . "\n" . $d['close'] . "\n";
+    }
+
+    /**
+     * The per-language code-generation "dialect": the program scaffold and the
+     * read/call/print pieces. One builder ({@see static_source()}) assembles them,
+     * so a new type (or language) is a few lines of data, not another generator.
+     *
+     * Each dialect: preamble (everything before the student code — includes, the
+     * `_l()` line reader, and the class header for class-based languages), open (the
+     * main entry's opening), close (closing the main and any class), call (builds
+     * `_r = entrypoint(args)` in the language's idiom), and the read/print callables.
+     *
+     * @param string $language a static language key
+     * @return array|null the dialect, or null if unsupported
+     */
+    private static function static_dialect(string $language): ?array {
+        $dialects = [
+            'cpp' => [
+                'preamble' => "#include <bits/stdc++.h>\nusing namespace std;\n"
+                    . "static string _l(){ string s; getline(cin, s); return s; }",
+                'open' => "int main(){",
+                'close' => "    return 0;\n}",
+                'call' => fn($e, $a, $s) => "auto _r = {$e}({$a});",
+                'read' => [self::class, 'cpp_read'], 'print' => [self::class, 'cpp_print'],
+            ],
+            'c' => [
+                'preamble' => "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n"
+                    . "static char _buf[1<<20];\n"
+                    . "static char* _l(){ if(fgets(_buf,sizeof(_buf),stdin)){ size_t n=strlen(_buf);"
+                    . " while(n>0 && (_buf[n-1]=='\\n'||_buf[n-1]=='\\r')) _buf[--n]=0; } else { _buf[0]=0; } return _buf; }",
+                'open' => "int main(void){",
+                'close' => "    return 0;\n}",
+                'call' => fn($e, $a, $s) => self::c_type($s->return_type()) . " _r = {$e}({$a});",
+                'read' => [self::class, 'c_read'], 'print' => [self::class, 'c_print'],
+            ],
+            'java' => [
+                'preamble' => "import java.util.*;\nimport java.io.*;\npublic class Main {\n"
+                    . "static BufferedReader _br = new BufferedReader(new InputStreamReader(System.in));\n"
+                    . "static String _l() throws IOException { return _br.readLine(); }",
+                'open' => "public static void main(String[] _argv) throws Exception {",
+                'close' => "}\n}",
+                'call' => fn($e, $a, $s) => self::java_type($s->return_type()) . " _r = {$e}({$a});",
+                'read' => [self::class, 'java_read'], 'print' => [self::class, 'java_print'],
+            ],
+            'go' => [
+                'preamble' => "package main\nimport (\"bufio\"; \"fmt\"; \"os\"; \"strconv\"; \"strings\")\n"
+                    . "var _rd = bufio.NewReader(os.Stdin)\n"
+                    . "func _l() string { s, _ := _rd.ReadString('\\n'); return strings.TrimRight(s, \"\\r\\n\") }\n"
+                    // Force-use the imports so an all-string harness still compiles.
+                    . "var _ = strconv.Atoi\nvar _ = strings.TrimSpace\nvar _ = fmt.Print",
+                'open' => "func main(){",
+                'close' => "}",
+                'call' => fn($e, $a, $s) => "_r := {$e}({$a})",
+                'read' => [self::class, 'go_read'], 'print' => [self::class, 'go_print'],
+            ],
+            'rust' => [
+                'preamble' => "use std::io::Read;",
+                'open' => "fn main(){\n    let mut _input = String::new();\n"
+                    . "    std::io::stdin().read_to_string(&mut _input).unwrap();\n"
+                    . "    let mut _it = _input.lines();",
+                'close' => "}",
+                'call' => fn($e, $a, $s) => "let _r = {$e}({$a});",
+                'read' => [self::class, 'rust_read'], 'print' => [self::class, 'rust_print'],
+            ],
+            'csharp' => [
+                'preamble' => "using System;\nusing System.Globalization;\nclass Program {\n"
+                    . "static string _l(){ return Console.ReadLine(); }",
+                'open' => "static void Main(){",
+                'close' => "}\n}",
+                'call' => fn($e, $a, $s) => "var _r = {$e}({$a});",
+                'read' => [self::class, 'csharp_read'], 'print' => [self::class, 'csharp_print'],
+            ],
+            'kotlin' => [
+                'preamble' => "import java.io.BufferedReader\nimport java.io.InputStreamReader\n"
+                    . "val _br = BufferedReader(InputStreamReader(System.`in`))\nfun _l(): String = _br.readLine()",
+                'open' => "fun main() {",
+                'close' => "}",
+                'call' => fn($e, $a, $s) => "val _r = {$e}({$a})",
+                'read' => [self::class, 'kotlin_read'], 'print' => [self::class, 'kotlin_print'],
+            ],
+        ];
+        return $dialects[$language] ?? null;
     }
 
     /**
@@ -179,31 +260,23 @@ class function_harness {
      * @param signature $sig the typed signature (scalar params and return)
      * @return string the full program
      */
-    private static function c(string $code, string $entrypoint, signature $sig): string {
-        $cdecl = ['int' => 'int', 'long' => 'long long', 'double' => 'double',
-            'bool' => 'int', 'string' => 'char*'];
+    private static function c_type(string $scalar): string {
+        return ['int' => 'int', 'long' => 'long long', 'double' => 'double',
+            'bool' => 'int', 'string' => 'char*'][$scalar];
+    }
+
+    private static function c_read(string $type, int $i): string {
+        self::require_scalar($type, 'c');
         $read = ['int' => 'atoi(_l())', 'long' => 'atoll(_l())', 'double' => 'atof(_l())',
             'bool' => '(atoi(_l()) != 0)', 'string' => 'strdup(_l())'];
-        $print = ['int' => 'printf("%d", _r);', 'long' => 'printf("%lld", _r);',
-            'double' => 'printf("%.10g", _r);', 'bool' => 'printf("%d", _r ? 1 : 0);',
-            'string' => 'printf("%s", _r);'];
+        return self::c_type($type) . " p{$i} = {$read[$type]};";
+    }
 
-        $reads = [];
-        $args = [];
-        foreach ($sig->params() as $i => $type) {
-            self::require_scalar($type, 'c');
-            $reads[] = "{$cdecl[$type]} p{$i} = {$read[$type]};";
-            $args[] = "p{$i}";
-        }
-        $ret = self::require_scalar($sig->return_type(), 'c');
-        $call = "{$cdecl[$ret]} _r = {$entrypoint}(" . implode(', ', $args) . ");";
-        return "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n"
-            . "static char _buf[1<<20];\n"
-            . "static char* _l(){ if(fgets(_buf,sizeof(_buf),stdin)){ size_t n=strlen(_buf);"
-            . " while(n>0 && (_buf[n-1]=='\\n'||_buf[n-1]=='\\r')) _buf[--n]=0; } else { _buf[0]=0; } return _buf; }\n\n"
-            . $code . "\n\n"
-            . "int main(void){\n    " . implode("\n    ", $reads) . "\n    " . $call . "\n    "
-            . $print[$ret] . "\n    return 0;\n}\n";
+    private static function c_print(string $type): string {
+        self::require_scalar($type, 'c');
+        return ['int' => 'printf("%d", _r);', 'long' => 'printf("%lld", _r);',
+            'double' => 'printf("%.10g", _r);', 'bool' => 'printf("%d", _r ? 1 : 0);',
+            'string' => 'printf("%s", _r);'][$type];
     }
 
     /**
@@ -219,37 +292,6 @@ class function_harness {
             throw new \coding_exception("{$language} function grading supports scalar types only: {$type}");
         }
         return $type;
-    }
-
-    /**
-     * Java harness. The student writes a `static` method; it is embedded in Main
-     * with a generated `main` that reads the args, calls it, and prints the return.
-     *
-     * @param string $code the student's static method
-     * @param string $entrypoint the method name
-     * @param signature $sig the signature
-     * @return string
-     */
-    private static function java(string $code, string $entrypoint, signature $sig): string {
-        $reads = [];
-        $args = [];
-        foreach ($sig->params() as $i => $type) {
-            $reads[] = self::java_read($type, $i);
-            $args[] = "p{$i}";
-        }
-        $rtype = self::java_type($sig->return_type());
-        $call = "{$rtype} _r = {$entrypoint}(" . implode(', ', $args) . ");";
-        $print = self::java_print($sig->return_type());
-        return "import java.util.*;\nimport java.io.*;\n"
-            . "public class Main {\n"
-            . "    static BufferedReader _br = new BufferedReader(new InputStreamReader(System.in));\n"
-            . "    static String _l() throws IOException { return _br.readLine(); }\n\n"
-            . "    " . $code . "\n\n"
-            . "    public static void main(String[] _argv) throws Exception {\n"
-            . "        " . implode("\n        ", $reads) . "\n"
-            . "        " . $call . "\n"
-            . "        " . $print . "\n"
-            . "    }\n}\n";
     }
 
     /**
@@ -336,24 +378,6 @@ class function_harness {
 
     // ---- C++ ---------------------------------------------------------------
 
-    private static function cpp(string $code, string $entrypoint, signature $sig): string {
-        $reads = [];
-        $args = [];
-        foreach ($sig->params() as $i => $type) {
-            $reads[] = self::cpp_read($type, $i);
-            $args[] = "p{$i}";
-        }
-        $call = "auto _r = {$entrypoint}(" . implode(', ', $args) . ");";
-        return "#include <bits/stdc++.h>\nusing namespace std;\n"
-            . "static string _l(){ string s; getline(cin, s); return s; }\n\n"
-            . $code . "\n\n"
-            . "int main(){\n"
-            . "    " . implode("\n    ", $reads) . "\n"
-            . "    " . $call . "\n"
-            . "    " . self::cpp_print($sig->return_type()) . "\n"
-            . "    return 0;\n}\n";
-    }
-
     private static function cpp_scalar(string $scalar): string {
         return ['int' => 'int', 'long' => 'long long', 'double' => 'double',
             'bool' => 'bool', 'string' => 'string'][$scalar];
@@ -395,27 +419,6 @@ class function_harness {
     }
 
     // ---- Go ----------------------------------------------------------------
-
-    private static function go(string $code, string $entrypoint, signature $sig): string {
-        $reads = [];
-        $args = [];
-        foreach ($sig->params() as $i => $type) {
-            $reads[] = self::go_read($type, $i);
-            $args[] = "p{$i}";
-        }
-        $call = "_r := {$entrypoint}(" . implode(', ', $args) . ");";
-        return "package main\n"
-            . "import (\"bufio\"; \"fmt\"; \"os\"; \"strconv\"; \"strings\")\n"
-            . "var _rd = bufio.NewReader(os.Stdin)\n"
-            . "func _l() string { s, _ := _rd.ReadString('\\n'); return strings.TrimRight(s, \"\\r\\n\") }\n"
-            // Force-use strconv/strings/fmt so an all-string harness still compiles.
-            . "var _ = strconv.Atoi\nvar _ = strings.TrimSpace\nvar _ = fmt.Print\n\n"
-            . $code . "\n\n"
-            . "func main(){\n"
-            . "    " . implode("\n    ", $reads) . "\n"
-            . "    " . $call . "\n"
-            . "    " . self::go_print($sig->return_type()) . "\n}\n";
-    }
 
     private static function go_scalar(string $scalar): string {
         return ['int' => 'int', 'long' => 'int64', 'double' => 'float64',
@@ -465,25 +468,6 @@ class function_harness {
 
     // ---- Rust --------------------------------------------------------------
 
-    private static function rust(string $code, string $entrypoint, signature $sig): string {
-        $reads = [];
-        $args = [];
-        foreach ($sig->params() as $i => $type) {
-            $reads[] = self::rust_read($type, $i);
-            $args[] = "p{$i}";
-        }
-        $call = "let _r = {$entrypoint}(" . implode(', ', $args) . ");";
-        return "use std::io::Read;\n\n"
-            . $code . "\n\n"
-            . "fn main(){\n"
-            . "    let mut _input = String::new();\n"
-            . "    std::io::stdin().read_to_string(&mut _input).unwrap();\n"
-            . "    let mut _it = _input.lines();\n"
-            . "    " . implode("\n    ", $reads) . "\n"
-            . "    " . $call . "\n"
-            . "    " . self::rust_print($sig->return_type()) . "\n}\n";
-    }
-
     private static function rust_scalar(string $scalar): string {
         return ['int' => 'i64', 'long' => 'i64', 'double' => 'f64',
             'bool' => 'bool', 'string' => 'String'][$scalar];
@@ -529,25 +513,6 @@ class function_harness {
     }
 
     // ---- C# ----------------------------------------------------------------
-
-    private static function csharp(string $code, string $entrypoint, signature $sig): string {
-        $reads = [];
-        $args = [];
-        foreach ($sig->params() as $i => $type) {
-            $reads[] = self::csharp_read($type, $i);
-            $args[] = "p{$i}";
-        }
-        $call = "var _r = {$entrypoint}(" . implode(', ', $args) . ");";
-        return "using System;\nusing System.Globalization;\n"
-            . "class Program {\n"
-            . "    static string _l(){ return Console.ReadLine(); }\n\n"
-            . "    " . $code . "\n\n"
-            . "    static void Main(){\n"
-            . "        " . implode("\n        ", $reads) . "\n"
-            . "        " . $call . "\n"
-            . "        " . self::csharp_print($sig->return_type()) . "\n"
-            . "    }\n}\n";
-    }
 
     private static function csharp_scalar(string $scalar): string {
         return ['int' => 'int', 'long' => 'long', 'double' => 'double',
@@ -599,24 +564,6 @@ class function_harness {
     }
 
     // ---- Kotlin ------------------------------------------------------------
-
-    private static function kotlin(string $code, string $entrypoint, signature $sig): string {
-        $reads = [];
-        $args = [];
-        foreach ($sig->params() as $i => $type) {
-            $reads[] = self::kotlin_read($type, $i);
-            $args[] = "p{$i}";
-        }
-        $call = "val _r = {$entrypoint}(" . implode(', ', $args) . ")";
-        return "import java.io.BufferedReader\nimport java.io.InputStreamReader\n"
-            . "val _br = BufferedReader(InputStreamReader(System.`in`))\n"
-            . "fun _l(): String = _br.readLine()\n\n"
-            . $code . "\n\n"
-            . "fun main() {\n"
-            . "    " . implode("\n    ", $reads) . "\n"
-            . "    " . $call . "\n"
-            . "    " . self::kotlin_print($sig->return_type()) . "\n}\n";
-    }
 
     private static function kotlin_arraytype(string $scalar): string {
         return ['int' => 'IntArray', 'long' => 'LongArray', 'double' => 'DoubleArray',
