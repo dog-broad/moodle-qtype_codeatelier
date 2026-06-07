@@ -494,8 +494,9 @@ const renderWebExamples = (element, config, strings) => {
  * @param {Object} graded from gradeWeb
  * @param {Object} config
  * @param {Object} strings
+ * @param {Function} [highlight] called with a selector to outline it in the preview
  */
-const renderWebFeedback = (element, graded, config, strings) => {
+const renderWebFeedback = (element, graded, config, strings, highlight) => {
     element.textContent = '';
     const pct = Math.round(graded.fraction * 1000) / 10;
     const header = document.createElement('p');
@@ -533,6 +534,14 @@ const renderWebFeedback = (element, graded, config, strings) => {
             const got = (tr.actual === null || tr.actual === undefined)
                 ? (strings.assertnotfound || '(element not found)') : String(tr.actual);
             addBlock(body, strings.got || 'Got', got);
+            if (highlight && test.selector) {
+                const hl = document.createElement('button');
+                hl.type = 'button';
+                hl.className = 'btn btn-link btn-sm codeatelier-highlight';
+                hl.textContent = strings.showinpreview || 'Show in preview';
+                hl.addEventListener('click', () => highlight(test.selector));
+                body.appendChild(hl);
+            }
         }
         if (test.feedback) {
             addBlock(body, strings.teacherfeedback || 'Feedback', String(test.feedback));
@@ -627,7 +636,8 @@ export const init = (config) => {
                     if (scoreinput) {
                         scoreinput.value = graded.fraction;
                     }
-                    renderWebFeedback(resultsel, graded, config, strings);
+                    renderWebFeedback(resultsel, graded, config, strings,
+                        preview ? (sel) => preview.highlight(sel) : null);
                 })
                 .catch((err) => {
                     resultsel.textContent = '';

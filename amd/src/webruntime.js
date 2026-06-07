@@ -184,6 +184,17 @@ const HARNESS = `
       document.addEventListener('mouseover', onPickOver, true);
     }
   }
+  var hlEl = null;
+  function highlight(selector){
+    if (hlEl){ hlEl.style.outline = hlEl.__caHl || ''; hlEl = null; }
+    var el = q(selector);
+    if (el){
+      hlEl = el; el.__caHl = el.style.outline;
+      el.style.outline = '3px solid #d63384'; el.style.outlineOffset = '2px';
+      el.scrollIntoView({block: 'center'});
+    }
+    send({ kind: 'highlighted', found: !!el }, '*');
+  }
   window.addEventListener('message', function(ev){
     var msg = ev.data || {};
     if (msg.kind === 'grade') {
@@ -191,6 +202,8 @@ const HARNESS = `
       send({ kind: 'results', results: (msg.assertions || []).map(evalAssertion) }, '*');
     } else if (msg.kind === 'pickmode') {
       setPick(!!msg.on);
+    } else if (msg.kind === 'highlight') {
+      highlight(msg.selector);
     }
   });
   window.__caHarness = { ready: function(){ send({ kind: 'ready' }, '*'); } };
@@ -424,6 +437,11 @@ export const setupPreview = (container, answerTa, config, strings) => {
         },
         onPick: (cb) => {
             pickCb = cb;
+        },
+        highlight: (selector) => {
+            if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage({kind: 'highlight', selector: selector}, '*');
+            }
         },
         destroy: () => {
             if (timer) {

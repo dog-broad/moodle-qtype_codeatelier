@@ -419,6 +419,7 @@ class qtype_codeatelier extends question_type {
             'assertexists' => 'assertexists',
             'assertabsent' => 'assertabsent',
             'assertnotfound' => 'assertnotfound',
+            'showinpreview' => 'showinpreview',
             'previewpick' => 'previewpick',
             'pickelement' => 'pickelement',
             'pickcancel' => 'pickcancel',

@@ -252,6 +252,7 @@ $string['assertafter'] = 'After doing';
 $string['assertexists'] = 'exists';
 $string['assertabsent'] = 'is absent';
 $string['assertnotfound'] = '(element not found)';
+$string['showinpreview'] = 'Show in preview';
 $string['entryfile'] = 'Entry file';
 $string['entryfile_help'] = 'The name of the file the server compiles and runs as the program\'s entry point (for example `main.cpp`, or `Main.java` whose class is run). It must be one of the project files below.';
 $string['projectfilesform'] = 'Project files';
