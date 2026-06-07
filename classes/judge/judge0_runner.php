@@ -304,14 +304,36 @@ class judge0_runner {
         $memory = isset($response['memory']) ? (int) $response['memory'] : null;
         return [
             'outcome' => $this->outcome_for($statusid, $memory),
+            // stdout drives grading, so it is never altered; stderr and the compiler
+            // output are student-facing diagnostics, so the sandbox noise is trimmed.
             'stdout' => self::decode($response['stdout'] ?? null),
-            'stderr' => self::decode($response['stderr'] ?? null),
-            'compileoutput' => self::decode($response['compile_output'] ?? null),
+            'stderr' => self::clean_diagnostic(self::decode($response['stderr'] ?? null)),
+            'compileoutput' => self::clean_diagnostic(self::decode($response['compile_output'] ?? null)),
             'time' => isset($response['time']) ? (float) $response['time'] : null,
             'memory' => $memory,
             'statusid' => $statusid,
             'statusdesc' => (string) ($response['status']['description'] ?? ''),
         ];
+    }
+
+    /**
+     * Tidy a student-facing diagnostic: drop the sandbox box path so messages read
+     * as plain file names (Main.java:5 rather than /box/Main.java:5), and cap very
+     * long output so one runaway error message does not flood the page.
+     *
+     * @param string $text the raw stderr or compiler output
+     * @return string
+     */
+    private static function clean_diagnostic(string $text): string {
+        if ($text === '') {
+            return $text;
+        }
+        $text = str_replace('/box/', '', $text);
+        $max = 4000;
+        if (strlen($text) > $max) {
+            $text = rtrim(substr($text, 0, $max)) . "\n…";
+        }
+        return $text;
     }
 
     /**

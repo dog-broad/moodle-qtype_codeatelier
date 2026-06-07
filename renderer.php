@@ -222,6 +222,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'strings' => array(
                     'running' => get_string('running', 'qtype_codeatelier'),
                     'example' => get_string('result_test', 'qtype_codeatelier'),
+                    'compileoutput' => get_string('compileoutputlabel', 'qtype_codeatelier'),
                     'input' => get_string('input', 'qtype_codeatelier'),
                     'expected' => get_string('expected', 'qtype_codeatelier'),
                     'got' => get_string('result_got', 'qtype_codeatelier'),
@@ -261,6 +262,8 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'codeatelier-judge-verdict');
 
         if ($verdict === 'CE' && !empty($result['compileoutput'])) {
+            $out .= html_writer::tag('p', get_string('compileoutputlabel', 'qtype_codeatelier'),
+                    array('class' => 'codeatelier-block-label'));
             $out .= html_writer::tag('pre', s($result['compileoutput']),
                     array('class' => 'codeatelier-compileoutput'));
         }

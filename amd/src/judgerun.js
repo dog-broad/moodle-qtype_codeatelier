@@ -97,10 +97,25 @@ export const init = (config) => {
  * @param {Object} result {verdict, compileoutput, stdout, stderr}
  * @param {Object} strings
  */
+/**
+ * Append a labelled compiler-output block.
+ *
+ * @param {HTMLElement} out
+ * @param {String} text
+ * @param {Object} strings
+ */
+const compileBlock = (out, text, strings) => {
+    const heading = document.createElement('p');
+    heading.className = 'codeatelier-block-label';
+    heading.textContent = strings.compileoutput || 'What the compiler reported:';
+    out.appendChild(heading);
+    out.appendChild(pre('codeatelier-compileoutput', text));
+};
+
 const renderScratch = (out, result, strings) => {
     out.textContent = '';
     if (result.verdict === 'CE' && result.compileoutput) {
-        out.appendChild(pre('codeatelier-compileoutput', result.compileoutput));
+        compileBlock(out, result.compileoutput, strings);
         return;
     }
     if (result.stderr && result.stderr.trim() !== '') {
@@ -120,7 +135,7 @@ const renderScratch = (out, result, strings) => {
 const render = (out, result, strings) => {
     out.textContent = '';
     if (result.verdict === 'CE' && result.compileoutput) {
-        out.appendChild(pre('codeatelier-compileoutput', result.compileoutput));
+        compileBlock(out, result.compileoutput, strings);
         return;
     }
     const list = document.createElement('ul');
