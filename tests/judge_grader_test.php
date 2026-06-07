@@ -63,6 +63,69 @@ final class judge_grader_test extends \advanced_testcase {
         $this->assertNotEquals($a, $c);
     }
 
+    public function test_cache_key_depends_on_entryfile(): void {
+        // The entry file drives the generated run script, so two projects that differ
+        // only in their entry file must not share a memo entry.
+        $tests = $this->sum_tests();
+        $limits = array('cputime' => 2.0, 'memory' => 128000);
+        $a = result_cache::key('cpp', 'code', $tests, $limits, '', false, '', 'project', '', '', 'main.cpp');
+        $b = result_cache::key('cpp', 'code', $tests, $limits, '', false, '', 'project', '', '', 'app.cpp');
+        $this->assertNotEquals($a, $b);
+    }
+
+    /**
+     * A canonical two-file C++ project as the student answer.
+     *
+     * @return string the canonical project JSON
+     */
+    private function project_answer(): string {
+        return json_encode(array(
+            array('name' => 'main.cpp', 'content' => "#include \"h.h\"\nint main(){}\n"),
+            array('name' => 'h.h', 'content' => "int add(int,int);\n"),
+        ));
+    }
+
+    public function test_project_scenario_grades_stdout_via_multifile(): void {
+        // A project routes through run_multifile (not run) and is graded on stdout.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+            qtype_codeatelier_stub_runner::row('ran', "30\n"),
+        ));
+        $result = (new judge_grader($runner))->grade($this->project_answer(), 'cpp',
+                $this->sum_tests(), '', false, 'project', '', '', 'main.cpp');
+
+        $this->assertFalse($result['infrastructure']);
+        $this->assertEquals(1.0, $result['fraction']);
+        $this->assertSame('AC', $result['verdict']);
+        // The project package (not a single source) reached the runner.
+        $this->assertNotNull($runner->last_multifile_zip());
+    }
+
+    public function test_project_scenario_wrong_output_is_wa(): void {
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "5\n"),
+            qtype_codeatelier_stub_runner::row('ran', "999\n"),
+        ));
+        $result = (new judge_grader($runner))->grade($this->project_answer(), 'cpp',
+                $this->sum_tests(), '', false, 'project', '', '', 'main.cpp');
+
+        $this->assertEquals(0.5, $result['fraction']);
+        $this->assertSame('WA', $result['verdict']);
+    }
+
+    public function test_project_scenario_compile_error_fails_all(): void {
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ce', '', array('compileoutput' => 'error: expected ;')),
+            qtype_codeatelier_stub_runner::row('ce', '', array('compileoutput' => 'error: expected ;')),
+        ));
+        $result = (new judge_grader($runner))->grade($this->project_answer(), 'cpp',
+                $this->sum_tests(), '', false, 'project', '', '', 'main.cpp');
+
+        $this->assertEquals(0.0, $result['fraction']);
+        $this->assertSame('CE', $result['verdict']);
+        $this->assertStringContainsString('expected ;', $result['compileoutput']);
+    }
+
     public function test_all_correct_is_ac(): void {
         $runner = new qtype_codeatelier_stub_runner(array(
             qtype_codeatelier_stub_runner::row('ran', "5\n"),

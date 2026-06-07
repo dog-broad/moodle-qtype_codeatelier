@@ -106,6 +106,28 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->addHelpButton('schemasql', 'schemasql', 'qtype_codeatelier');
         $mform->hideIf('schemasql', 'scenario', 'neq', 'sql');
 
+        // Project scenario (multi-file, judge tier only): the entry/main file name
+        // and the starter file set. The file set is a JS-managed file-tab editor
+        // (the same one the student attempt uses) that keeps this textarea synced
+        // to the canonical JSON.
+        $mform->addElement('text', 'entryfile', get_string('entryfile', 'qtype_codeatelier'),
+                array('size' => 40, 'id' => 'id_entryfile'));
+        $mform->setType('entryfile', PARAM_RAW_TRIMMED);
+        $mform->addHelpButton('entryfile', 'entryfile', 'qtype_codeatelier');
+        $mform->hideIf('entryfile', 'scenario', 'neq', 'project');
+
+        $mform->addElement('textarea', 'projectfiles', get_string('projectfilesform', 'qtype_codeatelier'),
+                array('rows' => 10, 'cols' => 60, 'spellcheck' => 'false', 'id' => 'id_projectfiles'));
+        $mform->setType('projectfiles', PARAM_RAW);
+        $mform->addHelpButton('projectfiles', 'projectfilesform', 'qtype_codeatelier');
+        $mform->hideIf('projectfiles', 'scenario', 'neq', 'project');
+
+        // Single-file starter code does not apply to a multi-file project.
+        $mform->hideIf('startercode', 'scenario', 'eq', 'project');
+        // A project allows a single language and authors its files directly, so the
+        // language set and single-field reference solution do not apply.
+        $mform->hideIf('languages', 'scenario', 'eq', 'project');
+
         // A reference solution (in the primary language). The authoring JS can run
         // it to capture the Expected outputs and to validate the question; on the
         // judge tier a reference that fails any test blocks the save.
@@ -113,6 +135,9 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
         $mform->setType('referencesolution', PARAM_RAW);
         $mform->addHelpButton('referencesolution', 'referencesolution', 'qtype_codeatelier');
+        // A multi-file project has no single-field reference (the file set is authored
+        // directly); run-to-capture / validate-on-save for projects is not yet wired.
+        $mform->hideIf('referencesolution', 'scenario', 'eq', 'project');
 
         // Support/data files: judge tier only. They are placed in the working
         // directory next to the program so it can read them at run time.
@@ -186,6 +211,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'entrypointid' => 'id_entrypoint',
             'startercodeid' => 'id_startercode',
             'schemasqlid' => 'id_schemasql',
+            'projectfilesid' => 'id_projectfiles',
+            'entryfileid' => 'id_entryfile',
             'questiontextid' => 'id_questiontext',
             'previewbtnid' => $previewid . '_btn',
             'captureid' => $previewid . '_capture',
@@ -270,6 +297,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'stdinstdout' => get_string('scenario_stdinstdout', 'qtype_codeatelier'),
             'function' => get_string('scenario_function', 'qtype_codeatelier'),
             'sql' => get_string('scenario_sql', 'qtype_codeatelier'),
+            'project' => get_string('scenario_project', 'qtype_codeatelier'),
         );
     }
 
@@ -439,6 +467,30 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                     } else if (!\qtype_codeatelier\judge\signature::is_valid($sig)) {
                         $errors['functionsignature'] = get_string('signatureinvalid', 'qtype_codeatelier');
                     }
+                }
+            } else if ($scenario === 'project') {
+                // A project is judge-tier only and runs as a single-language build.
+                if ($tier !== 'judge') {
+                    $errors['scenario'] = get_string('projectjudgeonly', 'qtype_codeatelier');
+                } else if (count($allowed) !== 1
+                        || !\qtype_codeatelier\judge\project_packager::supports($allowed[0])) {
+                    $errors['language'] = get_string('projectlanguageset', 'qtype_codeatelier');
+                }
+            }
+        }
+
+        // A project must carry a valid file set with the entry file among the files.
+        if ($scenario === 'project') {
+            $files = \qtype_codeatelier\judge\project_packager::decode_files(
+                    isset($data['projectfiles']) ? (string) $data['projectfiles'] : '');
+            if (!$files) {
+                $errors['projectfiles'] = get_string('projectfilesempty', 'qtype_codeatelier');
+            } else {
+                $entry = isset($data['entryfile']) ? trim((string) $data['entryfile']) : '';
+                if ($entry === '') {
+                    $errors['entryfile'] = get_string('entryfilerequired', 'qtype_codeatelier');
+                } else if (!array_key_exists($entry, $files)) {
+                    $errors['entryfile'] = get_string('entryfilemissing', 'qtype_codeatelier');
                 }
             }
         }

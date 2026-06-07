@@ -56,7 +56,7 @@ class qtype_codeatelier extends question_type {
     public function extra_question_fields() {
         return array('qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint',
                 'startercode', 'schemasql', 'cputimelimit', 'memorylimit', 'languages', 'starters',
-                'referencesolution', 'allornothing', 'functionsignature');
+                'referencesolution', 'allornothing', 'functionsignature', 'projectfiles', 'entryfile');
     }
 
     public function get_question_options($question) {
@@ -111,6 +111,15 @@ class qtype_codeatelier extends question_type {
                 ? (string) $question->referencesolution : null;
 
         $question->allornothing = !empty($question->allornothing) ? 1 : 0;
+
+        // Project scenario: the starter file set is a JSON array; the entry file is
+        // a scalar. Store null when blank so non-project questions stay clean.
+        $question->projectfiles = (isset($question->projectfiles)
+                && trim((string) $question->projectfiles) !== ''
+                && trim((string) $question->projectfiles) !== '[]')
+                ? (string) $question->projectfiles : null;
+        $question->entryfile = (isset($question->entryfile) && trim((string) $question->entryfile) !== '')
+                ? (string) $question->entryfile : null;
 
         // Saves the language/tier/scenario options into qtype_codeatelier_options.
         parent::save_question_options($question);
@@ -256,7 +265,7 @@ class qtype_codeatelier extends question_type {
             'entrypoint' => '', 'startercode' => '', 'schemasql' => '',
             'cputimelimit' => '', 'memorylimit' => '', 'languages' => '',
             'starters' => '', 'referencesolution' => '', 'allornothing' => 0,
-            'functionsignature' => '',
+            'functionsignature' => '', 'projectfiles' => '', 'entryfile' => '',
         );
         $fields = $this->extra_question_fields();
         array_shift($fields);
@@ -361,6 +370,11 @@ class qtype_codeatelier extends question_type {
             'exitfocus' => 'exitfocus',
             'focusmode' => 'focusmode',
             'useinput' => 'useinput',
+            'projectfiles' => 'projectfiles',
+            'filename' => 'projectfilename',
+            'addfile' => 'projectaddfile',
+            'deletefile' => 'projectdeletefile',
+            'badfilename' => 'projectbadfilename',
         );
         $strings = array();
         foreach ($keys as $jskey => $stringid) {

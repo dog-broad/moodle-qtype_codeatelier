@@ -54,6 +54,12 @@ class qtype_codeatelier_question extends question_graded_automatically {
     /** @var string|null typed signature for static-language function grading. */
     public $functionsignature;
 
+    /** @var string|null project scenario: JSON array of starter files [{name, content}, ...]. */
+    public $projectfiles = null;
+
+    /** @var string|null project scenario: the entry/main file Judge0 compiles and runs. */
+    public $entryfile = null;
+
     /** @var string|null starter code shown in the editor. */
     public $startercode;
 
@@ -146,6 +152,27 @@ class qtype_codeatelier_question extends question_graded_automatically {
         return $this->tier === 'judge';
     }
 
+    /**
+     * Whether this is a multi-file project question (judge-only). The student's
+     * answer is then a canonical JSON file set rather than a single code string.
+     *
+     * @return bool
+     */
+    public function is_project() {
+        return $this->scenario === 'project';
+    }
+
+    /**
+     * Decode the project file set from a response's answer (canonical JSON).
+     *
+     * @param array $response the response data
+     * @return array name => content (empty on a malformed or empty answer)
+     */
+    public function project_files_from_response(array $response) {
+        $answer = isset($response['answer']) ? (string) $response['answer'] : '';
+        return \qtype_codeatelier\judge\project_packager::decode_files($answer);
+    }
+
     public function get_correct_response() {
         // There is no single canonical solution to display.
         return null;
@@ -153,6 +180,12 @@ class qtype_codeatelier_question extends question_graded_automatically {
 
     public function is_complete_response(array $response) {
         if ($this->is_judge()) {
+            if ($this->is_project()) {
+                // A project is gradable once the entry file carries some code.
+                $files = $this->project_files_from_response($response);
+                $entry = (string) $this->entryfile;
+                return isset($files[$entry]) && trim($files[$entry]) !== '';
+            }
             // The grade is computed on the server, so any non-empty code is gradable.
             return array_key_exists('answer', $response) && trim((string) $response['answer']) !== '';
         }
@@ -194,6 +227,10 @@ class qtype_codeatelier_question extends question_graded_automatically {
     }
 
     public function summarise_response(array $response) {
+        if ($this->is_project()) {
+            $files = $this->project_files_from_response($response);
+            return $files ? shorten_text(implode(', ', array_keys($files)), 200) : null;
+        }
         if (!array_key_exists('answer', $response) || trim($response['answer']) === '') {
             return null;
         }
@@ -304,7 +341,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
         $hash = \qtype_codeatelier\judge\result_cache::key(
                 $language, (string) $code, $this->tests, $limits, $schemasql, $allornothing,
                 $this->data_files_hash(), (string) $this->scenario, (string) $this->entrypoint,
-                (string) $this->functionsignature);
+                (string) $this->functionsignature, (string) $this->entryfile);
         $cached = \qtype_codeatelier\judge\result_cache::get($hash);
         if ($cached !== null) {
             return $cached;
@@ -312,7 +349,8 @@ class qtype_codeatelier_question extends question_graded_automatically {
         $runner->set_additional_files($this->data_files_zip());
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
         $result = $grader->grade((string) $code, $language, $this->tests, $schemasql, $allornothing,
-                (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature);
+                (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature,
+                (string) $this->entryfile);
         if (empty($result['infrastructure'])) {
             \qtype_codeatelier\judge\result_cache::put($hash, $result);
         }
@@ -347,7 +385,8 @@ class qtype_codeatelier_question extends question_graded_automatically {
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
         return $grader->grade((string) $code, $this->resolve_language($language), $visible,
                 (string) $this->schemasql, !empty($this->allornothing),
-                (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature);
+                (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature,
+                (string) $this->entryfile);
     }
 
     /**
@@ -368,7 +407,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
         return $grader->run_scratch((string) $code, $this->resolve_language($language),
                 (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature,
-                (string) $this->schemasql, (string) $input);
+                (string) $this->schemasql, (string) $input, (string) $this->entryfile);
     }
 
     /**
@@ -384,7 +423,8 @@ class qtype_codeatelier_question extends question_graded_automatically {
         $hash = \qtype_codeatelier\judge\result_cache::key(
                 $this->resolve_language($language), (string) $code, $this->tests, $limits,
                 (string) $this->schemasql, !empty($this->allornothing), $this->data_files_hash(),
-                (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature);
+                (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature,
+                (string) $this->entryfile);
         return \qtype_codeatelier\judge\result_cache::get($hash);
     }
 

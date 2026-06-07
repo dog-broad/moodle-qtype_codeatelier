@@ -35,6 +35,9 @@ class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runn
     /** @var string|null the language passed to the most recent run() call. */
     private $lastlanguage = null;
 
+    /** @var string|null the base64 package passed to the most recent run_multifile() call. */
+    private $lastmultifilezip = null;
+
     /**
      * @param array $rows the per-case result rows run() should return
      */
@@ -47,6 +50,19 @@ class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runn
         $this->calls++;
         $this->lastlanguage = $language;
         return $this->rows;
+    }
+
+    public function run_multifile(string $base64zip, array $cases): array {
+        $this->calls++;
+        $this->lastmultifilezip = $base64zip;
+        return $this->rows;
+    }
+
+    /**
+     * @return string|null the package the most recent run_multifile() received
+     */
+    public function last_multifile_zip() {
+        return $this->lastmultifilezip;
     }
 
     /**

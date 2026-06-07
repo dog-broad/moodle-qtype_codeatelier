@@ -51,6 +51,14 @@ export default [
         plugins: [nodeResolve(), terser()],
     },
     {
+        // The multi-file project editor: a file-tab list over one CodeMirror,
+        // reusing the editor as an AMD module (kept external).
+        input: 'amd/src/projectfiles.js',
+        external: (id) => id.startsWith('qtype_codeatelier/'),
+        output: {file: 'amd/build/projectfiles.min.js', format: 'amd', sourcemap: true, sourcemapExcludeSources: true},
+        plugins: [nodeResolve(), terser()],
+    },
+    {
         // The controller depends on the other plugin modules as AMD modules
         // (kept external so CodeMirror is not duplicated into this bundle).
         input: 'amd/src/control.js',

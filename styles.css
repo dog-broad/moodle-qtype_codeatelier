@@ -96,7 +96,8 @@
 #fitem_id_startercode .cm-editor,
 #fitem_id_starteredit .cm-editor,
 #fitem_id_referencesolution .cm-editor,
-#fitem_id_schemasql .cm-editor {
+#fitem_id_schemasql .cm-editor,
+#fitem_id_projectfiles .cm-editor {
     width: 100%;
     border: 1px solid #ced4da;
     border-radius: 0.375rem;
@@ -107,8 +108,66 @@
 #fitem_id_startercode .cm-scroller,
 #fitem_id_starteredit .cm-scroller,
 #fitem_id_referencesolution .cm-scroller,
-#fitem_id_schemasql .cm-scroller {
+#fitem_id_schemasql .cm-scroller,
+#fitem_id_projectfiles .cm-scroller {
     overflow: auto;
+}
+
+/*
+ * Multi-file project: the file-tab list and its actions. The class names are
+ * CodeAtelier-specific, so they are left unscoped — the same widget renders both
+ * in the student attempt (inside .qtype_codeatelier) and on the edit form's
+ * projectfiles field (outside it).
+ */
+.codeatelier-filetabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 0.5rem;
+}
+
+.codeatelier-filetab {
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 0.375rem 0.375rem 0 0;
+    background: #f1f3f5;
+    color: #495057;
+    padding: 0.25rem 0.75rem;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.codeatelier-filetab-active {
+    background: #fff;
+    border-color: #dee2e6;
+    color: #1f2933;
+    font-weight: 600;
+}
+
+.codeatelier-fileactions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.codeatelier-filename-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.codeatelier-filename {
+    width: 16rem;
+    max-width: 100%;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.85rem;
+}
+
+.codeatelier-fileerror {
+    align-self: center;
 }
 
 /* Run / status / results. */

@@ -60,7 +60,11 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
         $currentcode = $qa->get_last_qt_var('answer', '');
         if ($currentcode === '') {
-            $currentcode = isset($startermap[$chosen]) ? $startermap[$chosen] : $this->starter_code($chosen);
+            // A project's starting answer is its starter file set (canonical JSON);
+            // other scenarios start from the chosen language's starter code.
+            $currentcode = ($scenario === 'project')
+                    ? (string) $question->projectfiles
+                    : (isset($startermap[$chosen]) ? $startermap[$chosen] : $this->starter_code($chosen));
         }
         $currentscore = $qa->get_last_qt_var('score', '');
 
@@ -174,6 +178,8 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'starters' => $startermap,
             'scenario' => $scenario,
             'entrypoint' => $question->entrypoint,
+            // The project scenario's entry/main file name (the default first file).
+            'entryfile' => $question->entryfile,
             // Ship the schema for any SQL question so the client schema viewer
             // renders. A judge attempt has no Check button, so control.js never
             // wires client-side grading — the schema is the visible data, while the

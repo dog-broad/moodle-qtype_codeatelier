@@ -57,9 +57,10 @@ class judge_grader {
      * @param array $tests the authored test cases (objects with input/expected/matchmode/tolerance/weight/visibility)
      * @param string $schemasql the SQL scenario's schema + seed, prepended to each SQL submission
      * @param bool $allornothing when true, a partial pass scores 0
-     * @param string $scenario the scenario: stdinstdout, function or sql
+     * @param string $scenario the scenario: stdinstdout, function, sql or project
      * @param string $entrypoint the function name to call (function scenario)
      * @param string $signature the typed signature (static-language function scenario)
+     * @param string $entryfile the entry/main file name (project scenario)
      * @return array {
      *     infrastructure: bool — true if the sandbox could not be reached (caller should mark needs-grading),
      *     fraction: float, verdict: string (AC|WA|TLE|RE|CE|INTERNAL),
@@ -69,10 +70,13 @@ class judge_grader {
      */
     public function grade(string $code, string $language, array $tests, string $schemasql = '',
             bool $allornothing = false, string $scenario = 'stdinstdout', string $entrypoint = '',
-            string $signature = ''): array {
+            string $signature = '', string $entryfile = ''): array {
         $tests = array_values($tests);
         $issql = ($language === 'sql');
         $isfunction = ($scenario === 'function');
+        // A project is a multi-file source set graded like stdin/stdout (run the
+        // program, compare stdout); only the run path differs — see below.
+        $isproject = ($scenario === 'project');
         // Static-language functions carry a typed signature that drives a generated
         // harness and a typed stdin/stdout protocol; dynamic ones pass JSON directly.
         $isstaticfn = $isfunction && function_harness::needs_signature($language);
@@ -96,7 +100,16 @@ class judge_grader {
             }
         }
 
-        $runresults = $this->runner->run($code, $language, $cases);
+        if ($isproject) {
+            // Package the project's files once (sources + a generated compile/run
+            // script) and run that package against each case's stdin via Judge0's
+            // multi-file language; the per-case stdout is compared like any program.
+            $zip = project_packager::package($language,
+                    project_packager::decode_files($code), $entryfile);
+            $runresults = $this->runner->run_multifile($zip, $cases);
+        } else {
+            $runresults = $this->runner->run($code, $language, $cases);
+        }
 
         // An infrastructure failure on any case means we cannot trust a grade at
         // all — never fake a zero; the caller routes this to needs-grading.
@@ -226,15 +239,19 @@ class judge_grader {
      * @param string $language a judge-tier language key
      * @param array $tests the authored test cases
      * @param string $schemasql the SQL scenario's schema + seed
-     * @param string $scenario the scenario: stdinstdout, function or sql
+     * @param string $scenario the scenario: stdinstdout, function, sql or project
      * @param string $entrypoint the function name to call (function scenario)
+     * @param string $signature the typed signature (static-language function scenario)
+     * @param string $entryfile the entry/main file name (project scenario)
      * @return array per-test [{index, output, ok, error}], aligned with the tests
      */
     public function run_outputs(string $code, string $language, array $tests, string $schemasql = '',
-            string $scenario = 'stdinstdout', string $entrypoint = '', string $signature = ''): array {
+            string $scenario = 'stdinstdout', string $entrypoint = '', string $signature = '',
+            string $entryfile = ''): array {
         $tests = array_values($tests);
         $issql = ($language === 'sql');
         $isfunction = ($scenario === 'function');
+        $isproject = ($scenario === 'project');
         $isstaticfn = $isfunction && function_harness::needs_signature($language);
         $sig = $isstaticfn ? signature::parse($signature) : null;
         $functionsource = $isfunction ? function_harness::source($language, $code, $entrypoint, $sig) : '';
@@ -252,7 +269,13 @@ class judge_grader {
             }
         }
 
-        $runresults = $this->runner->run($code, $language, $cases);
+        if ($isproject) {
+            $zip = project_packager::package($language,
+                    project_packager::decode_files($code), $entryfile);
+            $runresults = $this->runner->run_multifile($zip, $cases);
+        } else {
+            $runresults = $this->runner->run($code, $language, $cases);
+        }
 
         $outputs = [];
         foreach ($runresults as $i => $result) {
@@ -292,11 +315,13 @@ class judge_grader {
      * @param string $signature the typed signature (static-language function)
      * @param string $schemasql the SQL schema + seed (unused for scratch)
      * @param string $input the student's own input
+     * @param string $entryfile the entry/main file name (project scenario)
      * @return array {infrastructure, verdict, stdout, stderr, compileoutput}
      */
     public function run_scratch(string $code, string $language, string $scenario, string $entrypoint,
-            string $signature, string $schemasql, string $input): array {
+            string $signature, string $schemasql, string $input, string $entryfile = ''): array {
         $isfunction = ($scenario === 'function');
+        $isproject = ($scenario === 'project');
         $isstaticfn = $isfunction && function_harness::needs_signature($language);
         $sig = $isstaticfn ? signature::parse($signature) : null;
         if ($isfunction) {
@@ -307,7 +332,13 @@ class judge_grader {
             $case = ['input' => $input];
         }
 
-        $results = $this->runner->run($code, $language, [$case]);
+        if ($isproject) {
+            $zip = project_packager::package($language,
+                    project_packager::decode_files($code), $entryfile);
+            $results = $this->runner->run_multifile($zip, [$case]);
+        } else {
+            $results = $this->runner->run($code, $language, [$case]);
+        }
         $r = $results[0] ?? null;
         if ($r === null || $r['outcome'] === 'internal') {
             return ['infrastructure' => true, 'verdict' => 'INTERNAL',

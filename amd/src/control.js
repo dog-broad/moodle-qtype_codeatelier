@@ -28,6 +28,7 @@ import {create, highlightWithin} from 'qtype_codeatelier/editor';
 import {run, describe, stop} from 'qtype_codeatelier/runner';
 import {grade} from 'qtype_codeatelier/grader';
 import {tokenDiff} from 'qtype_codeatelier/diff';
+import {setup as setupProjectFiles} from 'qtype_codeatelier/projectfiles';
 
 /**
  * @param {String} value
@@ -488,11 +489,17 @@ export const init = (config) => {
         onChange: markStale,
     };
     let editor;
-    try {
-        editor = create(textarea, currentLanguage, editorOptions);
-    } catch (e) {
-        textarea.style.display = 'block';
-        editor = {getValue: () => textarea.value};
+    if (config.scenario === 'project') {
+        // A multi-file project: the editor is a file-tab list over one CodeMirror,
+        // keeping the hidden answer field synced to the canonical JSON file set.
+        editor = setupProjectFiles(root, textarea, config, strings);
+    } else {
+        try {
+            editor = create(textarea, currentLanguage, editorOptions);
+        } catch (e) {
+            textarea.style.display = 'block';
+            editor = {getValue: () => textarea.value};
+        }
     }
     if (skeleton) {
         skeleton.style.display = 'none';
@@ -501,7 +508,7 @@ export const init = (config) => {
     // Language picker: re-mount the editor in the chosen language and record the
     // choice for submit / run / run-examples. The starter is only swapped when the
     // student has not typed over it, so a language switch never discards real work.
-    if (langselect) {
+    if (langselect && config.scenario !== 'project') {
         langselect.addEventListener('change', () => {
             const next = langselect.value;
             if (next === currentLanguage) {

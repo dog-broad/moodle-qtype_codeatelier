@@ -184,6 +184,47 @@ final class backup_test extends \advanced_testcase {
         $this->assertEquals('fixture.txt', reset($datafiles)->get_filename());
     }
 
+    public function test_project_files_survive_backup_and_restore(): void {
+        global $DB, $USER;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $projectfiles = json_encode(array(
+            array('name' => 'main.cpp', 'content' => "#include \"helper.h\"\nint main(){}\n"),
+            array('name' => 'helper.h', 'content' => "int add(int,int);\n"),
+        ));
+        $qgen->create_question('codeatelier', 'judge', array(
+                'category' => $cat->id, 'scenario' => 'project', 'language' => 'cpp',
+                'projectfiles' => $projectfiles, 'entryfile' => 'main.cpp'));
+
+        $bc = new backup_controller(backup::TYPE_1COURSE, $course->id, backup::FORMAT_MOODLE,
+                backup::INTERACTIVE_NO, backup::MODE_IMPORT, $USER->id);
+        $backupid = $bc->get_backupid();
+        $bc->execute_plan();
+        $bc->destroy();
+
+        $newcourse = $generator->create_course();
+        $rc = new restore_controller($backupid, $newcourse->id, backup::INTERACTIVE_NO,
+                backup::MODE_IMPORT, $USER->id, backup::TARGET_NEW_COURSE);
+        $this->assertTrue($rc->execute_precheck());
+        $rc->execute_plan();
+        $rc->destroy();
+
+        $newcontext = \context_course::instance($newcourse->id);
+        $restored = $this->find_restored_options($newcontext->id);
+        $this->assertNotNull($restored);
+        $this->assertEquals('project', $restored->scenario);
+        $this->assertEquals('main.cpp', $restored->entryfile);
+        $files = \qtype_codeatelier\judge\project_packager::decode_files($restored->projectfiles);
+        $this->assertSame(array('main.cpp', 'helper.h'), array_keys($files));
+    }
+
     /**
      * Find the CodeAtelier options row whose question lives in the given context.
      *
