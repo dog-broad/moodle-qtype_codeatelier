@@ -37,6 +37,8 @@ import {go} from '@codemirror/lang-go';
 import {rust} from '@codemirror/lang-rust';
 import {php} from '@codemirror/lang-php';
 import {csharp} from '@replit/codemirror-lang-csharp';
+import {html} from '@codemirror/lang-html';
+import {css} from '@codemirror/lang-css';
 import {highlightTree, classHighlighter} from '@lezer/highlight';
 
 /**
@@ -69,6 +71,11 @@ const languageExtension = (language) => {
             return php();
         case 'csharp':
             return csharp();
+        case 'html':
+            // The HTML grammar also highlights embedded <style> and <script>.
+            return html();
+        case 'css':
+            return css();
         default:
             return null;
     }
@@ -105,11 +112,12 @@ const languageFromClass = (className) => {
     }
     const name = match[1].toLowerCase();
     const alias = {py: 'python', js: 'javascript', node: 'javascript', ts: 'typescript',
-        'c++': 'cpp', 'c#': 'csharp', cs: 'csharp', golang: 'go', rs: 'rust', rb: 'ruby'};
+        'c++': 'cpp', 'c#': 'csharp', cs: 'csharp', golang: 'go', rs: 'rust', rb: 'ruby',
+        htm: 'html'};
     const resolved = alias[name] || name;
     // Highlight a prompt code block only for a language we have a grammar for.
     const known = ['python', 'sql', 'javascript', 'typescript', 'c', 'cpp', 'java',
-        'go', 'rust', 'php', 'csharp'];
+        'go', 'rust', 'php', 'csharp', 'html', 'css'];
     return known.indexOf(resolved) !== -1 ? resolved : null;
 };
 

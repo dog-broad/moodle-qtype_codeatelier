@@ -59,6 +59,13 @@ export default [
         plugins: [nodeResolve(), terser()],
     },
     {
+        // The web (frontend) scenario runtime: composes the file set and renders it
+        // in a sandboxed live-preview iframe. Self-contained (no plugin deps).
+        input: 'amd/src/webruntime.js',
+        output: {file: 'amd/build/webruntime.min.js', format: 'amd', sourcemap: true, sourcemapExcludeSources: true},
+        plugins: [nodeResolve(), terser()],
+    },
+    {
         // The controller depends on the other plugin modules as AMD modules
         // (kept external so CodeMirror is not duplicated into this bundle).
         input: 'amd/src/control.js',

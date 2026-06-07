@@ -30,7 +30,8 @@ import {create} from 'qtype_codeatelier/editor';
 /** @var {Object} file extension to CodeMirror highlighting language. */
 const EXT_LANGUAGE = {
     c: 'c', h: 'cpp', cpp: 'cpp', cc: 'cpp', cxx: 'cpp', hpp: 'cpp', hh: 'cpp',
-    java: 'java', py: 'python', js: 'javascript',
+    java: 'java', py: 'python', js: 'javascript', mjs: 'javascript', ts: 'typescript',
+    html: 'html', htm: 'html', css: 'css',
 };
 
 /**
@@ -91,9 +92,11 @@ const button = (label, onClick) => {
  * @param {HTMLTextAreaElement} answerTa the hidden answer field (the JSON store)
  * @param {Object} config the controller config
  * @param {Object} strings localised labels
+ * @param {Function} [onChange] called after every edit (the web scenario uses it
+ *     to refresh the live preview); receives no arguments.
  * @return {Object} {getValue, destroy} — getValue returns the canonical JSON
  */
-export const setup = (root, answerTa, config, strings) => {
+export const setup = (root, answerTa, config, strings, onChange) => {
     const readonly = !!config.readonly;
     let files = parseFiles(answerTa.value);
     if (!files || !files.length) {
@@ -115,6 +118,9 @@ export const setup = (root, answerTa, config, strings) => {
 
     const serialise = () => {
         answerTa.value = JSON.stringify(files.map((f) => ({name: f.name, content: f.content})));
+        if (typeof onChange === 'function') {
+            onChange();
+        }
     };
 
     const tablist = document.createElement('div');

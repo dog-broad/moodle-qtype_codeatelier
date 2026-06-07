@@ -60,9 +60,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
         $currentcode = $qa->get_last_qt_var('answer', '');
         if ($currentcode === '') {
-            // A project's starting answer is its starter file set (canonical JSON);
-            // other scenarios start from the chosen language's starter code.
-            $currentcode = ($scenario === 'project')
+            // A project or web question's starting answer is its starter file set
+            // (canonical JSON); other scenarios start from the chosen language's
+            // starter code.
+            $currentcode = ($scenario === 'project' || $scenario === 'web')
                     ? (string) $question->projectfiles
                     : (isset($startermap[$chosen]) ? $startermap[$chosen] : $this->starter_code($chosen));
         }
@@ -87,6 +88,12 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'checkerquery' => $test->checkerquery,
                 // Ship teacher feedback only for visible tests (hidden reveals nothing client-side).
                 'feedback' => ((int) $test->visibility === 1) ? $test->feedback : null,
+                // Web scenario: the DOM assertion (selector + property + matcher) and
+                // its optional interaction actions.
+                'selector' => $test->selector,
+                'assertproperty' => $test->assertproperty,
+                'assertmatcher' => $test->assertmatcher,
+                'actions' => $test->actions,
             );
         }
 
@@ -157,6 +164,8 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                     get_string('lang_' . $chosen, 'qtype_codeatelier')),
             'readonly' => $options->readonly,
             'isjudge' => $isjudge,
+            'isweb' => ($scenario === 'web'),
+            'previewlabel' => get_string('preview', 'qtype_codeatelier'),
             'judgenote' => $isjudge ? get_string('judgenote', 'qtype_codeatelier') : '',
             'judgereviewhtml' => $judgereviewhtml . $proctorreviewhtml,
             'proctorname' => $qa->get_qt_field_name('proctorlog'),
@@ -179,7 +188,8 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'scenario' => $scenario,
             'entrypoint' => $question->entrypoint,
             // The project scenario's entry/main file name (the default first file).
-            'entryfile' => $question->entryfile,
+            // The web scenario always renders index.html as the page root.
+            'entryfile' => ($scenario === 'web') ? 'index.html' : $question->entryfile,
             // Ship the schema for any SQL question so the client schema viewer
             // renders. A judge attempt has no Check button, so control.js never
             // wires client-side grading — the schema is the visible data, while the

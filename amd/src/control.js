@@ -29,6 +29,7 @@ import {run, describe, stop} from 'qtype_codeatelier/runner';
 import {grade} from 'qtype_codeatelier/grader';
 import {tokenDiff} from 'qtype_codeatelier/diff';
 import {setup as setupProjectFiles} from 'qtype_codeatelier/projectfiles';
+import {setupPreview, gradeWeb} from 'qtype_codeatelier/webruntime';
 
 /**
  * @param {String} value
@@ -428,6 +429,135 @@ const renderConsole = (element, result, config, strings) => {
 };
 
 /**
+ * Describe a DOM assertion in words, e.g. `#title · text equals "Todo"`.
+ *
+ * @param {Object} test the assertion row
+ * @param {Object} strings
+ * @return {String}
+ */
+const describeAssertion = (test, strings) => {
+    const sel = test.selector || '';
+    const prop = test.assertproperty || 'text';
+    if (prop === 'exists') {
+        const absent = /^(false|0|no)$/i.test(String(test.expected || '').trim());
+        return sel + ' ' + (absent ? (strings.assertabsent || 'is absent') : (strings.assertexists || 'exists'));
+    }
+    const matcher = test.assertmatcher || 'equals';
+    const expected = (test.expected === null || test.expected === undefined) ? '' : test.expected;
+    return sel + ' · ' + prop + ' ' + matcher + ' ' + JSON.stringify(String(expected));
+};
+
+/**
+ * Render the web question's visible assertions as the upfront "checks" list.
+ *
+ * @param {HTMLElement} element
+ * @param {Object} config
+ * @param {Object} strings
+ */
+const renderWebExamples = (element, config, strings) => {
+    element.textContent = '';
+    const tests = config.tests || [];
+    const visible = tests.filter((t) => Number(t.visibility) === 1);
+    const hidden = tests.length - visible.length;
+    if (visible.length) {
+        const heading = document.createElement('p');
+        heading.className = 'codeatelier-examples-heading';
+        heading.textContent = strings.checks || 'What is checked';
+        element.appendChild(heading);
+    }
+    visible.forEach((test, i) => {
+        const block = document.createElement('div');
+        block.className = 'codeatelier-example';
+        const title = document.createElement('span');
+        title.className = 'codeatelier-block-label';
+        title.textContent = (strings.check || 'Check') + ' ' + (i + 1);
+        block.appendChild(title);
+        addBlock(block, strings.assertexpect || 'Expect', describeAssertion(test, strings));
+        if (test.actions && String(test.actions).trim()) {
+            addBlock(block, strings.assertafter || 'After doing', String(test.actions));
+        }
+        element.appendChild(block);
+    });
+    if (hidden) {
+        const note = document.createElement('p');
+        note.className = 'codeatelier-hidden-note';
+        note.textContent = hidden + ' ' + (strings.hidden || 'hidden') + (hidden === 1 ? '' : 's');
+        element.appendChild(note);
+    }
+};
+
+/**
+ * Render the diagnostic feedback for a web Check: per-assertion pass/fail with
+ * the expected check and the actual value; hidden assertions stay pass/fail only.
+ *
+ * @param {HTMLElement} element
+ * @param {Object} graded from gradeWeb
+ * @param {Object} config
+ * @param {Object} strings
+ * @param {Function} [highlight] called with a selector to outline it in the preview
+ */
+const renderWebFeedback = (element, graded, config, strings, highlight) => {
+    element.textContent = '';
+    const pct = Math.round(graded.fraction * 1000) / 10;
+    const header = document.createElement('p');
+    header.className = 'codeatelier-score codeatelier-verdict-' + graded.verdict;
+    header.textContent = (strings.score || 'Score') + ': ' + pct + '% (' + graded.verdict + ')';
+    element.appendChild(header);
+
+    let firstfailureopen = false;
+    let hiddenpassed = 0;
+    let hiddentotal = 0;
+    graded.testresults.forEach((tr, index) => {
+        if (!Number(tr.visibility)) {
+            hiddentotal++;
+            if (tr.passed) {
+                hiddenpassed++;
+            }
+            return;
+        }
+        const test = config.tests[index] || {};
+        const details = document.createElement('details');
+        details.className = 'codeatelier-feedback ' + (tr.passed ? 'codeatelier-pass' : 'codeatelier-fail');
+        if (!tr.passed && !firstfailureopen) {
+            details.open = true;
+            firstfailureopen = true;
+        }
+        const summary = document.createElement('summary');
+        summary.textContent = (strings.check || 'Check') + ' ' + (index + 1) + ': '
+            + (tr.passed ? (strings.pass || 'passed') : (strings.fail || 'failed'));
+        details.appendChild(summary);
+
+        const body = document.createElement('div');
+        body.className = 'codeatelier-feedback-body';
+        addBlock(body, strings.assertexpect || 'Expect', describeAssertion(test, strings));
+        if (!tr.passed) {
+            const got = (tr.actual === null || tr.actual === undefined)
+                ? (strings.assertnotfound || '(element not found)') : String(tr.actual);
+            addBlock(body, strings.got || 'Got', got);
+            if (highlight && test.selector) {
+                const hl = document.createElement('button');
+                hl.type = 'button';
+                hl.className = 'btn btn-link btn-sm codeatelier-highlight';
+                hl.textContent = strings.showinpreview || 'Show in preview';
+                hl.addEventListener('click', () => highlight(test.selector));
+                body.appendChild(hl);
+            }
+        }
+        if (test.feedback) {
+            addBlock(body, strings.teacherfeedback || 'Feedback', String(test.feedback));
+        }
+        details.appendChild(body);
+        element.appendChild(details);
+    });
+    if (hiddentotal) {
+        const note = document.createElement('p');
+        note.className = 'codeatelier-hidden-note';
+        note.textContent = (strings.hidden || 'Hidden') + ': ' + hiddenpassed + '/' + hiddentotal;
+        element.appendChild(note);
+    }
+};
+
+/**
  * Initialise a CodeAtelier question.
  *
  * @param {Object} config
@@ -455,6 +585,74 @@ export const init = (config) => {
     const scratchinput = root.querySelector('[data-role="scratch"]');
     const scratchlabel = root.querySelector('[data-role="scratchlabel"]');
     const strings = config.strings || {};
+
+    // The web (frontend) scenario is a file-set editor next to a sandboxed live
+    // preview, graded by DOM assertions in the frame. It wires its own panels and
+    // returns rather than falling through the code-runner (stdin) controls.
+    if (config.scenario === 'web') {
+        const previewel = root.querySelector('[data-role="preview"]');
+        const preview = previewel ? setupPreview(previewel, textarea, config, strings) : null;
+        // Editing clears the last Check score (it no longer matches the page).
+        const webStale = () => {
+            if (scoreinput) {
+                scoreinput.value = '';
+            }
+            if (resultsel && resultsel.textContent.trim()) {
+                resultsel.textContent = '';
+                const note = document.createElement('p');
+                note.className = 'codeatelier-stale';
+                note.textContent = strings.stale
+                    || 'You have edited your files since the last check — Check again.';
+                resultsel.appendChild(note);
+            }
+        };
+        const webeditor = setupProjectFiles(root, textarea, config, strings, () => {
+            if (preview) {
+                preview.scheduleRefresh();
+            }
+            webStale();
+        });
+        if (skeleton) {
+            skeleton.style.display = 'none';
+        }
+        if (examplesel) {
+            renderWebExamples(examplesel, config, strings);
+        }
+        if (config.readonly || !checkbutton) {
+            return;
+        }
+        checkbutton.addEventListener('click', () => {
+            checkbutton.disabled = true;
+            statusel.textContent = strings.running || 'Running…';
+            resultsel.textContent = '';
+            let files = [];
+            try {
+                files = JSON.parse(webeditor.getValue() || '[]');
+            } catch (e) {
+                files = [];
+            }
+            gradeWeb(files, config.tests, {allOrNothing: config.allornothing})
+                .then((graded) => {
+                    if (scoreinput) {
+                        scoreinput.value = graded.fraction;
+                    }
+                    renderWebFeedback(resultsel, graded, config, strings,
+                        preview ? (sel) => preview.highlight(sel) : null);
+                })
+                .catch((err) => {
+                    resultsel.textContent = '';
+                    const para = document.createElement('p');
+                    para.className = 'codeatelier-runerror';
+                    para.textContent = (strings.runerror || 'Could not run the checks') + ' (' + String(err) + ')';
+                    resultsel.appendChild(para);
+                })
+                .then(() => {
+                    checkbutton.disabled = false;
+                    statusel.textContent = '';
+                });
+        });
+        return;
+    }
 
     if (examplesel) {
         renderExamples(examplesel, config, strings);

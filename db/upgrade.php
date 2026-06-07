@@ -206,5 +206,23 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026062701, 'qtype', 'codeatelier');
     }
 
+    if ($oldversion < 2026062711) {
+        // Web scenario: per-test-case DOM assertion (selector, property, matcher)
+        // and optional interaction actions, on the test-case table.
+        $table = new xmldb_table('qtype_codeatelier_tests');
+        $fields = array(
+            new xmldb_field('selector', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'feedback'),
+            new xmldb_field('assertproperty', XMLDB_TYPE_CHAR, '64', null, null, null, null, 'selector'),
+            new xmldb_field('assertmatcher', XMLDB_TYPE_CHAR, '32', null, null, null, null, 'assertproperty'),
+            new xmldb_field('actions', XMLDB_TYPE_TEXT, null, null, null, null, null, 'assertmatcher'),
+        );
+        foreach ($fields as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+        upgrade_plugin_savepoint(true, 2026062711, 'qtype', 'codeatelier');
+    }
+
     return true;
 }

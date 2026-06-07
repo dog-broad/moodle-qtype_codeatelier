@@ -131,13 +131,19 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 array('rows' => 10, 'cols' => 60, 'spellcheck' => 'false', 'id' => 'id_projectfiles'));
         $mform->setType('projectfiles', PARAM_RAW);
         $mform->addHelpButton('projectfiles', 'projectfilesform', 'qtype_codeatelier');
-        $mform->hideIf('projectfiles', 'scenario', 'neq', 'project');
+        // The starter file set drives the project (multi-file build) and web
+        // (frontend) scenarios; the single-file scenarios do not use it.
+        $mform->hideIf('projectfiles', 'scenario', 'eq', 'stdinstdout');
+        $mform->hideIf('projectfiles', 'scenario', 'eq', 'function');
+        $mform->hideIf('projectfiles', 'scenario', 'eq', 'sql');
 
-        // Single-file starter code does not apply to a multi-file project.
+        // Single-file starter code does not apply to a file-set (project or web) question.
         $mform->hideIf('startercode', 'scenario', 'eq', 'project');
-        // A project allows a single language and authors its files directly, so the
+        $mform->hideIf('startercode', 'scenario', 'eq', 'web');
+        // These scenarios author their files directly in a single language, so the
         // language set and single-field reference solution do not apply.
         $mform->hideIf('languages', 'scenario', 'eq', 'project');
+        $mform->hideIf('languages', 'scenario', 'eq', 'web');
 
         // A reference solution (in the primary language). The authoring JS can run
         // it to capture the Expected outputs and to validate the question; on the
@@ -148,6 +154,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->addHelpButton('referencesolution', 'referencesolution', 'qtype_codeatelier');
         // For a project the reference is a complete file SET (a second file-tab editor
         // the authoring JS mounts on this field) used for capture and validate-on-save.
+        // A web (frontend) question grades against DOM assertions, not a reference run.
+        $mform->hideIf('referencesolution', 'scenario', 'eq', 'web');
 
         // Support/data files: judge tier only. They are placed in the working
         // directory next to the program so it can read them at run time.
@@ -273,6 +281,16 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 get_string('input', 'qtype_codeatelier'), array('rows' => 3, 'cols' => 60));
         $repeated[] = $mform->createElement('textarea', 'testexpected',
                 get_string('expected', 'qtype_codeatelier'), array('rows' => 3, 'cols' => 60));
+        // Web scenario: one DOM assertion per row (selector + property + matcher),
+        // with the value compared in the Expected field above. Shown only for web.
+        $repeated[] = $mform->createElement('text', 'selector',
+                get_string('assertselector', 'qtype_codeatelier'), array('size' => 40));
+        $repeated[] = $mform->createElement('text', 'assertproperty',
+                get_string('assertproperty', 'qtype_codeatelier'), array('size' => 24));
+        $repeated[] = $mform->createElement('select', 'assertmatcher',
+                get_string('assertmatcher', 'qtype_codeatelier'), $this->assertmatcher_options());
+        $repeated[] = $mform->createElement('textarea', 'actions',
+                get_string('assertactions', 'qtype_codeatelier'), array('rows' => 2, 'cols' => 60));
         $repeated[] = $mform->createElement('select', 'matchmode',
                 get_string('matchmode', 'qtype_codeatelier'), $this->matchmode_options());
         $repeated[] = $mform->createElement('text', 'tolerance',
@@ -293,15 +311,28 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // weight is author-entered and checked in validation().
         $repeatedoptions = array();
         $repeatedoptions['testinput']['type'] = PARAM_RAW;
+        // The stdin input is not used by a web (DOM-assertion) question.
+        $repeatedoptions['testinput']['hideif'] = array('scenario', 'eq', 'web');
         $repeatedoptions['testexpected']['type'] = PARAM_RAW;
         $repeatedoptions['matchmode']['type'] = PARAM_ALPHANUMEXT;
+        $repeatedoptions['matchmode']['hideif'] = array('scenario', 'eq', 'web');
         $repeatedoptions['tolerance']['type'] = PARAM_RAW_TRIMMED;
         $repeatedoptions['tolerance']['disabledif'] = array('matchmode', 'neq', 'float');
+        $repeatedoptions['tolerance']['hideif'] = array('scenario', 'eq', 'web');
         $repeatedoptions['testweight']['type'] = PARAM_RAW_TRIMMED;
         $repeatedoptions['testvisibility']['type'] = PARAM_INT;
         $repeatedoptions['checkerquery']['type'] = PARAM_RAW;
         $repeatedoptions['checkerquery']['hideif'] = array('scenario', 'neq', 'sql');
         $repeatedoptions['testfeedback']['type'] = PARAM_RAW;
+        // Web assertion fields: shown only for the web scenario.
+        $repeatedoptions['selector']['type'] = PARAM_RAW_TRIMMED;
+        $repeatedoptions['selector']['hideif'] = array('scenario', 'neq', 'web');
+        $repeatedoptions['assertproperty']['type'] = PARAM_RAW_TRIMMED;
+        $repeatedoptions['assertproperty']['hideif'] = array('scenario', 'neq', 'web');
+        $repeatedoptions['assertmatcher']['type'] = PARAM_ALPHA;
+        $repeatedoptions['assertmatcher']['hideif'] = array('scenario', 'neq', 'web');
+        $repeatedoptions['actions']['type'] = PARAM_RAW;
+        $repeatedoptions['actions']['hideif'] = array('scenario', 'neq', 'web');
 
         if (!empty($this->question->options->tests)) {
             $repeats = count($this->question->options->tests);
@@ -322,6 +353,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'function' => get_string('scenario_function', 'qtype_codeatelier'),
             'sql' => get_string('scenario_sql', 'qtype_codeatelier'),
             'project' => get_string('scenario_project', 'qtype_codeatelier'),
+            'web' => get_string('scenario_web', 'qtype_codeatelier'),
         );
     }
 
@@ -392,6 +424,34 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         );
     }
 
+    /**
+     * The matchers a web DOM assertion can use to compare the property value.
+     *
+     * @return array matcher code => display name
+     */
+    protected function assertmatcher_options() {
+        return array(
+            'equals' => get_string('assertmatch_equals', 'qtype_codeatelier'),
+            'contains' => get_string('assertmatch_contains', 'qtype_codeatelier'),
+            'regex' => get_string('assertmatch_regex', 'qtype_codeatelier'),
+        );
+    }
+
+    /**
+     * Whether a web DOM-assertion property is one the interpreter understands:
+     * text, exists, count, or attr:<name> / style:<property>.
+     *
+     * @param string $property
+     * @return bool
+     */
+    protected static function valid_assert_property($property) {
+        $property = trim((string) $property);
+        if (in_array($property, array('text', 'exists', 'count'), true)) {
+            return true;
+        }
+        return (bool) preg_match('/^(attr|style):\S+/', $property);
+    }
+
     protected function data_preprocessing($question) {
         $question = parent::data_preprocessing($question);
 
@@ -418,6 +478,10 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $question->testvisibility = array();
         $question->checkerquery = array();
         $question->testfeedback = array();
+        $question->selector = array();
+        $question->assertproperty = array();
+        $question->assertmatcher = array();
+        $question->actions = array();
 
         foreach (array_values($question->options->tests) as $i => $test) {
             $question->testinput[$i] = $test->input;
@@ -428,6 +492,10 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             $question->testvisibility[$i] = $test->visibility;
             $question->checkerquery[$i] = $test->checkerquery;
             $question->testfeedback[$i] = $test->feedback;
+            $question->selector[$i] = $test->selector;
+            $question->assertproperty[$i] = $test->assertproperty;
+            $question->assertmatcher[$i] = $test->assertmatcher;
+            $question->actions[$i] = $test->actions;
         }
 
         return $question;
@@ -509,6 +577,12 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                         || !\qtype_codeatelier\judge\project_packager::supports($allowed[0])) {
                     $errors['language'] = get_string('projectlanguageset', 'qtype_codeatelier');
                 }
+            } else if ($scenario === 'web') {
+                // Web (frontend) questions run in the browser, so they are practice
+                // tier only (the secure frontend tier is a separate milestone).
+                if ($tier !== 'practice') {
+                    $errors['scenario'] = get_string('webpracticeonly', 'qtype_codeatelier');
+                }
             }
         }
 
@@ -525,6 +599,24 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 } else if (!array_key_exists($entry, $files)) {
                     $errors['entryfile'] = get_string('entryfilemissing', 'qtype_codeatelier');
                 }
+            }
+        }
+
+        // A web question must carry a starter file set with an HTML page to render.
+        if ($scenario === 'web') {
+            $files = \qtype_codeatelier\judge\project_packager::decode_files(
+                    isset($data['projectfiles']) ? (string) $data['projectfiles'] : '');
+            $hashtml = false;
+            foreach (array_keys($files) as $name) {
+                if (preg_match('/\.html?$/i', $name)) {
+                    $hashtml = true;
+                    break;
+                }
+            }
+            if (!$files) {
+                $errors['projectfiles'] = get_string('projectfilesempty', 'qtype_codeatelier');
+            } else if (!$hashtml) {
+                $errors['projectfiles'] = get_string('webnohtml', 'qtype_codeatelier');
             }
         }
 
@@ -550,7 +642,24 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         }
 
         $count = 0;
+        $isweb = ($scenario === 'web');
         foreach ($data['testinput'] as $key => $input) {
+            if ($isweb) {
+                // A web row is a DOM assertion keyed by its selector.
+                $selector = isset($data['selector'][$key]) ? trim((string) $data['selector'][$key]) : '';
+                if ($selector === '') {
+                    continue;
+                }
+                $count++;
+                if (trim($data['testweight'][$key]) === '' || !is_numeric($data['testweight'][$key])) {
+                    $errors["testweight[$key]"] = get_string('weightnumeric', 'qtype_codeatelier');
+                }
+                $property = isset($data['assertproperty'][$key]) ? trim((string) $data['assertproperty'][$key]) : '';
+                if (!self::valid_assert_property($property)) {
+                    $errors["assertproperty[$key]"] = get_string('assertpropertyinvalid', 'qtype_codeatelier');
+                }
+                continue;
+            }
             $expected = $data['testexpected'][$key];
             if (trim($input) === '' && trim($expected) === '') {
                 continue;
@@ -568,8 +677,14 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             }
         }
 
+        // Every gradable question needs at least one test case (a web question, at
+        // least one DOM assertion).
         if ($count === 0) {
-            $errors['testinput[0]'] = get_string('notenoughtests', 'qtype_codeatelier');
+            if ($isweb) {
+                $errors['selector[0]'] = get_string('noassertions', 'qtype_codeatelier');
+            } else {
+                $errors['testinput[0]'] = get_string('notenoughtests', 'qtype_codeatelier');
+            }
         }
 
         // Validate-on-save: a judge-tier reference solution must pass every test or
