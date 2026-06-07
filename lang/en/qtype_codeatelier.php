@@ -75,6 +75,7 @@ $string['practicenote'] = 'Your code runs in your browser for instant practice f
 $string['running'] = 'Running…';
 $string['preparingruntime'] = 'Preparing the runtime… (first run only)';
 $string['runerror'] = 'Your code could not be run';
+$string['compileoutputlabel'] = 'What the compiler reported:';
 $string['result_score'] = 'Score';
 $string['result_call'] = 'Call';
 $string['result_got'] = 'Got';
