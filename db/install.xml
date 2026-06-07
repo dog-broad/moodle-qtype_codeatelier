@@ -42,6 +42,10 @@
         <FIELD NAME="visibility" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="1 shown to students, 0 hidden (polite-hidden in the practice tier)."/>
         <FIELD NAME="checkerquery" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="SQL scenario: query run after the student's statements to verify a mutation; empty means compare the student query's own result set."/>
         <FIELD NAME="feedback" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Optional teacher feedback shown for this test case (visible tests only)."/>
+        <FIELD NAME="selector" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: the CSS selector this DOM assertion targets."/>
+        <FIELD NAME="assertproperty" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: the property checked - text, exists, count, attr:NAME or style:PROP."/>
+        <FIELD NAME="assertmatcher" TYPE="char" LENGTH="32" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: how expected is compared - equals, contains or regex."/>
+        <FIELD NAME="actions" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: optional interaction steps run before the assertion (click/type), one per line."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
