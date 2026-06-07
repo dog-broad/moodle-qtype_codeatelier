@@ -135,9 +135,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
         $mform->setType('referencesolution', PARAM_RAW);
         $mform->addHelpButton('referencesolution', 'referencesolution', 'qtype_codeatelier');
-        // A multi-file project has no single-field reference (the file set is authored
-        // directly); run-to-capture / validate-on-save for projects is not yet wired.
-        $mform->hideIf('referencesolution', 'scenario', 'eq', 'project');
+        // For a project the reference is a complete file SET (a second file-tab editor
+        // the authoring JS mounts on this field) used for capture and validate-on-save.
 
         // Support/data files: judge tier only. They are placed in the working
         // directory next to the program so it can read them at run time.
@@ -546,9 +545,13 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // Skip when the question uses data files: validate-on-save runs the reference
         // through Judge0 but cannot package the not-yet-saved draft files, so it
         // would wrongly fail a reference that reads them.
+        // For a project the reference is a file set; only validate when it has real
+        // content (the file-tab editor seeds an empty default that must not block).
+        $hasreference = ($scenario === 'project')
+                ? self::project_reference_has_content($data['referencesolution'] ?? '')
+                : (trim((string) ($data['referencesolution'] ?? '')) !== '');
         if ($tier === 'judge' && $count > 0 && !isset($errors['languages'])
-                && trim((string) ($data['referencesolution'] ?? '')) !== ''
-                && !$this->has_draft_data_files($data)) {
+                && $hasreference && !$this->has_draft_data_files($data)) {
             $errors = $this->validate_reference($data, $errors);
         }
 
@@ -577,6 +580,22 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         return !empty($info['filecount']);
     }
 
+    /**
+     * Whether a project reference file set carries any real code (the file-tab
+     * editor seeds an empty default that should not trigger validate-on-save).
+     *
+     * @param string $json the reference file set (canonical JSON)
+     * @return bool
+     */
+    protected static function project_reference_has_content($json) {
+        foreach (\qtype_codeatelier\judge\project_packager::decode_files((string) $json) as $content) {
+            if (trim((string) $content) !== '') {
+                return true;
+            }
+        }
+        return false;
+    }
+
     protected function validate_reference($data, $errors) {
         question_bank::load_question_definition_classes('codeatelier');
         $question = new qtype_codeatelier_question();
@@ -584,6 +603,9 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $question->tier = 'judge';
         $question->scenario = $data['scenario'];
         $question->schemasql = ($data['scenario'] === 'sql') ? ($data['schemasql'] ?? '') : null;
+        // The project reference is a file set; its entry file drives the build.
+        $question->entryfile = ($data['scenario'] === 'project' && isset($data['entryfile']))
+                ? trim((string) $data['entryfile']) : null;
         $question->cputimelimit = (isset($data['cputimelimit']) && trim($data['cputimelimit']) !== '')
                 ? (float) $data['cputimelimit'] : null;
         $question->memorylimit = (isset($data['memorylimit']) && trim($data['memorylimit']) !== '')

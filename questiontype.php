@@ -53,6 +53,21 @@ class qtype_codeatelier extends question_type {
         return array('subdirs' => 1, 'maxfiles' => 20, 'maxbytes' => 1048576, 'accepted_types' => '*');
     }
 
+    /**
+     * Whether a project file set (canonical JSON) carries any non-empty file.
+     *
+     * @param string $json the file set
+     * @return bool
+     */
+    protected static function project_files_have_content($json) {
+        foreach (\qtype_codeatelier\judge\project_packager::decode_files((string) $json) as $content) {
+            if (trim((string) $content) !== '') {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public function extra_question_fields() {
         return array('qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint',
                 'startercode', 'schemasql', 'cputimelimit', 'memorylimit', 'languages', 'starters',
@@ -105,10 +120,13 @@ class qtype_codeatelier extends question_type {
         }
         $question->starters = $starters ? json_encode($starters) : null;
 
-        // The reference solution is a scalar; store null when blank.
-        $question->referencesolution = (isset($question->referencesolution)
-                && trim((string) $question->referencesolution) !== '')
-                ? (string) $question->referencesolution : null;
+        // The reference solution is a scalar (or, for a project, a JSON file set);
+        // store null when blank, or when a project's reference file set is empty
+        // (its file-tab editor seeds an empty default we should not persist).
+        $reference = isset($question->referencesolution) ? (string) $question->referencesolution : '';
+        $isemptyproject = (($question->scenario ?? '') === 'project')
+                && !self::project_files_have_content($reference);
+        $question->referencesolution = (trim($reference) !== '' && !$isemptyproject) ? $reference : null;
 
         $question->allornothing = !empty($question->allornothing) ? 1 : 0;
 
