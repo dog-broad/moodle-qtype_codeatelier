@@ -35,7 +35,7 @@ defined('MOODLE_INTERNAL') || die();
 class result_cache {
 
     /** @var int the result-blob shape version; bump to invalidate older cached entries. */
-    const BLOB_VERSION = 7;
+    const BLOB_VERSION = 8;
 
     /**
      * The cache key for a submission: a hash over everything that can change the
@@ -70,6 +70,11 @@ class result_cache {
                 (string) $test->visibility,
                 // The checker query is part of what runs for a SQL mutation test.
                 isset($test->checkerquery) ? (string) $test->checkerquery : '',
+                // The web (DOM-assertion) fields: changing any of them changes the result.
+                isset($test->selector) ? (string) $test->selector : '',
+                isset($test->assertproperty) ? (string) $test->assertproperty : '',
+                isset($test->assertmatcher) ? (string) $test->assertmatcher : '',
+                isset($test->actions) ? (string) $test->actions : '',
             ];
         }
         return sha1(json_encode([self::BLOB_VERSION, $language, $code, $signature, $limits, $schemasql,

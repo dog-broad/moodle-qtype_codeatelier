@@ -93,6 +93,9 @@ class qtype_codeatelier_question extends question_graded_automatically {
     /** @var \qtype_codeatelier\judge\judge0_runner|null injected runner; null means build from config. */
     public $judgerunner = null;
 
+    /** @var \qtype_codeatelier\judge\web_judge_runner|null injected web-judge runner; null means build from config. */
+    public $webjudgerunner = null;
+
     public function get_expected_data() {
         // The student's chosen language is a per-attempt response variable (a
         // question may allow a set of languages). It is re-validated server-side
@@ -196,6 +199,10 @@ class qtype_codeatelier_question extends question_graded_automatically {
                 $files = $this->project_files_from_response($response);
                 $entry = (string) $this->entryfile;
                 return isset($files[$entry]) && trim($files[$entry]) !== '';
+            }
+            if ($this->scenario === 'web') {
+                // A web answer is gradable once it carries a file set.
+                return !empty($this->project_files_from_response($response));
             }
             // The grade is computed on the server, so any non-empty code is gradable.
             return array_key_exists('answer', $response) && trim((string) $response['answer']) !== '';
@@ -341,6 +348,9 @@ class qtype_codeatelier_question extends question_graded_automatically {
      * @return array|null the grading result (see judge_grader::grade), or null if no endpoint is configured
      */
     public function get_judge_result($code, $language = null) {
+        if ($this->scenario === 'web') {
+            return $this->get_web_judge_result($code);
+        }
         $runner = $this->judge_runner();
         if ($runner === null) {
             return null;
@@ -362,6 +372,57 @@ class qtype_codeatelier_question extends question_graded_automatically {
         $result = $grader->grade((string) $code, $language, $this->tests, $schemasql, $allornothing,
                 (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature,
                 (string) $this->entryfile);
+        if (empty($result['infrastructure'])) {
+            \qtype_codeatelier\judge\result_cache::put($hash, $result);
+        }
+        return $result;
+    }
+
+    /**
+     * The configured web-judge runner, or the test-injected one.
+     *
+     * @return \qtype_codeatelier\judge\web_judge_runner|null null if no endpoint is configured
+     */
+    public function web_judge_runner() {
+        if ($this->webjudgerunner !== null) {
+            return $this->webjudgerunner;
+        }
+        return \qtype_codeatelier\judge\web_judge_runner::from_config();
+    }
+
+    /**
+     * The content-cache key for a web (frontend) submission. The verdict depends
+     * only on the file set + the assertions (carried in the test signature) +
+     * all-or-nothing; there are no sandbox limits, so they are empty.
+     *
+     * @param string $code the canonical file-set JSON
+     * @return string
+     */
+    protected function web_cache_key($code) {
+        return \qtype_codeatelier\judge\result_cache::key(
+                'javascript', (string) $code, $this->tests, array(), '', !empty($this->allornothing),
+                '', 'web', '', '', '');
+    }
+
+    /**
+     * Grade a web answer authoritatively via the web-judge service, memoised.
+     * May make a network call on a cache miss — not for a render path.
+     *
+     * @param string $code the canonical file-set JSON
+     * @return array|null the grading result, or null if no endpoint is configured
+     */
+    protected function get_web_judge_result($code) {
+        $runner = $this->web_judge_runner();
+        if ($runner === null) {
+            return null;
+        }
+        $hash = $this->web_cache_key($code);
+        $cached = \qtype_codeatelier\judge\result_cache::get($hash);
+        if ($cached !== null) {
+            return $cached;
+        }
+        $grader = new \qtype_codeatelier\judge\web_judge_grader($runner);
+        $result = $grader->grade((string) $code, $this->tests, !empty($this->allornothing));
         if (empty($result['infrastructure'])) {
             \qtype_codeatelier\judge\result_cache::put($hash, $result);
         }
@@ -430,6 +491,9 @@ class qtype_codeatelier_question extends question_graded_automatically {
      * @return array|null
      */
     public function cached_judge_result($code, $language = null) {
+        if ($this->scenario === 'web') {
+            return \qtype_codeatelier\judge\result_cache::get($this->web_cache_key($code));
+        }
         $limits = $this->judge_limits($this->judge_runner());
         $hash = \qtype_codeatelier\judge\result_cache::key(
                 $this->resolve_language($language), (string) $code, $this->tests, $limits,

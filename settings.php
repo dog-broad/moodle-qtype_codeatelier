@@ -93,6 +93,27 @@ if ($ADMIN->fulltree) {
         '30',
         PARAM_INT
     ));
+
+    $settings->add(new admin_setting_heading(
+        'qtype_codeatelier/webjudgeheading',
+        get_string('webjudgeheading', 'qtype_codeatelier'),
+        get_string('webjudgeheading_desc', 'qtype_codeatelier')
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'qtype_codeatelier/webjudgebaseurl',
+        get_string('webjudgebaseurl', 'qtype_codeatelier'),
+        get_string('webjudgebaseurl_desc', 'qtype_codeatelier'),
+        '',
+        PARAM_URL
+    ));
+
+    $settings->add(new admin_setting_configpasswordunmask(
+        'qtype_codeatelier/webjudgetoken',
+        get_string('webjudgetoken', 'qtype_codeatelier'),
+        get_string('webjudgetoken_desc', 'qtype_codeatelier'),
+        ''
+    ));
 }
 
 // A read-only diagnostics page: Judge0 health, needs-grading queue depth, cache size.

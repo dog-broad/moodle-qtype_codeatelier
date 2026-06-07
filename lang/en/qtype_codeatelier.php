@@ -52,6 +52,12 @@ $string['runexamplescooldown'] = 'Run-examples cooldown (seconds)';
 $string['runexamplescooldown_desc'] = 'The minimum number of seconds a student must wait between "run against examples" requests, which run on the server. Throttles on-demand server load; the official grading at submit is unaffected. Set to 0 to disable the cooldown.';
 $string['judgecacheretention'] = 'Grading cache retention (days)';
 $string['judgecacheretention_desc'] = 'How long saved Secure-mode grading results are kept before a daily cleanup task removes them. The cache only speeds up review and regrade; a removed entry is recomputed when next needed. Set to 0 to keep entries forever.';
+$string['webjudgeheading'] = 'Secure mode for web pages (headless browser)';
+$string['webjudgeheading_desc'] = 'Web-page questions in Secure mode are graded by a self-hosted headless-browser service that renders the student\'s page and checks it where the student cannot see or change the result. Leave the URL empty to disable Secure mode for web-page questions.';
+$string['webjudgebaseurl'] = 'Web-judge service URL';
+$string['webjudgebaseurl_desc'] = 'Base URL of the web-judge service the server sends web-page submissions to, for example http://webjudge.example.org:4400. Run the codeatelier-webjudge service on a private host. Leave empty until it is available.';
+$string['webjudgetoken'] = 'Web-judge auth token';
+$string['webjudgetoken_desc'] = 'Optional shared token sent with each grading request (matches the service\'s WEBJUDGE_TOKEN). Leave empty if the service needs no authentication.';
 
 // Student attempt UI.
 $string['answerlabel'] = 'Your code';
@@ -126,6 +132,8 @@ $string['status_metric'] = 'Metric';
 $string['status_value'] = 'Value';
 $string['status_endpoint'] = 'Judge0 endpoint';
 $string['status_endpointnotset'] = 'Not configured';
+$string['status_webendpoint'] = 'Web-judge endpoint';
+$string['status_webhealth'] = 'Web-judge health';
 $string['status_health'] = 'Judge0 health';
 $string['status_reachable'] = 'Reachable (version {$a})';
 $string['status_unreachable'] = 'Unreachable: {$a}';
@@ -223,7 +231,6 @@ $string['scenario_sql'] = 'SQL (query a database)';
 $string['scenario_project'] = 'Project (multi-file program)';
 $string['scenario_web'] = 'Web page (HTML / CSS / JavaScript)';
 $string['preview'] = 'Live preview';
-$string['webpracticeonly'] = 'Web page questions run in the browser, so they must use Practice mode.';
 $string['webnohtml'] = 'Add an HTML file (for example index.html) — it is the page the preview renders.';
 $string['noassertions'] = 'Add at least one check (a CSS selector and what to check).';
 

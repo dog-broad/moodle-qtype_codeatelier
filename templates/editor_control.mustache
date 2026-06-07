@@ -81,12 +81,19 @@
             <div class="codeatelier-preview-host" data-role="preview"></div>
         </div>
         {{^readonly}}
+        {{^isjudge}}
         <div class="codeatelier-actions">
             <button type="button" class="btn btn-primary" data-role="check">{{checklabel}}</button>
             <span class="codeatelier-status" data-role="status" role="status" aria-live="polite"></span>
         </div>
         <p class="codeatelier-practicenote small text-muted">{{practicenote}}</p>
         <div class="codeatelier-results" data-role="results" aria-live="polite"></div>
+        {{/isjudge}}
+        {{#isjudge}}
+        <p class="codeatelier-judgenote small text-muted">{{judgenote}}</p>
+        {{#proctornote}}<p class="codeatelier-proctornote small text-muted">{{proctornote}}</p>{{/proctornote}}
+        <input type="hidden" data-role="proctorlog" name="{{proctorname}}" value="{{proctorvalue}}">
+        {{/isjudge}}
         {{/readonly}}
         {{/isweb}}
         {{^readonly}}
