@@ -34,7 +34,8 @@ defined('MOODLE_INTERNAL') || die();
 class project_packager {
 
     /** @var string[] languages a project may be authored in (judge-tier only). */
-    const LANGUAGES = ['c', 'cpp', 'java', 'python', 'javascript'];
+    const LANGUAGES = ['c', 'cpp', 'java', 'python', 'javascript', 'go', 'rust', 'php',
+        'typescript', 'csharp', 'kotlin', 'ruby'];
 
     /**
      * Whether a language can be used for a multi-file project.
@@ -153,9 +154,69 @@ class project_packager {
                     'compile' => "#!/bin/sh\nexit 0\n",
                     'run' => "#!/bin/sh\nnode {$entry}\n",
                 ];
+            case 'go':
+                // Build every .go (all package main) into one binary; Go needs a
+                // writable cache/workspace in the box.
+                return [
+                    'compile' => "#!/bin/sh\n" . self::path_prepend('go-*')
+                        . "export GOCACHE=\$(pwd)/.gocache GOPATH=\$(pwd)/.go\ngo build -o a.out *.go\n",
+                    'run' => "#!/bin/sh\n./a.out\n",
+                ];
+            case 'rust':
+                // rustc compiles the modules the entry file declares with `mod`.
+                return [
+                    'compile' => "#!/bin/sh\n" . self::path_prepend('rust-*') . "rustc -O {$entry} -o a.out\n",
+                    'run' => "#!/bin/sh\n./a.out\n",
+                ];
+            case 'php':
+                return [
+                    'compile' => "#!/bin/sh\nexit 0\n",
+                    'run' => "#!/bin/sh\n" . self::path_prepend('php-*') . "php {$entry}\n",
+                ];
+            case 'typescript':
+                // Compile every .ts to CommonJS, then run the entry's emitted .js.
+                $entryjs = self::shell_arg(preg_replace('/\.ts$/', '', $entryfile) . '.js');
+                return [
+                    'compile' => "#!/bin/sh\ntsc --module commonjs --target es2019 *.ts\n",
+                    'run' => "#!/bin/sh\nnode {$entryjs}\n",
+                ];
+            case 'csharp':
+                // Mono: compile all .cs into one exe and run it.
+                return [
+                    'compile' => "#!/bin/sh\n" . self::path_prepend('mono-*') . "mcs -out:a.exe *.cs\n",
+                    'run' => "#!/bin/sh\n" . self::path_prepend('mono-*') . "mono a.exe\n",
+                ];
+            case 'kotlin':
+                // The entry file's JVM class name is its basename (first letter
+                // upper-cased) plus "Kt", e.g. Main.kt -> MainKt.
+                $ktbase = preg_replace('/\.kt$/', '', $entryfile);
+                $ktclass = self::shell_arg(ucfirst($ktbase) . 'Kt');
+                return [
+                    'compile' => "#!/bin/sh\n" . self::path_prepend('kotlin-*')
+                        . "kotlinc *.kt -include-runtime -d a.jar\n",
+                    'run' => "#!/bin/sh\njava -cp a.jar {$ktclass}\n",
+                ];
+            case 'ruby':
+                return [
+                    'compile' => "#!/bin/sh\nexit 0\n",
+                    'run' => "#!/bin/sh\n" . self::path_prepend('ruby-*') . "ruby {$entry}\n",
+                ];
             default:
                 throw new \coding_exception("Unsupported project language: {$language}");
         }
+    }
+
+    /**
+     * A shell snippet that prepends the first matching /usr/local/<glob>/bin to
+     * PATH, so a tool installed under Judge0's versioned layout is found without
+     * hardcoding a version. A no-op when nothing matches (the tool is already on
+     * PATH). See [D-260607-03].
+     *
+     * @param string $glob a directory glob under /usr/local, e.g. 'go-*'
+     * @return string the shell snippet (ends with a newline)
+     */
+    protected static function path_prepend(string $glob): string {
+        return "D=\$(ls -d /usr/local/{$glob}/bin 2>/dev/null | head -1); [ -n \"\$D\" ] && PATH=\"\$D:\$PATH\";\n";
     }
 
     /**
