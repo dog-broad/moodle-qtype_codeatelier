@@ -190,6 +190,8 @@ $string['tier_help'] = 'Where the student\'s code runs and how it is graded.
 **Judge (server sandbox)**: code is compiled and run on the server with enforced time and memory limits, and graded against tests that never leave the server. This is the authoritative, secure grading path; it adds compiled languages (C, C++, Java) and is always the standard input/output shape. Requires a configured Judge0 endpoint.';
 $string['tier_practice'] = 'Practice (in-browser, formative)';
 $string['tier_judge'] = 'Judge (server sandbox, authoritative)';
+$string['tierbadge_judge'] = 'Judge-secure — authoritative grading, hidden tests stay on the server';
+$string['tierbadge_practice'] = 'Practice-only — formative feedback, not secure for grades';
 $string['practicewarning'] = 'Practice tier: the grade is computed in the student\'s browser and can be altered by the student, so it is not secure. Use practice questions for formative practice only — never for graded or summative assessment. For authoritative grading, choose the judge tier.';
 
 // Authoring: language.
@@ -294,7 +296,8 @@ $string['limitpositive'] = 'Enter a positive number, or leave blank for the site
 $string['languagenotjudge'] = 'The judge tier supports C, C++, Java, Python and JavaScript. SQL is a practice-tier language.';
 $string['languagenotpractice'] = 'The practice tier supports Python, SQL and JavaScript. C, C++ and Java require the judge tier.';
 $string['sqlsinglelanguage'] = 'A SQL question is single-language: set Language to SQL and leave the allowed languages empty.';
-$string['functionlanguageset'] = 'A function-scenario question supports Python and JavaScript on the practice tier. On the judge tier it supports Python, JavaScript, Ruby, PHP, TypeScript (no signature), and Java, C++, Go, Rust, C#, Kotlin (with a typed signature).';
+$string['functionlanguageset'] = 'A function-scenario question supports Python and JavaScript on the practice tier. On the judge tier it supports Python, JavaScript, Ruby, PHP, TypeScript (no signature), and Java, C++, C, Go, Rust, C#, Kotlin (with a typed signature; C is scalar-only).';
+$string['signaturescalaronly'] = 'C functions support scalar parameters and returns only (int, long, double, bool, string) — not list or map types.';
 $string['projectjudgeonly'] = 'A multi-file project runs on the judge tier. Set the grading tier to Judge.';
 $string['projectlanguageset'] = 'A project is single-language: set Language to one of C, C++, Java, Python, JavaScript, Go, Rust, PHP, TypeScript, C#, Kotlin or Ruby, and leave the allowed languages empty.';
 $string['projectfilesempty'] = 'Add at least one project file.';

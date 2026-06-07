@@ -46,6 +46,11 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->addHelpButton('tier', 'tier', 'qtype_codeatelier');
         $mform->setDefault('tier', $this->get_default_value('tier', 'practice'));
 
+        // A trust badge: which grading tier is in effect (the authoring JS swaps the
+        // wording on a tier change). Judge = secure/authoritative; practice = formative.
+        $mform->addElement('static', 'tierbadge', '',
+                html_writer::span('', '', array('id' => 'id_tierbadge')));
+
         // Practice-tier grades are browser-computed and forgeable: warn the author
         // not to use this tier for graded assessment. Shown only for the practice tier.
         $mform->addElement('static', 'practicewarning', '',
@@ -212,6 +217,11 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'schemasqlid' => 'id_schemasql',
             'projectfilesid' => 'id_projectfiles',
             'entryfileid' => 'id_entryfile',
+            'tierbadgeid' => 'id_tierbadge',
+            'tierbadges' => array(
+                'judge' => get_string('tierbadge_judge', 'qtype_codeatelier'),
+                'practice' => get_string('tierbadge_practice', 'qtype_codeatelier'),
+            ),
             'questiontextid' => 'id_questiontext',
             'previewbtnid' => $previewid . '_btn',
             'captureid' => $previewid . '_capture',
@@ -465,6 +475,15 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                         $errors['functionsignature'] = get_string('signaturerequired', 'qtype_codeatelier');
                     } else if (!\qtype_codeatelier\judge\signature::is_valid($sig)) {
                         $errors['functionsignature'] = get_string('signatureinvalid', 'qtype_codeatelier');
+                    } else if (array_intersect($allowed, \qtype_codeatelier\judge\function_harness::SCALAR_ONLY)) {
+                        // C grades scalar parameters/return only (arrays are awkward in C).
+                        $parsed = \qtype_codeatelier\judge\signature::parse($sig);
+                        foreach (array_merge($parsed->params(), array($parsed->return_type())) as $t) {
+                            if (!\qtype_codeatelier\judge\signature::is_scalar($t)) {
+                                $errors['functionsignature'] = get_string('signaturescalaronly', 'qtype_codeatelier');
+                                break;
+                            }
+                        }
                     }
                 }
             } else if ($scenario === 'project') {

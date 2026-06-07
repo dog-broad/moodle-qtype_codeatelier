@@ -55,6 +55,12 @@ final class signature_test extends \advanced_testcase {
         $this->assertFalse(signature::is_valid('list<list<int>> -> int'));
     }
 
+    public function test_is_scalar(): void {
+        $this->assertTrue(signature::is_scalar('int'));
+        $this->assertTrue(signature::is_scalar('string'));
+        $this->assertFalse(signature::is_scalar('list<int>'));
+    }
+
     public function test_encode_args(): void {
         $this->assertSame("2\n3\n", signature::parse('int,int->int')->encode_args([2, 3]));
         $this->assertSame("hi\n", signature::parse('string->bool')->encode_args(['hi']));
