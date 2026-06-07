@@ -55,7 +55,8 @@ class backup_qtype_codeatelier_plugin extends backup_qtype_plugin {
         $tests = new backup_nested_element('codeatelier_tests');
         $test = new backup_nested_element('codeatelier_test', array('id'), array(
             'sortorder', 'input', 'expected', 'matchmode', 'tolerance',
-            'weight', 'visibility', 'checkerquery', 'feedback'));
+            'weight', 'visibility', 'checkerquery', 'feedback',
+            'selector', 'assertproperty', 'assertmatcher', 'actions'));
         $pluginwrapper->add_child($tests);
         $tests->add_child($test);
         $test->set_source_table('qtype_codeatelier_tests',

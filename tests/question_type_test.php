@@ -401,4 +401,34 @@ final class question_type_test extends \advanced_testcase {
         $this->assertSame(array('index.html', 'style.css', 'script.js'), array_keys($files));
         $this->assertStringContainsString('color: red', $files['style.css']);
     }
+
+    public function test_web_assertion_round_trips(): void {
+        // A web question's DOM assertions (selector, property, matcher, actions)
+        // round-trip through save/load on the test-case table.
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        $question = $qgen->create_question('codeatelier', 'web', array('category' => $cat->id));
+        $data = question_bank::load_question_data($question->id);
+
+        $this->assertEquals('web', $data->options->scenario);
+        $tests = array_values($data->options->tests);
+        $this->assertCount(2, $tests);
+        // A visible text assertion.
+        $this->assertEquals('#t', $tests[0]->selector);
+        $this->assertEquals('text', $tests[0]->assertproperty);
+        $this->assertEquals('equals', $tests[0]->assertmatcher);
+        $this->assertEquals('Hi', $tests[0]->expected);
+        $this->assertEquals(1, (int) $tests[0]->visibility);
+        // A hidden assertion that runs a click action first.
+        $this->assertEquals('#o', $tests[1]->selector);
+        $this->assertEquals('click #b', trim((string) $tests[1]->actions));
+        $this->assertEquals(0, (int) $tests[1]->visibility);
+    }
 }

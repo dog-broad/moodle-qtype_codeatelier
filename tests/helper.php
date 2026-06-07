@@ -33,7 +33,7 @@ defined('MOODLE_INTERNAL') || die();
 class qtype_codeatelier_test_helper extends question_test_helper {
 
     public function get_test_questions() {
-        return array('function', 'judge', 'multilang', 'judge_sql');
+        return array('function', 'judge', 'multilang', 'judge_sql', 'web');
     }
 
     /**
@@ -268,6 +268,87 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $form->testvisibility = array(1, 0);
         $form->checkerquery = array('', '');
         $form->testfeedback = array('', '');
+        $form->cputimelimit = '';
+        $form->memorylimit = '';
+        $form->languages = array();
+        $form->starters = '';
+        return $form;
+    }
+
+    /**
+     * A web (frontend) practice question instance with two DOM assertions.
+     *
+     * @return qtype_codeatelier_question
+     */
+    public function make_codeatelier_question_web() {
+        question_bank::load_question_definition_classes('codeatelier');
+        $q = new qtype_codeatelier_question();
+        test_question_maker::initialise_a_question($q);
+        $q->name = 'CodeAtelier web greeting';
+        $q->questiontext = 'Make the heading say Hi and the button reveal a message.';
+        $q->generalfeedback = '';
+        $q->qtype = question_bank::get_qtype('codeatelier');
+        $q->language = 'javascript';
+        $q->tier = 'practice';
+        $q->scenario = 'web';
+        $q->entrypoint = null;
+        $q->startercode = '';
+        $q->schemasql = null;
+        $q->languages = null;
+        $q->starters = null;
+        $q->projectfiles = json_encode(array(
+            array('name' => 'index.html', 'content' => "<h1 id=\"t\">Hi</h1>\n"),
+        ));
+        $q->tests = array(
+            (object) array('sortorder' => 0, 'input' => '', 'expected' => 'Hi',
+                'matchmode' => 'trimmed', 'tolerance' => null, 'weight' => 1, 'visibility' => 1,
+                'checkerquery' => null, 'feedback' => null, 'selector' => '#t',
+                'assertproperty' => 'text', 'assertmatcher' => 'equals', 'actions' => null),
+            (object) array('sortorder' => 1, 'input' => '', 'expected' => 'ok',
+                'matchmode' => 'trimmed', 'tolerance' => null, 'weight' => 2, 'visibility' => 0,
+                'checkerquery' => null, 'feedback' => null, 'selector' => '#o',
+                'assertproperty' => 'text', 'assertmatcher' => 'equals', 'actions' => 'click #b'),
+        );
+        return $q;
+    }
+
+    /**
+     * A web (frontend) practice question: an HTML/CSS/JS starter file set and two
+     * DOM assertions (a visible text check and a hidden click-then-check).
+     *
+     * @return stdClass form data for the generator
+     */
+    public function get_codeatelier_question_form_data_web() {
+        $form = new stdClass();
+        $form->name = 'CodeAtelier web greeting';
+        $form->questiontext = array('text' => 'Make the heading say Hi and the button reveal a message.',
+            'format' => FORMAT_HTML);
+        $form->generalfeedback = array('text' => '', 'format' => FORMAT_HTML);
+        $form->defaultmark = 1.0;
+        $form->penalty = 0.0;
+        $form->language = 'javascript';
+        $form->tier = 'practice';
+        $form->scenario = 'web';
+        $form->entrypoint = '';
+        $form->startercode = '';
+        $form->schemasql = '';
+        $form->projectfiles = json_encode(array(
+            array('name' => 'index.html', 'content' => "<h1 id=\"t\">Hi</h1>\n<button id=\"b\">Go</button>\n<p id=\"o\"></p>\n"),
+            array('name' => 'script.js', 'content' => "document.getElementById('b').onclick=function(){document.getElementById('o').textContent='ok';};\n"),
+        ));
+        $form->entryfile = '';
+        $form->selector = array('#t', '#o');
+        $form->assertproperty = array('text', 'text');
+        $form->assertmatcher = array('equals', 'equals');
+        $form->testexpected = array('Hi', 'ok');
+        $form->actions = array('', 'click #b');
+        $form->testweight = array('1', '2');
+        $form->testvisibility = array(1, 0);
+        $form->testfeedback = array('', '');
+        $form->testinput = array('', '');
+        $form->matchmode = array('trimmed', 'trimmed');
+        $form->tolerance = array('', '');
+        $form->checkerquery = array('', '');
         $form->cputimelimit = '';
         $form->memorylimit = '';
         $form->languages = array();

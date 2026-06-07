@@ -281,6 +281,16 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 get_string('input', 'qtype_codeatelier'), array('rows' => 3, 'cols' => 60));
         $repeated[] = $mform->createElement('textarea', 'testexpected',
                 get_string('expected', 'qtype_codeatelier'), array('rows' => 3, 'cols' => 60));
+        // Web scenario: one DOM assertion per row (selector + property + matcher),
+        // with the value compared in the Expected field above. Shown only for web.
+        $repeated[] = $mform->createElement('text', 'selector',
+                get_string('assertselector', 'qtype_codeatelier'), array('size' => 40));
+        $repeated[] = $mform->createElement('text', 'assertproperty',
+                get_string('assertproperty', 'qtype_codeatelier'), array('size' => 24));
+        $repeated[] = $mform->createElement('select', 'assertmatcher',
+                get_string('assertmatcher', 'qtype_codeatelier'), $this->assertmatcher_options());
+        $repeated[] = $mform->createElement('textarea', 'actions',
+                get_string('assertactions', 'qtype_codeatelier'), array('rows' => 2, 'cols' => 60));
         $repeated[] = $mform->createElement('select', 'matchmode',
                 get_string('matchmode', 'qtype_codeatelier'), $this->matchmode_options());
         $repeated[] = $mform->createElement('text', 'tolerance',
@@ -301,15 +311,28 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // weight is author-entered and checked in validation().
         $repeatedoptions = array();
         $repeatedoptions['testinput']['type'] = PARAM_RAW;
+        // The stdin input is not used by a web (DOM-assertion) question.
+        $repeatedoptions['testinput']['hideif'] = array('scenario', 'eq', 'web');
         $repeatedoptions['testexpected']['type'] = PARAM_RAW;
         $repeatedoptions['matchmode']['type'] = PARAM_ALPHANUMEXT;
+        $repeatedoptions['matchmode']['hideif'] = array('scenario', 'eq', 'web');
         $repeatedoptions['tolerance']['type'] = PARAM_RAW_TRIMMED;
         $repeatedoptions['tolerance']['disabledif'] = array('matchmode', 'neq', 'float');
+        $repeatedoptions['tolerance']['hideif'] = array('scenario', 'eq', 'web');
         $repeatedoptions['testweight']['type'] = PARAM_RAW_TRIMMED;
         $repeatedoptions['testvisibility']['type'] = PARAM_INT;
         $repeatedoptions['checkerquery']['type'] = PARAM_RAW;
         $repeatedoptions['checkerquery']['hideif'] = array('scenario', 'neq', 'sql');
         $repeatedoptions['testfeedback']['type'] = PARAM_RAW;
+        // Web assertion fields: shown only for the web scenario.
+        $repeatedoptions['selector']['type'] = PARAM_RAW_TRIMMED;
+        $repeatedoptions['selector']['hideif'] = array('scenario', 'neq', 'web');
+        $repeatedoptions['assertproperty']['type'] = PARAM_RAW_TRIMMED;
+        $repeatedoptions['assertproperty']['hideif'] = array('scenario', 'neq', 'web');
+        $repeatedoptions['assertmatcher']['type'] = PARAM_ALPHA;
+        $repeatedoptions['assertmatcher']['hideif'] = array('scenario', 'neq', 'web');
+        $repeatedoptions['actions']['type'] = PARAM_RAW;
+        $repeatedoptions['actions']['hideif'] = array('scenario', 'neq', 'web');
 
         if (!empty($this->question->options->tests)) {
             $repeats = count($this->question->options->tests);
@@ -401,6 +424,34 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         );
     }
 
+    /**
+     * The matchers a web DOM assertion can use to compare the property value.
+     *
+     * @return array matcher code => display name
+     */
+    protected function assertmatcher_options() {
+        return array(
+            'equals' => get_string('assertmatch_equals', 'qtype_codeatelier'),
+            'contains' => get_string('assertmatch_contains', 'qtype_codeatelier'),
+            'regex' => get_string('assertmatch_regex', 'qtype_codeatelier'),
+        );
+    }
+
+    /**
+     * Whether a web DOM-assertion property is one the interpreter understands:
+     * text, exists, count, or attr:<name> / style:<property>.
+     *
+     * @param string $property
+     * @return bool
+     */
+    protected static function valid_assert_property($property) {
+        $property = trim((string) $property);
+        if (in_array($property, array('text', 'exists', 'count'), true)) {
+            return true;
+        }
+        return (bool) preg_match('/^(attr|style):\S+/', $property);
+    }
+
     protected function data_preprocessing($question) {
         $question = parent::data_preprocessing($question);
 
@@ -427,6 +478,10 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $question->testvisibility = array();
         $question->checkerquery = array();
         $question->testfeedback = array();
+        $question->selector = array();
+        $question->assertproperty = array();
+        $question->assertmatcher = array();
+        $question->actions = array();
 
         foreach (array_values($question->options->tests) as $i => $test) {
             $question->testinput[$i] = $test->input;
@@ -437,6 +492,10 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             $question->testvisibility[$i] = $test->visibility;
             $question->checkerquery[$i] = $test->checkerquery;
             $question->testfeedback[$i] = $test->feedback;
+            $question->selector[$i] = $test->selector;
+            $question->assertproperty[$i] = $test->assertproperty;
+            $question->assertmatcher[$i] = $test->assertmatcher;
+            $question->actions[$i] = $test->actions;
         }
 
         return $question;
@@ -583,7 +642,24 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         }
 
         $count = 0;
+        $isweb = ($scenario === 'web');
         foreach ($data['testinput'] as $key => $input) {
+            if ($isweb) {
+                // A web row is a DOM assertion keyed by its selector.
+                $selector = isset($data['selector'][$key]) ? trim((string) $data['selector'][$key]) : '';
+                if ($selector === '') {
+                    continue;
+                }
+                $count++;
+                if (trim($data['testweight'][$key]) === '' || !is_numeric($data['testweight'][$key])) {
+                    $errors["testweight[$key]"] = get_string('weightnumeric', 'qtype_codeatelier');
+                }
+                $property = isset($data['assertproperty'][$key]) ? trim((string) $data['assertproperty'][$key]) : '';
+                if (!self::valid_assert_property($property)) {
+                    $errors["assertproperty[$key]"] = get_string('assertpropertyinvalid', 'qtype_codeatelier');
+                }
+                continue;
+            }
             $expected = $data['testexpected'][$key];
             if (trim($input) === '' && trim($expected) === '') {
                 continue;
@@ -601,11 +677,14 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             }
         }
 
-        // Every gradable scenario needs at least one test case. A web (frontend)
-        // question is graded by DOM assertions authored separately, so the stdin
-        // test table may be empty here.
-        if ($count === 0 && $scenario !== 'web') {
-            $errors['testinput[0]'] = get_string('notenoughtests', 'qtype_codeatelier');
+        // Every gradable question needs at least one test case (a web question, at
+        // least one DOM assertion).
+        if ($count === 0) {
+            if ($isweb) {
+                $errors['selector[0]'] = get_string('noassertions', 'qtype_codeatelier');
+            } else {
+                $errors['testinput[0]'] = get_string('notenoughtests', 'qtype_codeatelier');
+            }
         }
 
         // Validate-on-save: a judge-tier reference solution must pass every test or

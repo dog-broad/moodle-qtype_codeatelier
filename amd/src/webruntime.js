@@ -88,15 +88,81 @@ const rootHtml = (files) => {
 };
 
 /**
+ * The trusted in-frame harness for DOM-assertion grading. Injected before the
+ * student code so it captures a reference to postMessage first; it evaluates a
+ * declarative assertion against the rendered document and posts the result back
+ * to the parent. The SAME declarative spec is what the secure (Playwright) tier
+ * will evaluate in page context, so the shape is parity-ready. Kept as a string
+ * because it runs inside the sandboxed frame, not in this module.
+ */
+const HARNESS = `
+(function(){
+  var send = window.parent.postMessage.bind(window.parent);
+  function q(s){ try { return document.querySelector(s); } catch(e){ return null; } }
+  function qa(s){ try { return Array.prototype.slice.call(document.querySelectorAll(s)); } catch(e){ return []; } }
+  function getProp(el, prop){
+    if (prop === 'text') return (el.textContent || '').trim();
+    if (prop.indexOf('attr:') === 0) return el.getAttribute(prop.slice(5));
+    if (prop.indexOf('style:') === 0) return getComputedStyle(el)[prop.slice(6)];
+    return null;
+  }
+  function cmp(actual, matcher, expected){
+    var a = String(actual === null || actual === undefined ? '' : actual);
+    var e = String(expected === null || expected === undefined ? '' : expected);
+    if (matcher === 'contains') return a.indexOf(e) !== -1;
+    if (matcher === 'regex') { try { return new RegExp(e).test(a); } catch(x){ return false; } }
+    return a === e;
+  }
+  function evalAssertion(t){
+    var prop = (t.property || 'text');
+    var matcher = (t.matcher || 'equals');
+    try {
+      if (prop === 'exists') {
+        var present = !!q(t.selector);
+        var expectPresent = !/^(false|0|no)$/i.test(String(t.expected || '').trim());
+        return { actual: present ? 'present' : 'absent', pass: present === expectPresent };
+      }
+      if (prop === 'count') {
+        var n = qa(t.selector).length;
+        return { actual: n, pass: cmp(n, matcher, t.expected) };
+      }
+      var el = q(t.selector);
+      if (!el) return { actual: null, pass: false, missing: true };
+      var actual = getProp(el, prop);
+      return { actual: actual, pass: cmp(actual, matcher, t.expected) };
+    } catch (err) {
+      return { actual: null, pass: false, error: String(err && err.message || err) };
+    }
+  }
+  function runAction(a){
+    var el = q(a.selector);
+    if (!el) return;
+    if (a.type === 'click') { el.click(); }
+    else if (a.type === 'type') { el.value = a.value; el.dispatchEvent(new Event('input', {bubbles:true})); }
+  }
+  window.addEventListener('message', function(ev){
+    var msg = ev.data || {};
+    if (msg.kind === 'grade') {
+      try { (msg.actions || []).forEach(runAction); } catch(e){}
+      send({ kind: 'results', results: (msg.assertions || []).map(evalAssertion) }, '*');
+    }
+  });
+  window.__caHarness = { ready: function(){ send({ kind: 'ready' }, '*'); } };
+})();`;
+
+/**
  * Compose the file set into one self-contained HTML document: every .css inlined
  * into a <style>, every .js into a <script>, and local <link>/<script src> refs
  * to those files stripped (an iframe srcdoc has no server to resolve them).
  * Inline <style>/<script> the author wrote in the HTML are left untouched.
  *
  * @param {Array} files array of {name, content}
+ * @param {Object} [options] {harness} — inject the grading harness (and a ready
+ *     signal after the student code) for in-frame assertion evaluation
  * @return {String} the document for iframe srcdoc
  */
-export const compose = (files) => {
+export const compose = (files, options) => {
+    const opts = options || {};
     const list = Array.isArray(files) ? files : [];
     const root = rootHtml(list);
     let doc = root ? root.content : '<!doctype html><html><head></head><body></body></html>';
@@ -108,13 +174,146 @@ export const compose = (files) => {
     doc = doc.replace(/<link\b[^>]*\brel=["']?stylesheet["']?[^>]*>/gi, '');
     doc = doc.replace(/<script\b[^>]*\bsrc=["'][^"']*\.m?js["'][^>]*>\s*<\/script>/gi, '');
 
+    // The harness goes first (before css and student code) so it captures the
+    // postMessage reference before any student script could shadow it.
+    const harnessTag = opts.harness ? '<script>' + HARNESS.replace(/<\/script>/gi, '<\\/script>') + '</script>' : '';
     const styleTag = css ? '<style>' + css.replace(/<\/style>/gi, '<\\/style>') + '</style>' : '';
-    doc = injectBefore(doc, '</head>', styleTag, 'prepend');
+    doc = injectBefore(doc, '</head>', harnessTag + styleTag, 'prepend');
 
     const scriptTag = js ? '<script>' + js.replace(/<\/script>/gi, '<\\/script>') + '</script>' : '';
-    doc = injectBefore(doc, '</body>', scriptTag, 'append');
+    // The ready signal runs last, after the student code, so assertions see the
+    // page in its loaded state.
+    const readyTag = opts.harness ? '<script>window.__caHarness.ready();</script>' : '';
+    doc = injectBefore(doc, '</body>', scriptTag + readyTag, 'append');
 
     return doc;
+};
+
+/**
+ * Parse the actions DSL (one per line): `click <selector>` or
+ * `type <selector> <value>`. Lines may also be separated by ';'.
+ *
+ * @param {String} text
+ * @return {Array} array of {type, selector, value?}
+ */
+export const parseActions = (text) => {
+    if (!text) {
+        return [];
+    }
+    return String(text).split(/[\n;]+/).map((line) => line.trim()).filter(Boolean).map((line) => {
+        const space = line.indexOf(' ');
+        const verb = (space === -1 ? line : line.slice(0, space)).toLowerCase();
+        const rest = space === -1 ? '' : line.slice(space + 1).trim();
+        if (verb === 'click') {
+            return {type: 'click', selector: rest};
+        }
+        if (verb === 'type') {
+            const sp2 = rest.indexOf(' ');
+            return (sp2 === -1)
+                ? {type: 'type', selector: rest, value: ''}
+                : {type: 'type', selector: rest.slice(0, sp2), value: rest.slice(sp2 + 1)};
+        }
+        return null;
+    }).filter(Boolean);
+};
+
+/**
+ * Render a harnessed document in a frame and evaluate one assertion (after its
+ * actions). Resolves with {pass, actual, error?}.
+ *
+ * @param {HTMLIFrameElement} iframe the (reused) hidden grading frame
+ * @param {String} doc the composed harnessed document
+ * @param {Object} assertion {selector, property, matcher, expected}
+ * @param {Array} actions parsed actions to run first
+ * @return {Promise<Object>}
+ */
+const gradeOne = (iframe, doc, assertion, actions) => new Promise((resolve) => {
+    let done = false;
+    let requested = false;
+    const finish = (result) => {
+        if (done) {
+            return;
+        }
+        done = true;
+        window.removeEventListener('message', onMessage);
+        clearTimeout(timer);
+        resolve(result || {pass: false, error: 'no result'});
+    };
+    const onMessage = (ev) => {
+        if (ev.source !== iframe.contentWindow) {
+            return;
+        }
+        const msg = ev.data || {};
+        if (msg.kind === 'ready') {
+            requested = true;
+            iframe.contentWindow.postMessage({kind: 'grade', actions: actions, assertions: [assertion]}, '*');
+        } else if (msg.kind === 'results' && requested) {
+            finish((msg.results && msg.results[0]) || {pass: false, error: 'no result'});
+        }
+    };
+    const timer = setTimeout(() => finish({pass: false, error: 'timed out'}), 4000);
+    window.addEventListener('message', onMessage);
+    iframe.srcdoc = doc;
+});
+
+/**
+ * Grade a web answer (file set) against its DOM assertions. Each assertion runs
+ * in a freshly-rendered sandboxed frame (its own actions then its one check), so
+ * assertions are isolated and independently scored. Returns the same
+ * {fraction, verdict, testresults} shape the other scenarios produce.
+ *
+ * @param {Array} files the answer file set
+ * @param {Array} tests the assertion rows ({selector, assertproperty, assertmatcher, expected, actions, weight, visibility})
+ * @param {Object} [options] {allOrNothing}
+ * @return {Promise<Object>} {fraction, verdict, testresults}
+ */
+export const gradeWeb = (files, tests, options) => {
+    const opts = options || {};
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('sandbox', 'allow-scripts');
+    iframe.setAttribute('title', 'grading');
+    iframe.style.cssText = 'position:absolute;left:-9999px;top:0;width:1024px;height:768px;border:0;visibility:hidden';
+    document.body.appendChild(iframe);
+    const doc = compose(files, {harness: true});
+
+    return (async () => {
+        let totalweight = 0;
+        let earned = 0;
+        const testresults = [];
+        for (let i = 0; i < tests.length; i++) {
+            const t = tests[i];
+            const assertion = {
+                selector: t.selector,
+                property: t.assertproperty || 'text',
+                matcher: t.assertmatcher || 'equals',
+                expected: t.expected,
+            };
+            // eslint-disable-next-line no-await-in-loop
+            const r = await gradeOne(iframe, doc, assertion, parseActions(t.actions));
+            const weight = parseFloat(t.weight) || 0;
+            totalweight += weight;
+            const passed = !r.error && !!r.pass;
+            if (passed) {
+                earned += weight;
+            }
+            testresults.push({
+                index: i,
+                passed: passed,
+                visibility: Number(t.visibility),
+                actual: r.actual,
+                error: r.error || null,
+            });
+        }
+        if (iframe.parentNode) {
+            iframe.parentNode.removeChild(iframe);
+        }
+        let fraction = totalweight > 0 ? earned / totalweight : 0;
+        if (opts.allOrNothing && fraction < 1) {
+            fraction = 0;
+        }
+        const verdict = fraction >= 1 ? 'AC' : 'WA';
+        return {fraction: fraction, verdict: verdict, testresults: testresults};
+    })();
 };
 
 /**

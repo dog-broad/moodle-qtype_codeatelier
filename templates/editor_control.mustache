@@ -80,7 +80,14 @@
             <span class="codeatelier-block-label">{{previewlabel}}</span>
             <div class="codeatelier-preview-host" data-role="preview"></div>
         </div>
+        {{^readonly}}
+        <div class="codeatelier-actions">
+            <button type="button" class="btn btn-primary" data-role="check">{{checklabel}}</button>
+            <span class="codeatelier-status" data-role="status" role="status" aria-live="polite"></span>
+        </div>
         <p class="codeatelier-practicenote small text-muted">{{practicenote}}</p>
+        <div class="codeatelier-results" data-role="results" aria-live="polite"></div>
+        {{/readonly}}
         {{/isweb}}
         {{^readonly}}
         {{^isweb}}

@@ -225,6 +225,28 @@ $string['scenario_web'] = 'Web page (HTML / CSS / JavaScript)';
 $string['preview'] = 'Live preview';
 $string['webpracticeonly'] = 'Web page questions run in the browser, so they must use Practice mode.';
 $string['webnohtml'] = 'Add an HTML file (for example index.html) — it is the page the preview renders.';
+$string['noassertions'] = 'Add at least one check (a CSS selector and what to check).';
+
+// Web scenario: per-row DOM assertion authoring.
+$string['assertselector'] = 'CSS selector';
+$string['assertproperty'] = 'Property';
+$string['assertproperty_help'] = 'What to check on the matched element: `text` (its visible text), `exists` (the element is present — Expected `true` or `false`), `count` (how many elements match — Expected a number), `attr:NAME` (an attribute, e.g. `attr:href`), or `style:PROP` (a computed style, e.g. `style:color`, compared as the browser reports it such as `rgb(0, 0, 255)`).';
+$string['assertmatcher'] = 'Compare';
+$string['assertmatch_equals'] = 'equals';
+$string['assertmatch_contains'] = 'contains';
+$string['assertmatch_regex'] = 'matches regex';
+$string['assertactions'] = 'Actions before checking (optional)';
+$string['assertactions_help'] = 'Interaction steps run before the check, one per line: `click SELECTOR` or `type SELECTOR VALUE`. For example `click #add` then check that a new item appeared. Each check starts from a fresh render of the page.';
+$string['assertpropertyinvalid'] = 'Use text, exists, count, attr:NAME or style:PROP.';
+
+// Web scenario: student-facing check labels (shipped to the workbench JS).
+$string['result_check'] = 'Check';
+$string['webchecksheading'] = 'What is checked';
+$string['assertexpect'] = 'Expect';
+$string['assertafter'] = 'After doing';
+$string['assertexists'] = 'exists';
+$string['assertabsent'] = 'is absent';
+$string['assertnotfound'] = '(element not found)';
 $string['entryfile'] = 'Entry file';
 $string['entryfile_help'] = 'The name of the file the server compiles and runs as the program\'s entry point (for example `main.cpp`, or `Main.java` whose class is run). It must be one of the project files below.';
 $string['projectfilesform'] = 'Project files';

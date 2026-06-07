@@ -88,6 +88,12 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'checkerquery' => $test->checkerquery,
                 // Ship teacher feedback only for visible tests (hidden reveals nothing client-side).
                 'feedback' => ((int) $test->visibility === 1) ? $test->feedback : null,
+                // Web scenario: the DOM assertion (selector + property + matcher) and
+                // its optional interaction actions.
+                'selector' => $test->selector,
+                'assertproperty' => $test->assertproperty,
+                'assertmatcher' => $test->assertmatcher,
+                'actions' => $test->actions,
             );
         }
 

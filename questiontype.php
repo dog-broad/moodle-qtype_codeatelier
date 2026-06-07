@@ -146,15 +146,22 @@ class qtype_codeatelier extends question_type {
                 array('questionid' => $question->id), 'id ASC');
 
         $sortorder = 0;
+        $isweb = (($question->scenario ?? '') === 'web');
         $inputs = isset($question->testinput) ? $question->testinput : array();
         foreach ($inputs as $key => $input) {
             $expected = isset($question->testexpected[$key]) ? $question->testexpected[$key] : '';
-            // Skip a completely blank row.
-            if (trim($input) === '' && trim($expected) === '') {
+            $selector = isset($question->selector[$key]) ? trim((string) $question->selector[$key]) : '';
+            // Skip a completely blank row. A web assertion row is keyed by its
+            // selector; every other scenario by its input/expected.
+            if ($isweb) {
+                if ($selector === '') {
+                    continue;
+                }
+            } else if (trim($input) === '' && trim($expected) === '') {
                 continue;
             }
 
-            $matchmode = $question->matchmode[$key];
+            $matchmode = isset($question->matchmode[$key]) ? $question->matchmode[$key] : 'trimmed';
             $tolerance = null;
             if ($matchmode === 'float' && isset($question->tolerance[$key])
                     && trim($question->tolerance[$key]) !== '') {
@@ -164,7 +171,7 @@ class qtype_codeatelier extends question_type {
             $record = new stdClass();
             $record->questionid = $question->id;
             $record->sortorder = $sortorder++;
-            $record->input = $input;
+            $record->input = $isweb ? '' : $input;
             $record->expected = $expected;
             $record->matchmode = $matchmode;
             $record->tolerance = $tolerance;
@@ -172,6 +179,16 @@ class qtype_codeatelier extends question_type {
             $record->visibility = $question->testvisibility[$key];
             $record->checkerquery = isset($question->checkerquery[$key]) ? $question->checkerquery[$key] : null;
             $record->feedback = isset($question->testfeedback[$key]) ? $question->testfeedback[$key] : null;
+            // Web scenario: the DOM assertion (selector + property + matcher) and
+            // optional interaction actions. Null for every other scenario.
+            $record->selector = $isweb ? $selector : null;
+            $record->assertproperty = ($isweb && isset($question->assertproperty[$key]))
+                    ? trim((string) $question->assertproperty[$key]) : null;
+            $record->assertmatcher = ($isweb && isset($question->assertmatcher[$key]))
+                    ? $question->assertmatcher[$key] : null;
+            $record->actions = ($isweb && isset($question->actions[$key])
+                    && trim((string) $question->actions[$key]) !== '')
+                    ? $question->actions[$key] : null;
 
             $existing = array_shift($oldtests);
             if ($existing) {
@@ -246,7 +263,8 @@ class qtype_codeatelier extends question_type {
         foreach ($question->options->tests as $test) {
             $output .= "    <testcase>\n";
             foreach (array('input', 'expected', 'matchmode', 'tolerance', 'weight',
-                    'visibility', 'checkerquery', 'feedback') as $field) {
+                    'visibility', 'checkerquery', 'feedback',
+                    'selector', 'assertproperty', 'assertmatcher', 'actions') as $field) {
                 $value = isset($test->$field) ? $test->$field : '';
                 $output .= "      <{$field}>" . $format->xml_escape((string) $value) . "</{$field}>\n";
             }
@@ -299,7 +317,8 @@ class qtype_codeatelier extends question_type {
             : array();
 
         foreach (array('testinput', 'testexpected', 'matchmode', 'tolerance',
-                'testweight', 'testvisibility', 'checkerquery', 'testfeedback') as $arr) {
+                'testweight', 'testvisibility', 'checkerquery', 'testfeedback',
+                'selector', 'assertproperty', 'assertmatcher', 'actions') as $arr) {
             $qo->$arr = array();
         }
         $testcases = isset($data['#']['testcase']) ? $data['#']['testcase'] : array();
@@ -312,6 +331,10 @@ class qtype_codeatelier extends question_type {
             $qo->testvisibility[] = $format->getpath($tc, array('#', 'visibility', 0, '#'), 1);
             $qo->checkerquery[] = $format->getpath($tc, array('#', 'checkerquery', 0, '#'), '');
             $qo->testfeedback[] = $format->getpath($tc, array('#', 'feedback', 0, '#'), '');
+            $qo->selector[] = $format->getpath($tc, array('#', 'selector', 0, '#'), '');
+            $qo->assertproperty[] = $format->getpath($tc, array('#', 'assertproperty', 0, '#'), '');
+            $qo->assertmatcher[] = $format->getpath($tc, array('#', 'assertmatcher', 0, '#'), '');
+            $qo->actions[] = $format->getpath($tc, array('#', 'actions', 0, '#'), '');
         }
 
         // Rebuild the support/data files into a draft area so the normal save path
@@ -389,6 +412,13 @@ class qtype_codeatelier extends question_type {
             'focusmode' => 'focusmode',
             'useinput' => 'useinput',
             'preview' => 'preview',
+            'check' => 'result_check',
+            'checks' => 'webchecksheading',
+            'assertexpect' => 'assertexpect',
+            'assertafter' => 'assertafter',
+            'assertexists' => 'assertexists',
+            'assertabsent' => 'assertabsent',
+            'assertnotfound' => 'assertnotfound',
             'projectfiles' => 'projectfiles',
             'filename' => 'projectfilename',
             'addfile' => 'projectaddfile',
