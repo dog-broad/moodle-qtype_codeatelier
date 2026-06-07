@@ -29,14 +29,28 @@ defined('MOODLE_INTERNAL') || die();
 final class function_harness_test extends \advanced_testcase {
 
     public function test_supports(): void {
-        // Dynamic and static function languages are both supported.
+        // Dynamic and static function languages are both supported (C is scalar-only).
         foreach (['python', 'javascript', 'ruby', 'php', 'typescript',
-                'java', 'cpp', 'go', 'rust', 'csharp', 'kotlin'] as $lang) {
+                'java', 'cpp', 'go', 'rust', 'csharp', 'kotlin', 'c'] as $lang) {
             $this->assertTrue(function_harness::supports($lang), $lang);
         }
-        // C and SQL have no function harness.
-        $this->assertFalse(function_harness::supports('c'));
+        // SQL has no function harness.
         $this->assertFalse(function_harness::supports('sql'));
+    }
+
+    public function test_c_harness_scalar(): void {
+        $sig = \qtype_codeatelier\judge\signature::parse('int, string -> int');
+        $src = function_harness::source('c', "int f(int a, char* s){ return a; }", 'f', $sig);
+        $this->assertStringContainsString('int p0 = atoi(_l());', $src);
+        $this->assertStringContainsString('char* p1 = strdup(_l());', $src);
+        $this->assertStringContainsString('f(p0, p1)', $src);
+        $this->assertStringContainsString('printf("%d", _r);', $src);
+    }
+
+    public function test_c_harness_rejects_non_scalar(): void {
+        $sig = \qtype_codeatelier\judge\signature::parse('list<int> -> int');
+        $this->expectException(\coding_exception::class);
+        function_harness::source('c', "int f(){ return 0; }", 'f', $sig);
     }
 
     public function test_python_harness_reads_args_and_prints_return(): void {

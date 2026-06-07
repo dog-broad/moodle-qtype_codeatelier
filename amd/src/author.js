@@ -137,6 +137,21 @@ export const init = (config) => {
     const starterTa = byId(config.startercodeid);
     const schemaTa = byId(config.schemasqlid);
 
+    // Trust badge: show whether grading is judge-secure or practice-only, and keep
+    // it in sync with the tier picker.
+    const tierBadge = byId(config.tierbadgeid);
+    const tierSelForBadge = byId(config.tierid);
+    if (tierBadge && tierSelForBadge) {
+        const badges = config.tierbadges || {};
+        const paintBadge = () => {
+            const isjudge = tierSelForBadge.value === 'judge';
+            tierBadge.textContent = isjudge ? (badges.judge || '') : (badges.practice || '');
+            tierBadge.className = 'badge ' + (isjudge ? 'badge-success' : 'badge-warning');
+        };
+        paintBadge();
+        tierSelForBadge.addEventListener('change', paintBadge);
+    }
+
     // CodeMirror on the starter-code field, re-mounted when the language changes.
     if (starterTa) {
         let starterEditor = null;

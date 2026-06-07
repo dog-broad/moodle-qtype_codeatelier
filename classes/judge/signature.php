@@ -132,6 +132,16 @@ class signature {
     }
 
     /**
+     * Whether a type is a bare scalar (not a list or map).
+     *
+     * @param string $type a validated type
+     * @return bool
+     */
+    public static function is_scalar(string $type): bool {
+        return in_array($type, self::SCALARS, true);
+    }
+
+    /**
      * Encode a test's decoded JSON arguments into the typed stdin protocol the
      * generated harness reads: each argument in order, a scalar on its own line,
      * a list as a count line then one element per line.

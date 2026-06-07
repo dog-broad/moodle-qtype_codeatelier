@@ -42,11 +42,14 @@ class function_harness {
     const DYNAMIC = ['python', 'javascript', 'ruby', 'php', 'typescript'];
 
     /** @var string[] static languages: a typed signature drives generated glue. */
-    const STATIC = ['java', 'cpp', 'go', 'rust', 'csharp', 'kotlin'];
+    const STATIC = ['java', 'cpp', 'go', 'rust', 'csharp', 'kotlin', 'c'];
+
+    /** @var string[] static languages that grade scalar-only signatures (no list/map). */
+    const SCALAR_ONLY = ['c'];
 
     /** @var string[] every language whose function scenario the judge tier supports. */
     const LANGUAGES = ['python', 'javascript', 'ruby', 'php', 'typescript',
-        'java', 'cpp', 'go', 'rust', 'csharp', 'kotlin'];
+        'java', 'cpp', 'go', 'rust', 'csharp', 'kotlin', 'c'];
 
     /**
      * Whether the judge tier can grade a function-scenario question in this language.
@@ -160,9 +163,62 @@ class function_harness {
                 return self::csharp($code, $entrypoint, $sig);
             case 'kotlin':
                 return self::kotlin($code, $entrypoint, $sig);
+            case 'c':
+                return self::c($code, $entrypoint, $sig);
             default:
                 throw new \coding_exception("Unsupported static function language: {$language}");
         }
+    }
+
+    /**
+     * C harness. C handles arrays awkwardly, so the function scenario is scalar-only
+     * (validated in the form); the line protocol still applies, one scalar per line.
+     *
+     * @param string $code the student's function
+     * @param string $entrypoint the function name
+     * @param signature $sig the typed signature (scalar params and return)
+     * @return string the full program
+     */
+    private static function c(string $code, string $entrypoint, signature $sig): string {
+        $cdecl = ['int' => 'int', 'long' => 'long long', 'double' => 'double',
+            'bool' => 'int', 'string' => 'char*'];
+        $read = ['int' => 'atoi(_l())', 'long' => 'atoll(_l())', 'double' => 'atof(_l())',
+            'bool' => '(atoi(_l()) != 0)', 'string' => 'strdup(_l())'];
+        $print = ['int' => 'printf("%d", _r);', 'long' => 'printf("%lld", _r);',
+            'double' => 'printf("%.10g", _r);', 'bool' => 'printf("%d", _r ? 1 : 0);',
+            'string' => 'printf("%s", _r);'];
+
+        $reads = [];
+        $args = [];
+        foreach ($sig->params() as $i => $type) {
+            self::require_scalar($type, 'c');
+            $reads[] = "{$cdecl[$type]} p{$i} = {$read[$type]};";
+            $args[] = "p{$i}";
+        }
+        $ret = self::require_scalar($sig->return_type(), 'c');
+        $call = "{$cdecl[$ret]} _r = {$entrypoint}(" . implode(', ', $args) . ");";
+        return "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n"
+            . "static char _buf[1<<20];\n"
+            . "static char* _l(){ if(fgets(_buf,sizeof(_buf),stdin)){ size_t n=strlen(_buf);"
+            . " while(n>0 && (_buf[n-1]=='\\n'||_buf[n-1]=='\\r')) _buf[--n]=0; } else { _buf[0]=0; } return _buf; }\n\n"
+            . $code . "\n\n"
+            . "int main(void){\n    " . implode("\n    ", $reads) . "\n    " . $call . "\n    "
+            . $print[$ret] . "\n    return 0;\n}\n";
+    }
+
+    /**
+     * Assert a type is a bare scalar (for the scalar-only static languages), or throw.
+     *
+     * @param string $type a validated signature type
+     * @param string $language the language key (for the message)
+     * @return string the type, when scalar
+     * @throws \coding_exception when the type is a list or map
+     */
+    private static function require_scalar(string $type, string $language): string {
+        if (!signature::is_scalar($type)) {
+            throw new \coding_exception("{$language} function grading supports scalar types only: {$type}");
+        }
+        return $type;
     }
 
     /**
