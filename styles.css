@@ -86,6 +86,31 @@
     overflow: auto;
 }
 
+/*
+ * Authoring fields: the standalone CodeMirror editors on the question edit form
+ * (starter code, reference solution, SQL schema, per-language starter) mount
+ * outside the .qtype_codeatelier workbench, so the frame rules above never reach
+ * them. Without an explicit width the flex editor shrinks to its content — a
+ * sliver showing only line 1. Give them the same full-width frame here.
+ */
+#fitem_id_startercode .cm-editor,
+#fitem_id_starteredit .cm-editor,
+#fitem_id_referencesolution .cm-editor,
+#fitem_id_schemasql .cm-editor {
+    width: 100%;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    font-size: 0.9rem;
+    max-height: 30rem;
+}
+
+#fitem_id_startercode .cm-scroller,
+#fitem_id_starteredit .cm-scroller,
+#fitem_id_referencesolution .cm-scroller,
+#fitem_id_schemasql .cm-scroller {
+    overflow: auto;
+}
+
 /* Run / status / results. */
 .qtype_codeatelier .codeatelier-actions {
     display: flex;
