@@ -370,6 +370,11 @@ class qtype_codeatelier extends question_type {
             'exitfocus' => 'exitfocus',
             'focusmode' => 'focusmode',
             'useinput' => 'useinput',
+            'projectfiles' => 'projectfiles',
+            'filename' => 'projectfilename',
+            'addfile' => 'projectaddfile',
+            'deletefile' => 'projectdeletefile',
+            'badfilename' => 'projectbadfilename',
         );
         $strings = array();
         foreach ($keys as $jskey => $stringid) {
