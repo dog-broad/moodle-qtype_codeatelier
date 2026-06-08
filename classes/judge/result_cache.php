@@ -35,7 +35,7 @@ defined('MOODLE_INTERNAL') || die();
 class result_cache {
 
     /** @var int the result-blob shape version; bump to invalidate older cached entries. */
-    const BLOB_VERSION = 8;
+    const BLOB_VERSION = 9;
 
     /**
      * The cache key for a submission: a hash over everything that can change the
@@ -53,12 +53,14 @@ class result_cache {
      * @param string $entrypoint the function name called (function scenario)
      * @param string $funcsig the typed signature (static-language function scenario)
      * @param string $entryfile the entry/main file name (project scenario; drives the run script)
+     * @param string $checkersource the custom-checker program (changes the verdict)
+     * @param string $checkerlang the custom-checker language
      * @return string a 40-char SHA-1
      */
     public static function key(string $language, string $code, array $tests, array $limits,
             string $schemasql = '', bool $allornothing = false, string $datafileshash = '',
             string $scenario = 'stdinstdout', string $entrypoint = '', string $funcsig = '',
-            string $entryfile = ''): string {
+            string $entryfile = '', string $checkersource = '', string $checkerlang = ''): string {
         $signature = [];
         foreach (array_values($tests) as $test) {
             $signature[] = [
@@ -78,7 +80,8 @@ class result_cache {
             ];
         }
         return sha1(json_encode([self::BLOB_VERSION, $language, $code, $signature, $limits, $schemasql,
-                $allornothing, $datafileshash, $scenario, $entrypoint, $funcsig, $entryfile]));
+                $allornothing, $datafileshash, $scenario, $entrypoint, $funcsig, $entryfile,
+                $checkersource, $checkerlang]));
     }
 
     /**

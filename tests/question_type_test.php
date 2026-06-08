@@ -275,6 +275,47 @@ final class question_type_test extends \advanced_testcase {
         $this->assertEquals(array('go', 'rust'), $langs);
     }
 
+    public function test_checker_columns_round_trip(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        // A judge stdin/stdout question with a Python custom checker.
+        $checker = "import sys\nprint('AC')\n";
+        $question = $qgen->create_question('codeatelier', 'judge', array(
+            'category' => $cat->id, 'language' => 'cpp',
+            'checkersource' => $checker, 'checkerlang' => 'python'));
+        $data = question_bank::load_question_data($question->id);
+
+        $this->assertSame($checker, $data->options->checkersource);
+        $this->assertSame('python', $data->options->checkerlang);
+    }
+
+    public function test_blank_checker_source_clears_both_columns(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        // A stray checker language with no source must not look like a checker.
+        $question = $qgen->create_question('codeatelier', 'judge', array(
+            'category' => $cat->id, 'language' => 'cpp',
+            'checkersource' => '', 'checkerlang' => 'python'));
+        $data = question_bank::load_question_data($question->id);
+
+        $this->assertNull($data->options->checkersource);
+        $this->assertNull($data->options->checkerlang);
+    }
+
     public function test_single_language_question_stores_just_the_primary(): void {
         $this->resetAfterTest();
         $this->setAdminUser();

@@ -509,4 +509,120 @@ final class judge_grader_test extends \advanced_testcase {
         $this->assertSame('', $outputs[0]['output']);
         $this->assertStringContainsString('boom', $outputs[0]['error']);
     }
+
+    public function test_checker_verdict_overrides_the_matching_rule(): void {
+        // The student output ("0 1" / "1 0") does NOT trimmed-match the expected
+        // ("5" / "30"), but the custom checker accepts both — so the answer is AC.
+        // This is the many-valid-answers case the checker exists for.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "0 1\n"),
+            qtype_codeatelier_stub_runner::row('ran', "1 0\n"),
+        ));
+        $runner->set_checker_rows(array(
+            qtype_codeatelier_stub_runner::row('ran', "AC\n"),
+            qtype_codeatelier_stub_runner::row('ran', "AC\n"),
+        ));
+        $result = (new judge_grader($runner))->grade('code', 'cpp', $this->sum_tests(),
+                '', false, 'stdinstdout', '', '', '', 'print("AC")', 'python');
+
+        $this->assertFalse($result['infrastructure']);
+        $this->assertEquals(1.0, $result['fraction']);
+        $this->assertSame('AC', $result['verdict']);
+        $this->assertTrue($result['checker']);
+        // The checker received (input, expected, output) for each completed test.
+        $cases = $runner->last_checker_cases();
+        $this->assertCount(2, $cases);
+        $this->assertSame("2 3\n", $cases[0]['input']);
+        $this->assertSame('5', $cases[0]['expected']);
+        $this->assertSame("0 1\n", $cases[0]['output']);
+    }
+
+    public function test_checker_rejection_is_wa_with_partial_credit(): void {
+        // The checker accepts the visible test but rejects the hidden one: weighted
+        // partial credit (0.5) and a WA verdict, exactly as a matching-rule miss.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "ok\n"),
+            qtype_codeatelier_stub_runner::row('ran', "nope\n"),
+        ));
+        $runner->set_checker_rows(array(
+            qtype_codeatelier_stub_runner::row('ran', "AC\n"),
+            qtype_codeatelier_stub_runner::row('ran', "WA reason\n"),
+        ));
+        $result = (new judge_grader($runner))->grade('code', 'cpp', $this->sum_tests(),
+                '', false, 'stdinstdout', '', '', '', 'checker', 'python');
+
+        $this->assertEqualsWithDelta(0.5, $result['fraction'], 0.0001);
+        $this->assertSame('WA', $result['verdict']);
+    }
+
+    public function test_checker_only_runs_on_completed_tests(): void {
+        // The student program crashes on the hidden test; that is already a failure,
+        // so the checker is consulted only for the completed (visible) test.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "out\n"),
+            qtype_codeatelier_stub_runner::row('re', '', array('stderr' => 'boom')),
+        ));
+        $runner->set_checker_rows(array(
+            qtype_codeatelier_stub_runner::row('ran', "AC\n"),
+        ));
+        $result = (new judge_grader($runner))->grade('code', 'cpp', $this->sum_tests(),
+                '', false, 'stdinstdout', '', '', '', 'checker', 'python');
+
+        $this->assertCount(1, $runner->last_checker_cases());
+        $this->assertEqualsWithDelta(0.5, $result['fraction'], 0.0001);
+        // A runtime error still drives the overall verdict.
+        $this->assertSame('RE', $result['verdict']);
+    }
+
+    public function test_broken_checker_is_needs_grading_not_a_wrong_answer(): void {
+        // A checker that fails to run (compile error here) is a JUDGE failure, never
+        // a student WA: the submission is routed to needs-grading with a message
+        // that names the checker (so validate-on-save can block it).
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "out\n"),
+            qtype_codeatelier_stub_runner::row('ran', "out\n"),
+        ));
+        $runner->set_checker_rows(array(
+            qtype_codeatelier_stub_runner::row('ce', '', array('compileoutput' => 'bad checker')),
+            qtype_codeatelier_stub_runner::row('ce', '', array('compileoutput' => 'bad checker')),
+        ));
+        $result = (new judge_grader($runner))->grade('code', 'cpp', $this->sum_tests(),
+                '', false, 'stdinstdout', '', '', '', 'not valid', 'python');
+
+        $this->assertTrue($result['infrastructure']);
+        $this->assertSame('INTERNAL', $result['verdict']);
+        $this->assertStringContainsStringIgnoringCase('checker', $result['message']);
+    }
+
+    public function test_checker_with_no_verdict_token_is_needs_grading(): void {
+        // A checker that ran but printed nothing recognizable did not speak the
+        // protocol — a judge failure, not a silent WA.
+        $runner = new qtype_codeatelier_stub_runner(array(
+            qtype_codeatelier_stub_runner::row('ran', "out\n"),
+            qtype_codeatelier_stub_runner::row('ran', "out\n"),
+        ));
+        $runner->set_checker_rows(array(
+            qtype_codeatelier_stub_runner::row('ran', "\n"),
+            qtype_codeatelier_stub_runner::row('ran', "\n"),
+        ));
+        $result = (new judge_grader($runner))->grade('code', 'cpp', $this->sum_tests(),
+                '', false, 'stdinstdout', '', '', '', 'checker', 'python');
+
+        $this->assertTrue($result['infrastructure']);
+        $this->assertSame('INTERNAL', $result['verdict']);
+    }
+
+    public function test_cache_key_depends_on_checker(): void {
+        // A checker edit must change the memo key so answers re-grade under it.
+        $tests = $this->sum_tests();
+        $limits = array('cputime' => 2.0, 'memory' => 128000);
+        $none = result_cache::key('cpp', 'code', $tests, $limits, '', false, '',
+                'stdinstdout', '', '', '');
+        $withchecker = result_cache::key('cpp', 'code', $tests, $limits, '', false, '',
+                'stdinstdout', '', '', '', 'print("AC")', 'python');
+        $changed = result_cache::key('cpp', 'code', $tests, $limits, '', false, '',
+                'stdinstdout', '', '', '', 'print("WA")', 'python');
+        $this->assertNotEquals($none, $withchecker);
+        $this->assertNotEquals($withchecker, $changed);
+    }
 }

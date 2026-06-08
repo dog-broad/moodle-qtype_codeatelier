@@ -140,6 +140,12 @@ class grader {
                 $status = 'timeout';
             } else if (!empty($result['error'])) {
                 $status = 'error';
+            } else if (array_key_exists('passed', $result)) {
+                // An already-decided pass/fail (the judge-tier custom checker decides
+                // AC/WA per test, replacing the declarative matching rule). Aggregation
+                // — weights, all-or-nothing, subtasks — stays identical.
+                $passed = (bool) $result['passed'];
+                $status = $passed ? 'pass' : 'fail';
             } else {
                 // Pick what to compare by mode: structured -> return value;
                 // result-set -> the SQL result rows; text modes -> stdout.

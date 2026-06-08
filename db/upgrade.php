@@ -224,5 +224,19 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026062711, 'qtype', 'codeatelier');
     }
 
+    if ($oldversion < 2026062716) {
+        // Custom checker (special judge): the checker's language and source.
+        $table = new xmldb_table('qtype_codeatelier_options');
+        $checkerlang = new xmldb_field('checkerlang', XMLDB_TYPE_CHAR, '32', null, null, null, null, 'entryfile');
+        if (!$dbman->field_exists($table, $checkerlang)) {
+            $dbman->add_field($table, $checkerlang);
+        }
+        $checkersource = new xmldb_field('checkersource', XMLDB_TYPE_TEXT, null, null, null, null, null, 'checkerlang');
+        if (!$dbman->field_exists($table, $checkersource)) {
+            $dbman->add_field($table, $checkersource);
+        }
+        upgrade_plugin_savepoint(true, 2026062716, 'qtype', 'codeatelier');
+    }
+
     return true;
 }

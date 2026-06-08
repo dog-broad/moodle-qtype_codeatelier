@@ -71,7 +71,8 @@ class qtype_codeatelier extends question_type {
     public function extra_question_fields() {
         return array('qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint',
                 'startercode', 'schemasql', 'cputimelimit', 'memorylimit', 'languages', 'starters',
-                'referencesolution', 'allornothing', 'functionsignature', 'projectfiles', 'entryfile');
+                'referencesolution', 'allornothing', 'functionsignature', 'projectfiles', 'entryfile',
+                'checkerlang', 'checkersource');
     }
 
     public function get_question_options($question) {
@@ -138,6 +139,19 @@ class qtype_codeatelier extends question_type {
                 ? (string) $question->projectfiles : null;
         $question->entryfile = (isset($question->entryfile) && trim((string) $question->entryfile) !== '')
                 ? (string) $question->entryfile : null;
+
+        // Custom checker (special judge): a blank checker source means "no custom
+        // checker — use the declarative matching rule", so clear both columns
+        // together (a stale language with no source must not look like a checker).
+        $checkersource = isset($question->checkersource) ? (string) $question->checkersource : '';
+        if (trim($checkersource) === '') {
+            $question->checkersource = null;
+            $question->checkerlang = null;
+        } else {
+            $question->checkersource = $checkersource;
+            $checkerlang = isset($question->checkerlang) ? trim((string) $question->checkerlang) : '';
+            $question->checkerlang = in_array($checkerlang, self::ALL_LANGUAGES, true) ? $checkerlang : 'python';
+        }
 
         // Saves the language/tier/scenario options into qtype_codeatelier_options.
         parent::save_question_options($question);
@@ -302,6 +316,7 @@ class qtype_codeatelier extends question_type {
             'cputimelimit' => '', 'memorylimit' => '', 'languages' => '',
             'starters' => '', 'referencesolution' => '', 'allornothing' => 0,
             'functionsignature' => '', 'projectfiles' => '', 'entryfile' => '',
+            'checkerlang' => '', 'checkersource' => '',
         );
         $fields = $this->extra_question_fields();
         array_shift($fields);

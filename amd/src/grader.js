@@ -214,6 +214,12 @@ const grade = (results, tests, options) => {
             status = 'timeout';
         } else if (result.error) {
             status = 'error';
+        } else if (Object.prototype.hasOwnProperty.call(result, 'passed')) {
+            // An already-decided pass/fail (the judge-tier custom checker decides
+            // AC/WA per test, replacing the declarative matching rule). Aggregation
+            // -- weights, all-or-nothing, subtasks -- stays identical.
+            passed = Boolean(result.passed);
+            status = passed ? 'pass' : 'fail';
         } else {
             // Pick what to compare by mode: structured -> return value;
             // result-set -> the SQL result rows; text modes -> stdout.

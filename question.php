@@ -87,6 +87,12 @@ class qtype_codeatelier_question extends question_graded_automatically {
     /** @var int 1 grades all-or-nothing (full marks only if every test passes), 0 partial credit. */
     public $allornothing = 0;
 
+    /** @var string|null custom-checker language; null/empty means no checker (use the matching rule). */
+    public $checkerlang = null;
+
+    /** @var string|null custom-checker source: decides AC/WA per test instead of the matching rule. */
+    public $checkersource = null;
+
     /** @var array the test cases (rows from qtype_codeatelier_tests). */
     public $tests = array();
 
@@ -362,7 +368,8 @@ class qtype_codeatelier_question extends question_graded_automatically {
         $hash = \qtype_codeatelier\judge\result_cache::key(
                 $language, (string) $code, $this->tests, $limits, $schemasql, $allornothing,
                 $this->data_files_hash(), (string) $this->scenario, (string) $this->entrypoint,
-                (string) $this->functionsignature, (string) $this->entryfile);
+                (string) $this->functionsignature, (string) $this->entryfile,
+                (string) $this->checkersource, (string) $this->checkerlang);
         $cached = \qtype_codeatelier\judge\result_cache::get($hash);
         if ($cached !== null) {
             return $cached;
@@ -371,7 +378,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
         $result = $grader->grade((string) $code, $language, $this->tests, $schemasql, $allornothing,
                 (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature,
-                (string) $this->entryfile);
+                (string) $this->entryfile, (string) $this->checkersource, (string) $this->checkerlang);
         if (empty($result['infrastructure'])) {
             \qtype_codeatelier\judge\result_cache::put($hash, $result);
         }
@@ -458,7 +465,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
         return $grader->grade((string) $code, $this->resolve_language($language), $visible,
                 (string) $this->schemasql, !empty($this->allornothing),
                 (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature,
-                (string) $this->entryfile);
+                (string) $this->entryfile, (string) $this->checkersource, (string) $this->checkerlang);
     }
 
     /**
@@ -499,7 +506,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
                 $this->resolve_language($language), (string) $code, $this->tests, $limits,
                 (string) $this->schemasql, !empty($this->allornothing), $this->data_files_hash(),
                 (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature,
-                (string) $this->entryfile);
+                (string) $this->entryfile, (string) $this->checkersource, (string) $this->checkerlang);
         return \qtype_codeatelier\judge\result_cache::get($hash);
     }
 
