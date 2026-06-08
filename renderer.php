@@ -370,8 +370,14 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         $head = html_writer::span(s($label), 'codeatelier-test-label')
             . ' '
             . html_writer::span(s($statuslabel),
-                    'codeatelier-test-status codeatelier-status-' . ($passed ? 'pass' : $status))
-            . $this->render_test_meta($tr);
+                    'codeatelier-test-status codeatelier-status-' . ($passed ? 'pass' : $status));
+        // Show the subtask group so grouped (all-or-nothing) scoring is legible.
+        if (!empty($tr['subtask'])) {
+            $head .= ' ' . html_writer::span(
+                    s(get_string('subtaskgroup', 'qtype_codeatelier', (int) $tr['subtask'])),
+                    'codeatelier-test-subtask');
+        }
+        $head .= $this->render_test_meta($tr);
 
         $detail = '';
         if ($visible && !$passed) {

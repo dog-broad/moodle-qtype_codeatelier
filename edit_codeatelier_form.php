@@ -319,6 +319,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 get_string('weight', 'qtype_codeatelier'), array('size' => 10));
         $repeated[] = $mform->createElement('select', 'testvisibility',
                 get_string('visibility', 'qtype_codeatelier'), $this->visibility_options());
+        $repeated[] = $mform->createElement('text', 'subtask',
+                get_string('subtask', 'qtype_codeatelier'), array('size' => 6));
         $repeated[] = $mform->createElement('textarea', 'checkerquery',
                 get_string('checkerquery', 'qtype_codeatelier'), array('rows' => 2, 'cols' => 60));
         $repeated[] = $mform->createElement('textarea', 'testfeedback',
@@ -341,6 +343,9 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $repeatedoptions['tolerance']['hideif'] = array('scenario', 'eq', 'web');
         $repeatedoptions['testweight']['type'] = PARAM_RAW_TRIMMED;
         $repeatedoptions['testvisibility']['type'] = PARAM_INT;
+        // Subtask group id (0 = ungrouped). Not used by web (DOM-assertion) questions.
+        $repeatedoptions['subtask']['type'] = PARAM_INT;
+        $repeatedoptions['subtask']['hideif'] = array('scenario', 'eq', 'web');
         $repeatedoptions['checkerquery']['type'] = PARAM_RAW;
         $repeatedoptions['checkerquery']['hideif'] = array('scenario', 'neq', 'sql');
         $repeatedoptions['testfeedback']['type'] = PARAM_RAW;
@@ -502,6 +507,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $question->assertproperty = array();
         $question->assertmatcher = array();
         $question->actions = array();
+        $question->subtask = array();
 
         foreach (array_values($question->options->tests) as $i => $test) {
             $question->testinput[$i] = $test->input;
@@ -516,6 +522,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             $question->assertproperty[$i] = $test->assertproperty;
             $question->assertmatcher[$i] = $test->assertmatcher;
             $question->actions[$i] = $test->actions;
+            $question->subtask[$i] = isset($test->subtask) ? (int) $test->subtask : 0;
         }
 
         return $question;
@@ -845,6 +852,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 'weight' => $data['testweight'][$key],
                 'visibility' => $data['testvisibility'][$key],
                 'checkerquery' => isset($data['checkerquery'][$key]) ? $data['checkerquery'][$key] : null,
+                'subtask' => isset($data['subtask'][$key]) ? (int) $data['subtask'][$key] : 0,
             );
         }
         return $tests;
