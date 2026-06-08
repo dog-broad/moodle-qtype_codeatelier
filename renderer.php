@@ -280,6 +280,13 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                     array('class' => 'codeatelier-compileoutput'));
         }
 
+        // A custom checker decided AC/WA, so a passing answer may differ from the
+        // shown Expected — note it so the comparison is not read as authoritative.
+        if (!empty($result['checker'])) {
+            $out .= html_writer::div(get_string('gradedbychecker', 'qtype_codeatelier'),
+                    'codeatelier-checker-note text-muted');
+        }
+
         $items = '';
         foreach ($result['testresults'] as $tr) {
             $items .= $this->render_judge_test_row($tr);

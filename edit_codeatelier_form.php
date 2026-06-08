@@ -157,6 +157,26 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // A web (frontend) question grades against DOM assertions, not a reference run.
         $mform->hideIf('referencesolution', 'scenario', 'eq', 'web');
 
+        // Custom checker (special judge): a program that decides AC/WA per test
+        // instead of the declarative matching rule, for problems with many valid
+        // answers. Judge-tier stdin/stdout only; it reads (input, expected, output)
+        // as three files and prints an AC or WA token. Leave blank for no checker.
+        $checkerlangs = $this->language_options();
+        unset($checkerlangs['sql']);
+        $mform->addElement('select', 'checkerlang', get_string('checkerlang', 'qtype_codeatelier'),
+                $checkerlangs);
+        $mform->setDefault('checkerlang', 'python');
+        $mform->addHelpButton('checkerlang', 'checkerlang', 'qtype_codeatelier');
+        $mform->hideIf('checkerlang', 'tier', 'neq', 'judge');
+        $mform->hideIf('checkerlang', 'scenario', 'neq', 'stdinstdout');
+
+        $mform->addElement('textarea', 'checkersource', get_string('checkersource', 'qtype_codeatelier'),
+                array('rows' => 8, 'cols' => 60, 'spellcheck' => 'false'));
+        $mform->setType('checkersource', PARAM_RAW);
+        $mform->addHelpButton('checkersource', 'checkersource', 'qtype_codeatelier');
+        $mform->hideIf('checkersource', 'tier', 'neq', 'judge');
+        $mform->hideIf('checkersource', 'scenario', 'neq', 'stdinstdout');
+
         // Support/data files: judge tier only. They are placed in the working
         // directory next to the program so it can read them at run time.
         $mform->addElement('filemanager', 'datafiles', get_string('datafiles', 'qtype_codeatelier'),
@@ -683,6 +703,29 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             }
         }
 
+        $hasreference = ($scenario === 'project')
+                ? self::project_reference_has_content($data['referencesolution'] ?? '')
+                : (trim((string) ($data['referencesolution'] ?? '')) !== '');
+
+        // A custom checker (special judge) is a judge-tier stdin/stdout feature,
+        // written in a general-purpose judge language. It needs a reference
+        // solution so validate-on-save can prove the checker accepts a correct
+        // answer — the primary guard against shipping a broken checker.
+        $checkersource = isset($data['checkersource']) ? trim((string) $data['checkersource']) : '';
+        if ($checkersource !== '') {
+            if ($tier !== 'judge' || $scenario !== 'stdinstdout') {
+                $errors['checkersource'] = get_string('checkerscenario', 'qtype_codeatelier');
+            } else {
+                $checkerlang = isset($data['checkerlang']) ? $data['checkerlang'] : '';
+                if (!in_array($checkerlang, self::JUDGE_LANGUAGES, true) || $checkerlang === 'sql') {
+                    $errors['checkerlang'] = get_string('checkerlangrequired', 'qtype_codeatelier');
+                }
+                if (!$hasreference) {
+                    $errors['referencesolution'] = get_string('checkerneedsreference', 'qtype_codeatelier');
+                }
+            }
+        }
+
         // Validate-on-save: a judge-tier reference solution must pass every test or
         // the save is rejected (the practice tier is warned client-side instead — the
         // server cannot run browser code). Skips silently with no endpoint or an
@@ -692,10 +735,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // would wrongly fail a reference that reads them.
         // For a project the reference is a file set; only validate when it has real
         // content (the file-tab editor seeds an empty default that must not block).
-        $hasreference = ($scenario === 'project')
-                ? self::project_reference_has_content($data['referencesolution'] ?? '')
-                : (trim((string) ($data['referencesolution'] ?? '')) !== '');
         if ($tier === 'judge' && $count > 0 && !isset($errors['languages'])
+                && !isset($errors['checkersource']) && !isset($errors['checkerlang'])
                 && $hasreference && !$this->has_draft_data_files($data)) {
             $errors = $this->validate_reference($data, $errors);
         }
@@ -756,12 +797,24 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $question->memorylimit = (isset($data['memorylimit']) && trim($data['memorylimit']) !== '')
                 ? (int) $data['memorylimit'] : null;
         $question->languages = null;
+        // A custom checker is validated by the same reference run: the reference's
+        // output must be ACCEPTED by the checker for every test.
+        $question->checkersource = isset($data['checkersource']) ? (string) $data['checkersource'] : null;
+        $question->checkerlang = isset($data['checkerlang']) ? (string) $data['checkerlang'] : null;
         $question->tests = $this->tests_from_form($data);
 
         $result = $question->get_judge_result($data['referencesolution'], $data['language']);
-        if ($result === null || !empty($result['infrastructure'])) {
-            // No endpoint, or the sandbox is unreachable: cannot validate, so allow
-            // the save rather than block on infrastructure.
+        if ($result === null) {
+            return $errors;
+        }
+        if (!empty($result['infrastructure'])) {
+            // A broken checker surfaces as an infrastructure result whose message
+            // names the checker — that is a question error the author must fix, so
+            // block. A genuinely unreachable sandbox cannot be validated, so allow.
+            if (stripos((string) ($result['message'] ?? ''), 'checker') !== false) {
+                $errors['checkersource'] = get_string('checkerinvalid', 'qtype_codeatelier',
+                        (string) $result['message']);
+            }
             return $errors;
         }
         if (($result['verdict'] ?? '') !== 'AC' || ($result['fraction'] ?? 0) < 1.0) {
