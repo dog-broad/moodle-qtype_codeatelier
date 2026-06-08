@@ -35,7 +35,7 @@ defined('MOODLE_INTERNAL') || die();
 class result_cache {
 
     /** @var int the result-blob shape version; bump to invalidate older cached entries. */
-    const BLOB_VERSION = 10;
+    const BLOB_VERSION = 11;
 
     /**
      * The cache key for a submission: a hash over everything that can change the

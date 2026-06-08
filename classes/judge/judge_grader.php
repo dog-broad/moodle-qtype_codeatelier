@@ -243,6 +243,8 @@ class judge_grader {
                 'status' => $status,
                 'passed' => $tr['passed'],
                 'visibility' => $tr['visibility'],
+                // The subtask group id (from the shared grader) so review can show grouping.
+                'subtask' => $tr['subtask'] ?? 0,
                 'time' => $run['time'] ?? null,
                 'memory' => $run['memory'] ?? null,
             ];
