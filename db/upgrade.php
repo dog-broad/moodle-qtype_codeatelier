@@ -238,5 +238,15 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026062716, 'qtype', 'codeatelier');
     }
 
+    if ($oldversion < 2026062717) {
+        // Subtask group id on the test-case table (0 = ungrouped).
+        $table = new xmldb_table('qtype_codeatelier_tests');
+        $field = new xmldb_field('subtask', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'actions');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        upgrade_plugin_savepoint(true, 2026062717, 'qtype', 'codeatelier');
+    }
+
     return true;
 }

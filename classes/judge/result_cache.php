@@ -35,7 +35,7 @@ defined('MOODLE_INTERNAL') || die();
 class result_cache {
 
     /** @var int the result-blob shape version; bump to invalidate older cached entries. */
-    const BLOB_VERSION = 9;
+    const BLOB_VERSION = 10;
 
     /**
      * The cache key for a submission: a hash over everything that can change the
@@ -77,6 +77,8 @@ class result_cache {
                 isset($test->assertproperty) ? (string) $test->assertproperty : '',
                 isset($test->assertmatcher) ? (string) $test->assertmatcher : '',
                 isset($test->actions) ? (string) $test->actions : '',
+                // The subtask group changes how this test's weight aggregates.
+                isset($test->subtask) ? (string) $test->subtask : '',
             ];
         }
         return sha1(json_encode([self::BLOB_VERSION, $language, $code, $signature, $limits, $schemasql,

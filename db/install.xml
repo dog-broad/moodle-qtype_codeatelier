@@ -48,6 +48,7 @@
         <FIELD NAME="assertproperty" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: the property checked - text, exists, count, attr:NAME or style:PROP."/>
         <FIELD NAME="assertmatcher" TYPE="char" LENGTH="32" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: how expected is compared - equals, contains or regex."/>
         <FIELD NAME="actions" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: optional interaction steps run before the assertion (click/type), one per line."/>
+        <FIELD NAME="subtask" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Subtask group id (IOI-style). 0 is ungrouped (per-test weighting); a positive id groups tests for all-or-nothing credit within the group."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>

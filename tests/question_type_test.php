@@ -296,6 +296,26 @@ final class question_type_test extends \advanced_testcase {
         $this->assertSame('python', $data->options->checkerlang);
     }
 
+    public function test_subtask_column_round_trips(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+
+        // The judge fixture has two tests; group them into subtask 1.
+        $question = $qgen->create_question('codeatelier', 'judge', array(
+            'category' => $cat->id, 'subtask' => array(1, 1)));
+        $data = question_bank::load_question_data($question->id);
+
+        $tests = array_values($data->options->tests);
+        $this->assertSame(1, (int) $tests[0]->subtask);
+        $this->assertSame(1, (int) $tests[1]->subtask);
+    }
+
     public function test_blank_checker_source_clears_both_columns(): void {
         $this->resetAfterTest();
         $this->setAdminUser();

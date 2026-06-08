@@ -203,6 +203,9 @@ class qtype_codeatelier extends question_type {
             $record->actions = ($isweb && isset($question->actions[$key])
                     && trim((string) $question->actions[$key]) !== '')
                     ? $question->actions[$key] : null;
+            // Subtask group id (IOI-style); 0 is ungrouped (per-test weighting).
+            $record->subtask = (isset($question->subtask[$key]) && (int) $question->subtask[$key] > 0)
+                    ? (int) $question->subtask[$key] : 0;
 
             $existing = array_shift($oldtests);
             if ($existing) {
@@ -278,7 +281,7 @@ class qtype_codeatelier extends question_type {
             $output .= "    <testcase>\n";
             foreach (array('input', 'expected', 'matchmode', 'tolerance', 'weight',
                     'visibility', 'checkerquery', 'feedback',
-                    'selector', 'assertproperty', 'assertmatcher', 'actions') as $field) {
+                    'selector', 'assertproperty', 'assertmatcher', 'actions', 'subtask') as $field) {
                 $value = isset($test->$field) ? $test->$field : '';
                 $output .= "      <{$field}>" . $format->xml_escape((string) $value) . "</{$field}>\n";
             }
@@ -333,7 +336,7 @@ class qtype_codeatelier extends question_type {
 
         foreach (array('testinput', 'testexpected', 'matchmode', 'tolerance',
                 'testweight', 'testvisibility', 'checkerquery', 'testfeedback',
-                'selector', 'assertproperty', 'assertmatcher', 'actions') as $arr) {
+                'selector', 'assertproperty', 'assertmatcher', 'actions', 'subtask') as $arr) {
             $qo->$arr = array();
         }
         $testcases = isset($data['#']['testcase']) ? $data['#']['testcase'] : array();
@@ -350,6 +353,7 @@ class qtype_codeatelier extends question_type {
             $qo->assertproperty[] = $format->getpath($tc, array('#', 'assertproperty', 0, '#'), '');
             $qo->assertmatcher[] = $format->getpath($tc, array('#', 'assertmatcher', 0, '#'), '');
             $qo->actions[] = $format->getpath($tc, array('#', 'actions', 0, '#'), '');
+            $qo->subtask[] = $format->getpath($tc, array('#', 'subtask', 0, '#'), 0);
         }
 
         // Rebuild the support/data files into a draft area so the normal save path
