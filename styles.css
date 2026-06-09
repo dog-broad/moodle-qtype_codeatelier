@@ -775,3 +775,31 @@
 .codeatelier-webpicker .codeatelier-pickmsg {
     margin-left: 0.5rem;
 }
+
+/* Editor tools: the visible find/replace control and the shortcuts disclosure. */
+.qtype_codeatelier .codeatelier-editor-tools {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+}
+
+.qtype_codeatelier .codeatelier-editor-find {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.qtype_codeatelier .codeatelier-shortcuts summary {
+    cursor: pointer;
+}
+
+.qtype_codeatelier .codeatelier-shortcut-list {
+    margin: 0.5rem 0 0;
+    padding-left: 1.2rem;
+}
+
+.qtype_codeatelier .codeatelier-shortcut-list li {
+    margin-bottom: 0.2rem;
+}

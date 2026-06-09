@@ -324,6 +324,11 @@ export const setup = (root, answerTa, config, strings, onChange) => {
 
     return {
         getValue: () => answerTa.value,
+        openSearch: () => {
+            if (cm && typeof cm.openSearch === 'function') {
+                cm.openSearch();
+            }
+        },
         destroy: () => {
             if (cm && cm.destroy) {
                 cm.destroy();

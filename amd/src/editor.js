@@ -28,6 +28,7 @@ import {EditorState} from '@codemirror/state';
 import {keymap} from '@codemirror/view';
 import {indentWithTab} from '@codemirror/commands';
 import {lintGutter, setDiagnostics} from '@codemirror/lint';
+import {openSearchPanel} from '@codemirror/search';
 import {python} from '@codemirror/lang-python';
 import {sql} from '@codemirror/lang-sql';
 import {javascript} from '@codemirror/lang-javascript';
@@ -317,6 +318,14 @@ export const create = (textarea, language, options) => {
 
     return {
         getValue: () => view.state.doc.toString(),
+        /**
+         * Open the find/replace panel and focus it — the visible, touch-friendly
+         * path to the search that Ctrl/Cmd+F also opens.
+         */
+        openSearch: () => {
+            view.focus();
+            openSearchPanel(view);
+        },
         /**
          * Tear the editor down and reveal the backing textarea again. Used when
          * an editor must be re-created for a different language.

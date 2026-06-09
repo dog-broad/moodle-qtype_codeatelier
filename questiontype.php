@@ -475,6 +475,9 @@ class qtype_codeatelier extends question_type {
             'testslabel' => get_string('testslabel', 'qtype_codeatelier'),
             'outputtabslabel' => get_string('outputtabs', 'qtype_codeatelier'),
             'practicenote' => get_string('practicenote', 'qtype_codeatelier'),
+            'findlabel' => get_string('editorfind', 'qtype_codeatelier'),
+            'shortcutstitle' => get_string('editorshortcutstitle', 'qtype_codeatelier'),
+            'shortcutshtml' => get_string('editorshortcuts', 'qtype_codeatelier'),
         );
     }
 }

@@ -615,6 +615,14 @@ export const init = (config) => {
         if (skeleton) {
             skeleton.style.display = 'none';
         }
+        const webfindbtn = root.querySelector('[data-role="editor-find"]');
+        if (webfindbtn) {
+            webfindbtn.addEventListener('click', () => {
+                if (webeditor && typeof webeditor.openSearch === 'function') {
+                    webeditor.openSearch();
+                }
+            });
+        }
         if (examplesel) {
             renderWebExamples(examplesel, config, strings);
         }
@@ -709,6 +717,17 @@ export const init = (config) => {
     }
     if (skeleton) {
         skeleton.style.display = 'none';
+    }
+
+    // Visible find/replace control — the touch-friendly path to Ctrl/Cmd+F. Reads
+    // the current editor (it is re-created on a language switch).
+    const findbtn = root.querySelector('[data-role="editor-find"]');
+    if (findbtn) {
+        findbtn.addEventListener('click', () => {
+            if (editor && typeof editor.openSearch === 'function') {
+                editor.openSearch();
+            }
+        });
     }
 
     // Language picker: re-mount the editor in the chosen language and record the
