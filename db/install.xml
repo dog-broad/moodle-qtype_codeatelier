@@ -23,6 +23,8 @@
         <FIELD NAME="functionsignature" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Typed function signature for static-language judge grading, e.g. 'int,int-&gt;int'. Empty for dynamic languages."/>
         <FIELD NAME="projectfiles" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Project scenario: JSON array of starter files [{name, content}, ...] for a multi-file question."/>
         <FIELD NAME="entryfile" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Project scenario: the entry/main file name Judge0 compiles and runs."/>
+        <FIELD NAME="checkerlang" TYPE="char" LENGTH="32" NOTNULL="false" SEQUENCE="false" COMMENT="Custom checker: the judge language the checker program is written in. Empty means no custom checker (use the declarative matching rule)."/>
+        <FIELD NAME="checkersource" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Custom checker: a teacher-supplied program that decides AC/WA per test, reading (input, expected, output) as three files and printing an AC or WA token. Judge stdin/stdout scenario only."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -46,6 +48,7 @@
         <FIELD NAME="assertproperty" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: the property checked - text, exists, count, attr:NAME or style:PROP."/>
         <FIELD NAME="assertmatcher" TYPE="char" LENGTH="32" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: how expected is compared - equals, contains or regex."/>
         <FIELD NAME="actions" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: optional interaction steps run before the assertion (click/type), one per line."/>
+        <FIELD NAME="subtask" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Subtask group id (IOI-style). 0 is ungrouped (per-test weighting); a positive id groups tests for all-or-nothing credit within the group."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>

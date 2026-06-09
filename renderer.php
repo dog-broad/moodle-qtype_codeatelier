@@ -280,6 +280,13 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                     array('class' => 'codeatelier-compileoutput'));
         }
 
+        // A custom checker decided AC/WA, so a passing answer may differ from the
+        // shown Expected — note it so the comparison is not read as authoritative.
+        if (!empty($result['checker'])) {
+            $out .= html_writer::div(get_string('gradedbychecker', 'qtype_codeatelier'),
+                    'codeatelier-checker-note text-muted');
+        }
+
         $items = '';
         foreach ($result['testresults'] as $tr) {
             $items .= $this->render_judge_test_row($tr);
@@ -363,8 +370,14 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         $head = html_writer::span(s($label), 'codeatelier-test-label')
             . ' '
             . html_writer::span(s($statuslabel),
-                    'codeatelier-test-status codeatelier-status-' . ($passed ? 'pass' : $status))
-            . $this->render_test_meta($tr);
+                    'codeatelier-test-status codeatelier-status-' . ($passed ? 'pass' : $status));
+        // Show the subtask group so grouped (all-or-nothing) scoring is legible.
+        if (!empty($tr['subtask'])) {
+            $head .= ' ' . html_writer::span(
+                    s(get_string('subtaskgroup', 'qtype_codeatelier', (int) $tr['subtask'])),
+                    'codeatelier-test-subtask');
+        }
+        $head .= $this->render_test_meta($tr);
 
         $detail = '';
         if ($visible && !$passed) {

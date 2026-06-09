@@ -71,7 +71,8 @@ class qtype_codeatelier extends question_type {
     public function extra_question_fields() {
         return array('qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint',
                 'startercode', 'schemasql', 'cputimelimit', 'memorylimit', 'languages', 'starters',
-                'referencesolution', 'allornothing', 'functionsignature', 'projectfiles', 'entryfile');
+                'referencesolution', 'allornothing', 'functionsignature', 'projectfiles', 'entryfile',
+                'checkerlang', 'checkersource');
     }
 
     public function get_question_options($question) {
@@ -139,6 +140,19 @@ class qtype_codeatelier extends question_type {
         $question->entryfile = (isset($question->entryfile) && trim((string) $question->entryfile) !== '')
                 ? (string) $question->entryfile : null;
 
+        // Custom checker (special judge): a blank checker source means "no custom
+        // checker — use the declarative matching rule", so clear both columns
+        // together (a stale language with no source must not look like a checker).
+        $checkersource = isset($question->checkersource) ? (string) $question->checkersource : '';
+        if (trim($checkersource) === '') {
+            $question->checkersource = null;
+            $question->checkerlang = null;
+        } else {
+            $question->checkersource = $checkersource;
+            $checkerlang = isset($question->checkerlang) ? trim((string) $question->checkerlang) : '';
+            $question->checkerlang = in_array($checkerlang, self::ALL_LANGUAGES, true) ? $checkerlang : 'python';
+        }
+
         // Saves the language/tier/scenario options into qtype_codeatelier_options.
         parent::save_question_options($question);
 
@@ -189,6 +203,9 @@ class qtype_codeatelier extends question_type {
             $record->actions = ($isweb && isset($question->actions[$key])
                     && trim((string) $question->actions[$key]) !== '')
                     ? $question->actions[$key] : null;
+            // Subtask group id (IOI-style); 0 is ungrouped (per-test weighting).
+            $record->subtask = (isset($question->subtask[$key]) && (int) $question->subtask[$key] > 0)
+                    ? (int) $question->subtask[$key] : 0;
 
             $existing = array_shift($oldtests);
             if ($existing) {
@@ -264,7 +281,7 @@ class qtype_codeatelier extends question_type {
             $output .= "    <testcase>\n";
             foreach (array('input', 'expected', 'matchmode', 'tolerance', 'weight',
                     'visibility', 'checkerquery', 'feedback',
-                    'selector', 'assertproperty', 'assertmatcher', 'actions') as $field) {
+                    'selector', 'assertproperty', 'assertmatcher', 'actions', 'subtask') as $field) {
                 $value = isset($test->$field) ? $test->$field : '';
                 $output .= "      <{$field}>" . $format->xml_escape((string) $value) . "</{$field}>\n";
             }
@@ -302,6 +319,7 @@ class qtype_codeatelier extends question_type {
             'cputimelimit' => '', 'memorylimit' => '', 'languages' => '',
             'starters' => '', 'referencesolution' => '', 'allornothing' => 0,
             'functionsignature' => '', 'projectfiles' => '', 'entryfile' => '',
+            'checkerlang' => '', 'checkersource' => '',
         );
         $fields = $this->extra_question_fields();
         array_shift($fields);
@@ -318,7 +336,7 @@ class qtype_codeatelier extends question_type {
 
         foreach (array('testinput', 'testexpected', 'matchmode', 'tolerance',
                 'testweight', 'testvisibility', 'checkerquery', 'testfeedback',
-                'selector', 'assertproperty', 'assertmatcher', 'actions') as $arr) {
+                'selector', 'assertproperty', 'assertmatcher', 'actions', 'subtask') as $arr) {
             $qo->$arr = array();
         }
         $testcases = isset($data['#']['testcase']) ? $data['#']['testcase'] : array();
@@ -335,6 +353,7 @@ class qtype_codeatelier extends question_type {
             $qo->assertproperty[] = $format->getpath($tc, array('#', 'assertproperty', 0, '#'), '');
             $qo->assertmatcher[] = $format->getpath($tc, array('#', 'assertmatcher', 0, '#'), '');
             $qo->actions[] = $format->getpath($tc, array('#', 'actions', 0, '#'), '');
+            $qo->subtask[] = $format->getpath($tc, array('#', 'subtask', 0, '#'), 0);
         }
 
         // Rebuild the support/data files into a draft area so the normal save path

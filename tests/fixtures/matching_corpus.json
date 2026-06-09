@@ -184,6 +184,66 @@
                 {"status": "pass", "passed": true, "visibility": 1},
                 {"status": "pass", "passed": true, "visibility": 0}
             ]
+        },
+        {
+            "name": "checker-passed-flag-overrides-matching",
+            "results": [{"passed": true}, {"passed": false}],
+            "tests": [
+                {"expected": "5", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 1},
+                {"expected": "30", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 0}
+            ],
+            "wantfraction": 0.5,
+            "wantverdict": "WA",
+            "wanttestresults": [
+                {"status": "pass", "passed": true, "visibility": 1},
+                {"status": "fail", "passed": false, "visibility": 0}
+            ]
+        },
+        {
+            "name": "subtask-group-all-pass-earns-full-weight",
+            "results": [{"stdout": "5\n"}, {"stdout": "30\n"}],
+            "tests": [
+                {"expected": "5", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 1, "subtask": 1},
+                {"expected": "30", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 0, "subtask": 1}
+            ],
+            "wantfraction": 1.0,
+            "wantverdict": "AC",
+            "wanttestresults": [
+                {"status": "pass", "passed": true, "visibility": 1},
+                {"status": "pass", "passed": true, "visibility": 0}
+            ]
+        },
+        {
+            "name": "subtask-group-partial-earns-zero",
+            "results": [{"stdout": "5\n"}, {"stdout": "wrong\n"}],
+            "tests": [
+                {"expected": "5", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 1, "subtask": 1},
+                {"expected": "30", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 0, "subtask": 1}
+            ],
+            "wantfraction": 0.0,
+            "wantverdict": "WA",
+            "wanttestresults": [
+                {"status": "pass", "passed": true, "visibility": 1},
+                {"status": "fail", "passed": false, "visibility": 0}
+            ]
+        },
+        {
+            "name": "subtask-mixed-groups-and-ungrouped",
+            "results": [{"stdout": "a\n"}, {"stdout": "b\n"}, {"stdout": "x\n"}, {"stdout": "d\n"}],
+            "tests": [
+                {"expected": "a", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 1, "subtask": 1},
+                {"expected": "b", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 0, "subtask": 1},
+                {"expected": "c", "matchmode": "trimmed", "tolerance": null, "weight": 1, "visibility": 0, "subtask": 0},
+                {"expected": "d", "matchmode": "trimmed", "tolerance": null, "weight": 2, "visibility": 0, "subtask": 2}
+            ],
+            "wantfraction": 0.8,
+            "wantverdict": "WA",
+            "wanttestresults": [
+                {"status": "pass", "passed": true, "visibility": 1},
+                {"status": "pass", "passed": true, "visibility": 0},
+                {"status": "fail", "passed": false, "visibility": 0},
+                {"status": "pass", "passed": true, "visibility": 0}
+            ]
         }
     ]
 }

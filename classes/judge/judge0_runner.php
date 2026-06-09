@@ -294,6 +294,82 @@ class judge0_runner {
     }
 
     /**
+     * Run a custom checker (special judge) over a set of cases. For each case the
+     * checker program is given three FILES — `input`, `expected`, `output` — via
+     * additional_files, and their names as command_line_arguments ("input expected
+     * output"), so the checker opens argv[1]/argv[2]/argv[3] (the testlib
+     * inf/ans/ouf convention). Data/support files are deliberately NOT attached:
+     * the checker's working directory holds only its three inputs.
+     *
+     * Execution only — like {@see run()}, this returns the raw outcome and stdout;
+     * interpreting the verdict token (AC/WA) is the grader's job, mirroring how the
+     * matcher (not the runner) decides correctness on both tiers.
+     *
+     * @param string $checkerlang the checker's language key
+     * @param string $checkersource the checker program
+     * @param array $cases per case ['input' => ..., 'expected' => ..., 'output' => ...]
+     * @return array per-case results aligned by index (same shape as {@see run()})
+     */
+    public function run_checker(string $checkerlang, string $checkersource, array $cases): array {
+        $languageid = self::language_id($checkerlang);
+        if ($languageid === null) {
+            throw new \coding_exception("Unsupported checker language: {$checkerlang}");
+        }
+        $cases = array_values($cases);
+        if (!$cases) {
+            return [];
+        }
+        $submissions = [];
+        foreach ($cases as $case) {
+            $zip = self::files_zip([
+                'input' => (string) ($case['input'] ?? ''),
+                'expected' => (string) ($case['expected'] ?? ''),
+                'output' => (string) ($case['output'] ?? ''),
+            ]);
+            $submissions[] = [
+                'source_code' => base64_encode($checkersource),
+                'language_id' => $languageid,
+                'additional_files' => $zip,
+                // Plain text even under base64_encoded=true (Judge0 does not decode it).
+                'command_line_arguments' => 'input expected output',
+                'cpu_time_limit' => $this->cputimelimit,
+                'memory_limit' => $this->memorylimit,
+            ];
+        }
+        $responses = $this->submit_batch($submissions);
+        if (isset($responses['_error'])) {
+            return array_fill(0, count($cases), self::internal_result($responses['_error']));
+        }
+        $results = [];
+        foreach ($cases as $i => $case) {
+            $results[] = (isset($responses[$i]) && is_array($responses[$i]))
+                ? $this->map_response($responses[$i])
+                : self::internal_result('judge0 returned no result for a checker case');
+        }
+        return $results;
+    }
+
+    /**
+     * Build a base64-encoded ZIP from a map of file name => content, for Judge0's
+     * additional_files (unpacked flat into the working directory).
+     *
+     * @param array $files name => content
+     * @return string the base64 ZIP
+     */
+    private static function files_zip(array $files): string {
+        $tmp = make_request_directory() . '/checker.zip';
+        $zip = new \ZipArchive();
+        $zip->open($tmp, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        foreach ($files as $name => $content) {
+            $zip->addFromString((string) $name, (string) $content);
+        }
+        $zip->close();
+        $base64 = base64_encode(file_get_contents($tmp));
+        unlink($tmp);
+        return $base64;
+    }
+
+    /**
      * Map a single Judge0 submission response to a per-case result.
      *
      * @param array $response one decoded Judge0 submission

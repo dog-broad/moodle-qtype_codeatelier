@@ -281,6 +281,22 @@ $string['startercode'] = 'Starter code';
 $string['startercode_help'] = 'Optional code pre-filled in the student\'s editor for the primary language — for example a function signature to complete.';
 $string['referencesolution'] = 'Reference solution';
 $string['referencesolution_help'] = 'A correct solution in the primary language. Use **Capture expected outputs** to fill the Expected fields by running it against every test. In Secure mode the reference is run on save and the save is blocked if it does not pass every test; in Practice mode a failing reference only warns.';
+$string['checkerlang'] = 'Checker language';
+$string['checkerlang_help'] = 'The language the custom checker is written in. It can differ from the student\'s language (for example a Python checker grading C++ answers).';
+$string['checkersource'] = 'Custom checker (special judge)';
+$string['checkersource_help'] = 'Secure mode, stdin/stdout only. A program that decides whether each answer is correct — for problems with many valid answers (any valid path, any order, a tolerance). Leave blank to compare against the Expected output with the matching rule.
+
+The checker is given three files in its working directory, named on its command line in this order: **input** (the test input), **expected** (the Expected output), **output** (the student\'s output). Open `argv[1]`, `argv[2]`, `argv[3]`. Print **AC** on the first line to accept the answer, or **WA** to reject it.
+
+A reference solution is required so the checker is verified on save (its output for every test must be accepted).';
+$string['checkerscenario'] = 'A custom checker is only available for Secure mode with the stdin/stdout question format.';
+$string['checkerlangrequired'] = 'Choose a language for the custom checker.';
+$string['checkerneedsreference'] = 'Provide a reference solution so the custom checker can be verified on save.';
+$string['checkerinvalid'] = 'The custom checker could not be verified: {$a}. Fix the checker before saving.';
+$string['gradedbychecker'] = 'This question is graded by a custom checker, so a correct answer may differ from the Expected output shown.';
+$string['subtask'] = 'Subtask group';
+$string['subtask_help'] = 'Group tests into subtasks (IOI-style). Tests sharing the same positive group number are scored all-or-nothing together: the group is worth the sum of its tests\' weights, awarded only if every test in it passes. Leave 0 (the default) for an ungrouped test scored on its own weight (ordinary partial credit).';
+$string['subtaskgroup'] = 'Subtask {$a}';
 $string['datafiles'] = 'Support / data files';
 $string['datafiles_help'] = 'Secure mode only. Files you upload here are placed in the working directory next to the student\'s program, so it can read them at run time (for example a CSV the program opens). Practice mode (in the browser) does not provide these files.';
 $string['starterlang'] = 'Starter for language';

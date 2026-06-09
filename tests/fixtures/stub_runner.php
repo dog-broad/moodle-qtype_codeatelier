@@ -38,12 +38,40 @@ class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runn
     /** @var string|null the base64 package passed to the most recent run_multifile() call. */
     private $lastmultifilezip = null;
 
+    /** @var array|null scripted per-case checker results, or null if run_checker is unused. */
+    private $checkerrows = null;
+
+    /** @var array|null the cases the most recent run_checker() received. */
+    private $lastcheckercases = null;
+
     /**
      * @param array $rows the per-case result rows run() should return
      */
     public function __construct(array $rows) {
         parent::__construct('http://stub.invalid', null, 2.0, 128000);
         $this->rows = $rows;
+    }
+
+    /**
+     * Script the per-case results the next run_checker() call returns.
+     *
+     * @param array $rows the checker result rows
+     */
+    public function set_checker_rows(array $rows): void {
+        $this->checkerrows = $rows;
+    }
+
+    public function run_checker(string $checkerlang, string $checkersource, array $cases): array {
+        $this->calls++;
+        $this->lastcheckercases = array_values($cases);
+        return $this->checkerrows ?? array();
+    }
+
+    /**
+     * @return array|null the cases the most recent run_checker() received
+     */
+    public function last_checker_cases() {
+        return $this->lastcheckercases;
     }
 
     public function run(string $code, string $language, array $cases): array {

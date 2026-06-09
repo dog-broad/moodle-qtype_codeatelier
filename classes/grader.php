@@ -127,8 +127,14 @@ class grader {
      */
     public static function grade(array $results, array $tests, array $options = []): array {
         $totalweight = 0.0;
-        $earned = 0.0;
         $testresults = [];
+        // Subtask aggregation: tests are grouped by a subtask id. A positive id
+        // forms an IOI-style group that earns its summed weight only if EVERY test
+        // in it passes (all-or-nothing within the group); subtask 0 (or unset) is a
+        // singleton group, i.e. ordinary per-test weighted partial credit. Earned
+        // credit is summed over groups, so with no subtasks the result is identical
+        // to plain weighted grading.
+        $groups = [];
 
         foreach (array_values($tests) as $i => $test) {
             $result = $results[$i] ?? [];
@@ -140,6 +146,12 @@ class grader {
                 $status = 'timeout';
             } else if (!empty($result['error'])) {
                 $status = 'error';
+            } else if (array_key_exists('passed', $result)) {
+                // An already-decided pass/fail (the judge-tier custom checker decides
+                // AC/WA per test, replacing the declarative matching rule). Aggregation
+                // — weights, all-or-nothing, subtasks — stays identical.
+                $passed = (bool) $result['passed'];
+                $status = $passed ? 'pass' : 'fail';
             } else {
                 // Pick what to compare by mode: structured -> return value;
                 // result-set -> the SQL result rows; text modes -> stdout.
@@ -156,8 +168,15 @@ class grader {
                 $status = $passed ? 'pass' : 'fail';
             }
 
-            if ($passed) {
-                $earned += $weight;
+            $subtask = (int) (self::field($test, 'subtask') ?? 0);
+            // A positive subtask id groups its tests; subtask 0 is a singleton.
+            $key = $subtask > 0 ? ('g' . $subtask) : ('s' . $i);
+            if (!isset($groups[$key])) {
+                $groups[$key] = ['weight' => 0.0, 'allpassed' => true];
+            }
+            $groups[$key]['weight'] += $weight;
+            if (!$passed) {
+                $groups[$key]['allpassed'] = false;
             }
 
             $testresults[] = [
@@ -165,9 +184,17 @@ class grader {
                 'status' => $status,
                 'passed' => $passed,
                 'visibility' => (int) self::field($test, 'visibility'),
+                'subtask' => $subtask,
             ];
         }
 
+        // A group earns its full summed weight only if every test in it passed.
+        $earned = 0.0;
+        foreach ($groups as $group) {
+            if ($group['allpassed']) {
+                $earned += $group['weight'];
+            }
+        }
         $fraction = $totalweight > 0 ? $earned / $totalweight : 0.0;
         // All-or-nothing: a partial pass earns nothing.
         if (!empty($options['allOrNothing']) && $fraction < 1) {

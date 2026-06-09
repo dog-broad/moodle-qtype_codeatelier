@@ -61,6 +61,8 @@ class judge_grader {
      * @param string $entrypoint the function name to call (function scenario)
      * @param string $signature the typed signature (static-language function scenario)
      * @param string $entryfile the entry/main file name (project scenario)
+     * @param string $checkersource a custom-checker program (stdin/stdout scenario); empty uses the matching rule
+     * @param string $checkerlang the checker's language key
      * @return array {
      *     infrastructure: bool — true if the sandbox could not be reached (caller should mark needs-grading),
      *     fraction: float, verdict: string (AC|WA|TLE|RE|CE|INTERNAL),
@@ -70,7 +72,8 @@ class judge_grader {
      */
     public function grade(string $code, string $language, array $tests, string $schemasql = '',
             bool $allornothing = false, string $scenario = 'stdinstdout', string $entrypoint = '',
-            string $signature = '', string $entryfile = ''): array {
+            string $signature = '', string $entryfile = '', string $checkersource = '',
+            string $checkerlang = ''): array {
         $tests = array_values($tests);
         $issql = ($language === 'sql');
         $isfunction = ($scenario === 'function');
@@ -166,6 +169,50 @@ class judge_grader {
             }
         }
 
+        // Custom checker (special judge): for the stdin/stdout scenario a teacher
+        // checker decides AC/WA per test instead of the declarative matching rule
+        // (problems with many valid answers, float tolerance, any order). It runs
+        // only on tests whose student program completed — a CE/TLE/RE is already a
+        // failure — and each completed test's pass becomes an explicit decision fed
+        // to the SHARED grader, so weights / all-or-nothing / subtasks aggregate
+        // identically. A checker that cannot deliver a verdict (it failed to run, or
+        // emitted no AC/WA token) is a JUDGE failure, never a student WA: the whole
+        // submission is routed to needs-grading rather than scored from a broken
+        // checker (validate-on-save is the primary guard against that ever shipping).
+        $usedchecker = ($scenario === 'stdinstdout') && trim($checkersource) !== '' && $checkerlang !== '';
+        if ($usedchecker) {
+            $checkercases = [];
+            $checkerindexes = [];
+            foreach ($runresults as $i => $result) {
+                if ($result['outcome'] === 'ran') {
+                    $checkerindexes[] = $i;
+                    $checkercases[] = [
+                        'input' => (string) $tests[$i]->input,
+                        'expected' => (string) $tests[$i]->expected,
+                        'output' => (string) $result['stdout'],
+                    ];
+                }
+            }
+            if ($checkercases) {
+                $checkerresults = $this->runner->run_checker($checkerlang, $checkersource, $checkercases);
+                foreach ($checkerindexes as $k => $i) {
+                    $cr = $checkerresults[$k] ?? null;
+                    $verdict = self::checker_verdict($cr);
+                    if ($verdict === null) {
+                        return [
+                            'infrastructure' => true,
+                            'fraction' => 0.0,
+                            'verdict' => 'INTERNAL',
+                            'compileoutput' => is_array($cr) ? (string) ($cr['compileoutput'] ?? '') : '',
+                            'message' => self::checker_failure_message($cr),
+                            'testresults' => [],
+                        ];
+                    }
+                    $graderresults[$i] = ['passed' => $verdict];
+                }
+            }
+        }
+
         $graded = grader::grade($graderresults, $tests, ['allOrNothing' => $allornothing]);
 
         $testresults = [];
@@ -196,6 +243,8 @@ class judge_grader {
                 'status' => $status,
                 'passed' => $tr['passed'],
                 'visibility' => $tr['visibility'],
+                // The subtask group id (from the shared grader) so review can show grouping.
+                'subtask' => $tr['subtask'] ?? 0,
                 'time' => $run['time'] ?? null,
                 'memory' => $run['memory'] ?? null,
             ];
@@ -222,6 +271,7 @@ class judge_grader {
             'verdict' => self::verdict($graded['fraction'], $anyre, $anymle, $anytle),
             'compileoutput' => '',
             'message' => '',
+            'checker' => $usedchecker,
             'testresults' => $testresults,
         ];
     }
@@ -380,6 +430,55 @@ class judge_grader {
             return 'TLE';
         }
         return $fraction >= 1 ? 'AC' : 'WA';
+    }
+
+    /**
+     * Interpret a checker run into a per-test verdict: true (AC/OK), false (WA), or
+     * null when the checker did not run cleanly or printed no recognized verdict
+     * token — a judge failure, deliberately distinct from a student WA so a broken
+     * checker never silently grades a student wrong.
+     *
+     * @param array|null $result a single run_checker per-case result
+     * @return bool|null accept | reject | judge-failure
+     */
+    private static function checker_verdict($result): ?bool {
+        if (!is_array($result) || ($result['outcome'] ?? '') !== 'ran') {
+            return null;
+        }
+        // The verdict is the first whitespace-delimited token on stdout.
+        $token = strtok(trim((string) ($result['stdout'] ?? '')), " \t\r\n");
+        $token = $token === false ? '' : strtoupper($token);
+        if ($token === 'AC' || $token === 'OK') {
+            return true;
+        }
+        if ($token === 'WA' || $token === 'WRONG') {
+            return false;
+        }
+        return null;
+    }
+
+    /**
+     * A human-readable reason a checker failed to deliver a verdict, for the
+     * needs-grading message a teacher sees.
+     *
+     * @param array|null $result a single run_checker per-case result
+     * @return string
+     */
+    private static function checker_failure_message($result): string {
+        if (!is_array($result)) {
+            return 'the custom checker produced no result';
+        }
+        $outcome = $result['outcome'] ?? '';
+        if ($outcome === 'ce') {
+            return 'the custom checker failed to compile';
+        }
+        if ($outcome === 'internal') {
+            return (string) ($result['statusdesc'] ?? 'the custom checker could not be run');
+        }
+        if ($outcome !== 'ran') {
+            return 'the custom checker did not run to completion (' . (string) $outcome . ')';
+        }
+        return 'the custom checker did not print an AC or WA verdict';
     }
 
     /**

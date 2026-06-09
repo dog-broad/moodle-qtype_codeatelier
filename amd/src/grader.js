@@ -201,7 +201,12 @@ const actualOutput = (result) => {
 const grade = (results, tests, options) => {
     const opts = options || {};
     let totalweight = 0;
-    let earned = 0;
+    // Subtask aggregation: tests are grouped by a subtask id. A positive id forms
+    // an IOI-style group that earns its summed weight only if EVERY test in it
+    // passes (all-or-nothing within the group); subtask 0 (or unset) is a singleton
+    // group, i.e. ordinary per-test weighted partial credit. Earned credit is
+    // summed over groups, so with no subtasks the result is plain weighted grading.
+    const groups = {};
 
     const testresults = tests.map((test, i) => {
         const result = results[i] || {};
@@ -214,6 +219,12 @@ const grade = (results, tests, options) => {
             status = 'timeout';
         } else if (result.error) {
             status = 'error';
+        } else if (Object.prototype.hasOwnProperty.call(result, 'passed')) {
+            // An already-decided pass/fail (the judge-tier custom checker decides
+            // AC/WA per test, replacing the declarative matching rule). Aggregation
+            // -- weights, all-or-nothing, subtasks -- stays identical.
+            passed = Boolean(result.passed);
+            status = passed ? 'pass' : 'fail';
         } else {
             // Pick what to compare by mode: structured -> return value;
             // result-set -> the SQL result rows; text modes -> stdout.
@@ -229,8 +240,15 @@ const grade = (results, tests, options) => {
             status = passed ? 'pass' : 'fail';
         }
 
-        if (passed) {
-            earned += weight;
+        const subtask = parseInt(test.subtask, 10) || 0;
+        // A positive subtask id groups its tests; subtask 0 is a singleton.
+        const key = subtask > 0 ? ('g' + subtask) : ('s' + i);
+        if (!groups[key]) {
+            groups[key] = {weight: 0, allpassed: true};
+        }
+        groups[key].weight += weight;
+        if (!passed) {
+            groups[key].allpassed = false;
         }
 
         return {
@@ -238,9 +256,17 @@ const grade = (results, tests, options) => {
             status: status,
             passed: passed,
             visibility: Number(test.visibility),
+            subtask: subtask,
         };
     });
 
+    // A group earns its full summed weight only if every test in it passed.
+    let earned = 0;
+    Object.keys(groups).forEach((key) => {
+        if (groups[key].allpassed) {
+            earned += groups[key].weight;
+        }
+    });
     let fraction = totalweight > 0 ? earned / totalweight : 0;
     // All-or-nothing: a partial pass earns nothing.
     if (opts.allOrNothing && fraction < 1) {
