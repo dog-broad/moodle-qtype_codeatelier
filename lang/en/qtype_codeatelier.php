@@ -189,6 +189,8 @@ $string['proctornote'] = 'Switching away from this question and paste attempts a
 $string['proctorsummary'] = 'Activity flags';
 $string['proctor_focusaway'] = 'Switched away from the question';
 $string['proctor_paste'] = 'Paste blocked';
+$string['proctor_extpaste'] = 'Outside paste blocked';
+$string['proctor_extdrop'] = 'Outside text drop blocked';
 
 // Authoring: grading mode.
 $string['tier'] = 'Grading mode';

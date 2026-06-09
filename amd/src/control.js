@@ -681,10 +681,18 @@ export const init = (config) => {
             resultsel.appendChild(note);
         }
     };
+    // Secure (judge) tier: the editor runs a sandboxed in-memory clipboard, and an
+    // external-paste/drop attempt is reported to the proctor (the single proctorlog
+    // writer) via a CustomEvent on the question wrapper.
+    const sandbox = !!config.isjudge && !config.readonly;
     const editorOptions = {
         readonly: config.readonly,
         ariaLabel: editorlabel ? editorlabel.textContent : null,
         onChange: markStale,
+        sandbox: sandbox,
+        onExternal: sandbox
+            ? (type) => root.dispatchEvent(new CustomEvent('codeatelier:clip-external', {detail: {type: type}}))
+            : null,
     };
     let editor;
     if (config.scenario === 'project') {
