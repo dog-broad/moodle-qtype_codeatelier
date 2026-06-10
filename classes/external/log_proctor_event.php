@@ -22,8 +22,6 @@ use core_external\external_single_structure;
 use core_external\external_value;
 use qtype_codeatelier\local\integrity\proctor_log;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Record one soft anti-cheat event against the caller's own live judge-tier attempt.
  *

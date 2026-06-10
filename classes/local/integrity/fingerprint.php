@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier\local\integrity;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * A structural code fingerprint, for similarity comparison.
  *

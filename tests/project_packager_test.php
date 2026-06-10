@@ -18,8 +18,6 @@ namespace qtype_codeatelier;
 
 use qtype_codeatelier\judge\project_packager;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Tests for the multi-file project packager (Judge0 language 89).
  *

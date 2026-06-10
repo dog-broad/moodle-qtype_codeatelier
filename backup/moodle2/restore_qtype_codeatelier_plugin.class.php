@@ -22,8 +22,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Restores CodeAtelier questions: the per-question options row and the
  * test-case rows. Only inserts when the parent question was newly created by

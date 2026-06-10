@@ -32,8 +32,6 @@ use core_privacy\local\request\transform;
 use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * The CodeAtelier question type stores the soft anti-cheat (proctor) event log of its
  * own — focus-away and outside-paste events recorded against a student's judge-tier

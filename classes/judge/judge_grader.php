@@ -18,8 +18,6 @@ namespace qtype_codeatelier\judge;
 
 use qtype_codeatelier\grader;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Authoritative judge-tier grading.
  *

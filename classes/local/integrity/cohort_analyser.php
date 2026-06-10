@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier\local\integrity;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Find suspiciously-similar code within a question's cohort.
  *

@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier\judge;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Packages a multi-file project for Judge0's "Multi-file program" language (id 89).
  *

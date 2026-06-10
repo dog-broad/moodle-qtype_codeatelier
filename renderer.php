@@ -22,8 +22,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Generates the output for CodeAtelier questions.
  *
@@ -41,7 +39,6 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         question_attempt $qa,
         question_display_options $options
     ) {
-        global $PAGE;
 
         $question = $qa->get_question();
         $isjudge = $question->is_judge();
@@ -186,7 +183,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'validationerror' => $question->get_validation_error($validationresponse),
         ] + qtype_codeatelier::ui_labels();
 
-        $PAGE->requires->js_call_amd('qtype_codeatelier/control', 'init', [[
+        $this->page->requires->js_call_amd('qtype_codeatelier/control', 'init', [[
             'wrapperid' => $wrapperid,
             'language' => $chosen,
             'languages' => array_values($allowed),
@@ -214,7 +211,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         // Soft anti-cheat runs on a live judge-tier attempt only (never on review,
         // never on the formative practice tier).
         if ($isjudge && !$options->readonly) {
-            $PAGE->requires->js_call_amd(
+            $this->page->requires->js_call_amd(
                 'qtype_codeatelier/proctor',
                 'init',
                 [[
@@ -228,7 +225,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         // Live grade status: poll while a submitted judge attempt awaits the
         // background task, and refresh the page once the grade lands.
         if ($gradingpending) {
-            $PAGE->requires->js_call_amd('qtype_codeatelier/gradestatus', 'init', [[
+            $this->page->requires->js_call_amd('qtype_codeatelier/gradestatus', 'init', [[
                 'wrapperid' => $wrapperid,
                 'qubaid' => (int) $qa->get_usage_id(),
                 'slot' => (int) $qa->get_slot(),
@@ -238,7 +235,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
         // The formative "run against examples" loop for the judge tier.
         if ($canrunexamples) {
-            $PAGE->requires->js_call_amd('qtype_codeatelier/judgerun', 'init', [[
+            $this->page->requires->js_call_amd('qtype_codeatelier/judgerun', 'init', [[
                 'wrapperid' => $wrapperid,
                 'questionid' => (int) $question->id,
                 'language' => $chosen,

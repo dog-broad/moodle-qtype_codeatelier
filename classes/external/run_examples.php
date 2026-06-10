@@ -22,8 +22,6 @@ use core_external\external_single_structure;
 use core_external\external_multiple_structure;
 use core_external\external_value;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Run a judge-tier submission against the question's visible example inputs.
  *

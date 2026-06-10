@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier\task;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Prune old judge-tier grading cache entries.
  *

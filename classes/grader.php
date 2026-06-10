@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Declarative matching-spec interpreter (server tier).
  *

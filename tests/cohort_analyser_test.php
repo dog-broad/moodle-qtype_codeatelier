@@ -19,8 +19,6 @@ namespace qtype_codeatelier;
 use qtype_codeatelier\local\integrity\cohort_analyser;
 use qtype_codeatelier\local\integrity\fingerprint;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Tests for the code-similarity engine: the structural fingerprint and the
  * cohort-relative detection (floor, uniform suppression, baseline outliers, clusters).

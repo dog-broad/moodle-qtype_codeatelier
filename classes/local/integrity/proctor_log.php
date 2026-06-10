@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier\local\integrity;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * The server-side, append-only proctor event log for judge-tier attempts.
  *

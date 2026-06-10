@@ -22,8 +22,6 @@ use core_external\external_single_structure;
 use core_external\external_multiple_structure;
 use core_external\external_value;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Teacher-only "run-to-capture": run a reference solution against all of a
  * question's tests in the judge sandbox and return each produced output, so the

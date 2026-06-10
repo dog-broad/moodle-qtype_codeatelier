@@ -18,8 +18,6 @@ namespace qtype_codeatelier;
 
 use qtype_codeatelier\local\integrity\proctor_log;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Tests for the server-side append-only proctor event log.
  *

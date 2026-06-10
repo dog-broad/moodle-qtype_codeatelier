@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Authoritative web (frontend) grading: the grade path adapts the web-judge
  * service's per-assertion results into a weighted fraction + verdict blob, with

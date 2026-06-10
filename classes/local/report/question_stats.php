@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier\local\report;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Aggregate statistics for one CodeAtelier question across its attempts.
  *

@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier\judge;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Tests for the typed function signature: parsing, validation, and the typed
  * stdin/stdout protocol used to drive static-language harnesses.

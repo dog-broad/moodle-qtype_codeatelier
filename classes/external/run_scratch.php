@@ -21,8 +21,6 @@ use core_external\external_function_parameters;
 use core_external\external_single_structure;
 use core_external\external_value;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Judge-tier "run with my own input": run the current code once against a
  * student-supplied input and return the output. Formative only — no grade, no

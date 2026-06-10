@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier\task;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Grade judge-tier submissions off the web request.
  *

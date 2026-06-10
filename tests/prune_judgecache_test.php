@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier\task;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Tests for the judge-cache prune scheduled task.
  *
