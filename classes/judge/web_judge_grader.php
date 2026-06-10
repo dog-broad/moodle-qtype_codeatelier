@@ -42,6 +42,8 @@ class web_judge_grader {
     private $timeoutms;
 
     /**
+     * Create the grader with a web-judge service client.
+     *
      * @param web_judge_runner $runner the service client (real or test-injected)
      * @param int $timeoutms per-assertion render timeout
      */
@@ -65,7 +67,8 @@ class web_judge_grader {
             $assertions[] = [
                 'selector' => (string) $test->selector,
                 'property' => (string) ($test->assertproperty !== null ? $test->assertproperty : 'text'),
-                'matcher' => (string) ($test->assertmatcher !== null && $test->assertmatcher !== '' ? $test->assertmatcher : 'equals'),
+                'matcher' => (string) ($test->assertmatcher !== null && $test->assertmatcher !== ''
+                    ? $test->assertmatcher : 'equals'),
                 'expected' => (string) $test->expected,
                 'actions' => isset($test->actions) ? (string) $test->actions : '',
             ];

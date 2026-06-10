@@ -29,6 +29,11 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_codeatelier_test_helper extends question_test_helper {
+    /**
+     * The names of the test questions this helper can build.
+     *
+     * @return string[]
+     */
     public function get_test_questions() {
         return ['function', 'judge', 'multilang', 'judge_sql', 'web'];
     }
@@ -331,7 +336,8 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $form->schemasql = '';
         $form->projectfiles = json_encode([
             ['name' => 'index.html', 'content' => "<h1 id=\"t\">Hi</h1>\n<button id=\"b\">Go</button>\n<p id=\"o\"></p>\n"],
-            ['name' => 'script.js', 'content' => "document.getElementById('b').onclick=function(){document.getElementById('o').textContent='ok';};\n"],
+            ['name' => 'script.js', 'content' =>
+                "document.getElementById('b').onclick=function(){document.getElementById('o').textContent='ok';};\n"],
         ]);
         $form->entryfile = '';
         $form->selector = ['#t', '#o'];

@@ -160,7 +160,7 @@ class project_packager {
                     'run' => "#!/bin/sh\n./a.out\n",
                 ];
             case 'rust':
-                // rustc compiles the modules the entry file declares with `mod`.
+                // The rustc compiler builds the modules the entry file declares with `mod`.
                 return [
                     'compile' => "#!/bin/sh\n" . self::path_prepend('rust-*') . "rustc -O {$entry} -o a.out\n",
                     'run' => "#!/bin/sh\n./a.out\n",

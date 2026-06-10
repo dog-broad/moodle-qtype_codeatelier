@@ -238,6 +238,7 @@ class function_harness {
             ],
             'kotlin' => [
                 'preamble' => "import java.io.BufferedReader\nimport java.io.InputStreamReader\n"
+                    // phpcs:ignore moodle.Strings.ForbiddenStrings -- Kotlin requires escaping the in keyword.
                     . "val _br = BufferedReader(InputStreamReader(System.`in`))\nfun _l(): String = _br.readLine()",
                 'open' => "fun main() {",
                 'close' => "}",

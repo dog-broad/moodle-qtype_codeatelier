@@ -40,6 +40,14 @@ final class web_judge_grader_test extends \advanced_testcase {
             public $results = [];
             /** @var string|null */
             public $error = null;
+            /**
+             * Return the scripted results (or error) instead of calling the service.
+             *
+             * @param array $files
+             * @param array $assertions
+             * @param int $timeoutms
+             * @return array
+             */
             public function grade(array $files, array $assertions, int $timeoutms = 5000): array {
                 return $this->error !== null ? ['_error' => $this->error] : ['results' => $this->results];
             }

@@ -202,7 +202,8 @@ final class cohort_analyser_test extends \advanced_testcase {
             $this->sub(4, 'python', "def parse(text):\n    return [(p.split(chr(44))[0], int(p.split(chr(44))[1]))\n"
                     . "            for p in text.split(chr(10)) if chr(44) in p]"),
             $this->sub(5, 'python', "def parse(text):\n    pairs = {}\n    for entry in text.splitlines():\n"
-                    . "        k, _, v = entry.partition(chr(44))\n        pairs[k.strip()] = int(v)\n    return list(pairs.items())"),
+                    . "        k, _, v = entry.partition(chr(44))\n"
+                    . "        pairs[k.strip()] = int(v)\n    return list(pairs.items())"),
         ];
         $results = cohort_analyser::analyse($subs);
         $this->assertCount(1, $results);

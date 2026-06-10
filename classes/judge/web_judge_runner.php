@@ -41,6 +41,8 @@ class web_judge_runner {
     private $token;
 
     /**
+     * Create a runner targeting the web-judge service.
+     *
      * @param string $baseurl base URL of the web-judge service
      * @param string|null $token optional shared auth token
      */
@@ -106,7 +108,7 @@ class web_judge_runner {
         global $CFG;
         require_once($CFG->libdir . '/filelib.php');
 
-        // ignoresecurity: the base URL is an admin-configured, trusted service,
+        // The ignoresecurity option is deliberate: the base URL is an admin-configured, trusted service,
         // typically on a private network — the same posture as the judge runner.
         $curl = new \curl(['ignoresecurity' => true]);
         $headers = ['Content-Type: application/json'];

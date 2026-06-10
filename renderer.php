@@ -35,6 +35,13 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_codeatelier_renderer extends qtype_renderer {
+    /**
+     * Render the question prompt and the interactive code workbench.
+     *
+     * @param question_attempt $qa
+     * @param question_display_options $options
+     * @return string HTML
+     */
     public function formulation_and_controls(
         question_attempt $qa,
         question_display_options $options
@@ -123,7 +130,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         // no stdin/examples run — its formative feedback is the live preview.
         $canrunexamples = $isjudge && !$options->readonly && $scenario !== 'web'
                 && !empty(get_config('qtype_codeatelier', 'judge0baseurl'));
-        // "Run with my own input" — a scratch console for stdin/stdout and function
+        // The "Run with my own input" scratch console for stdin/stdout and function
         // judge questions (SQL has no stdin; it uses run-against-examples instead).
         $canrunscratch = $canrunexamples && $scenario !== 'sql';
         $scratchlabel = ($scenario === 'function')
@@ -582,21 +589,23 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             case 'c':
                 return "#include <stdio.h>\n\nint main(void) {\n    // Read input, print output\n    return 0;\n}\n";
             case 'cpp':
-                return "#include <iostream>\nusing namespace std;\n\nint main() {\n    // Read input, print output\n    return 0;\n}\n";
+                return "#include <iostream>\nusing namespace std;\n\nint main() {\n"
+                    . "    // Read input, print output\n    return 0;\n}\n";
             case 'java':
                 // Judge0 compiles the public class named Main.
                 return "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n"
                     . "        Scanner sc = new Scanner(System.in);\n        // Read input, print output\n    }\n}\n";
             case 'go':
                 return "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n)\n\n"
-                    . "func main() {\n\treader := bufio.NewReader(os.Stdin)\n\t_ = reader\n\t// Read input, print output\n\t_ = fmt.Println\n}\n";
+                    . "func main() {\n\treader := bufio.NewReader(os.Stdin)\n\t_ = reader\n"
+                    . "\t// Read input, print output\n\t_ = fmt.Println\n}\n";
             case 'rust':
                 return "use std::io::{self, Read};\n\nfn main() {\n    let mut input = String::new();\n"
                     . "    io::stdin().read_to_string(&mut input).unwrap();\n    // Read input, print output\n}\n";
             case 'php':
                 return "<?php\n// Read input with fgets(STDIN); print output with echo.\n";
             case 'typescript':
-                // 'declare' keeps the older tsc on Judge0 happy without @types/node.
+                // The 'declare' line keeps the older tsc on Judge0 happy without @types/node.
                 return "declare const require: any;\nconst input: string = require('fs').readFileSync(0, 'utf8');\n"
                     . "// Parse input; print with console.log.\n";
             case 'csharp':

@@ -57,7 +57,8 @@ final class function_harness_test extends \advanced_testcase {
         $cpp = function_harness::source('cpp', "map<string,int> f(map<string,int> m){ return m; }", 'f', $sig);
         $this->assertStringContainsString('map<string,int> p0', $cpp);
         $this->assertStringContainsString('p0[_key]', $cpp);
-        $java = function_harness::source('java', "static java.util.Map<String,Integer> f(java.util.Map<String,Integer> m){ return m; }", 'f', $sig);
+        $jcode = "static java.util.Map<String,Integer> f(java.util.Map<String,Integer> m){ return m; }";
+        $java = function_harness::source('java', $jcode, 'f', $sig);
         $this->assertStringContainsString('java.util.Map<String,Integer>', $java);
         $this->assertStringContainsString('entrySet()', $java);
     }

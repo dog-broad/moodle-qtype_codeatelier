@@ -29,6 +29,8 @@ use test_question_maker;
  */
 final class question_test extends \advanced_testcase {
     /**
+     * A sample CodeAtelier question for the tests.
+     *
      * @return \qtype_codeatelier_question
      */
     protected function make_question() {

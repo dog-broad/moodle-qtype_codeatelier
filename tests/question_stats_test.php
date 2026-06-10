@@ -101,7 +101,7 @@ final class question_stats_test extends \advanced_testcase {
         $this->attempt('correct-a');
         $this->attempt('correct-b');
         $this->attempt('half');
-        $this->attempt('uncached');   // no memo -> needs grading
+        $this->attempt('uncached');   // No memo, so needs grading.
         // A teacher preview of the same answer must NOT count as a student attempt.
         $this->attempt('correct-a', 'core_question_preview');
 
@@ -162,7 +162,7 @@ final class question_stats_test extends \advanced_testcase {
         ];
         $this->warm('graded-one', $allpass);
         $this->attempt('graded-one');
-        $this->attempt('not-graded');   // cold -> needs grading
+        $this->attempt('not-graded');   // Cold, so needs grading.
 
         $rows = question_stats::recent_submissions($this->questionid);
         $this->assertCount(2, $rows);

@@ -40,6 +40,8 @@ class judge_grader {
     private $runner;
 
     /**
+     * Create the grader with the sandbox runner it executes submissions through.
+     *
      * @param judge0_runner $runner the sandbox runner to execute submissions with
      */
     public function __construct(judge0_runner $runner) {
