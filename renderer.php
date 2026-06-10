@@ -770,6 +770,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'hasattempts' => $stats->totalattempts > 0,
             'totalattempts' => $stats->totalattempts,
             'graded' => $graded,
+            'hasgraded' => $graded > 0,
             'needsgrading' => $stats->needsgrading,
             'hasneedsgrading' => $stats->needsgrading > 0,
             'meanscorepct' => $stats->meanscore !== null ? round($stats->meanscore * 100, 1) : null,
@@ -778,6 +779,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'verdicts' => $verdicts,
             'hasverdicts' => !empty($verdicts),
             'pertest' => $pertest,
+            // Per-test pass rates, time and memory are best-effort detail from the
+            // judge memo; with no live cache entry there is nothing to show, so the
+            // table is hidden rather than rendered as a column of zeros.
+            'hasdetail' => $stats->detailcoverage->withresult > 0,
             'languages' => $languages,
             'multilang' => count($languages) > 1,
             'maxtimems' => $stats->timing->maxtimems > 0 ? round($stats->timing->maxtimems) : null,
