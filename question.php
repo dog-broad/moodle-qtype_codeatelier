@@ -101,6 +101,11 @@ class qtype_codeatelier_question extends question_graded_automatically {
     /** @var \qtype_codeatelier\judge\web_judge_runner|null injected web-judge runner; null means build from config. */
     public $webjudgerunner = null;
 
+    /**
+     * The response variables this question expects, with their PARAM types.
+     *
+     * @return array
+     */
     public function get_expected_data() {
         // The student's chosen language is a per-attempt response variable (a
         // question may allow a set of languages). It is re-validated server-side
@@ -190,11 +195,22 @@ class qtype_codeatelier_question extends question_graded_automatically {
         return \qtype_codeatelier\judge\project_packager::decode_files($answer);
     }
 
+    /**
+     * The correct response, where one can be expressed.
+     *
+     * @return array|null
+     */
     public function get_correct_response() {
         // There is no single canonical solution to display.
         return null;
     }
 
+    /**
+     * Whether the response is complete enough to be graded.
+     *
+     * @param array $response
+     * @return bool
+     */
     public function is_complete_response(array $response) {
         if ($this->is_judge()) {
             if ($this->is_project()) {
@@ -215,10 +231,22 @@ class qtype_codeatelier_question extends question_graded_automatically {
                 && is_numeric($response['score']);
     }
 
+    /**
+     * Whether the response can be graded at all.
+     *
+     * @param array $response
+     * @return bool
+     */
     public function is_gradable_response(array $response) {
         return $this->is_complete_response($response);
     }
 
+    /**
+     * The message shown when a response is not gradable.
+     *
+     * @param array $response
+     * @return string
+     */
     public function get_validation_error(array $response) {
         if ($this->is_gradable_response($response)) {
             return '';
@@ -228,6 +256,13 @@ class qtype_codeatelier_question extends question_graded_automatically {
                 : get_string('pleaserun', 'qtype_codeatelier');
     }
 
+    /**
+     * Whether two responses are equivalent (so the engine can skip re-grading).
+     *
+     * @param array $prevresponse
+     * @param array $newresponse
+     * @return bool
+     */
     public function is_same_response(array $prevresponse, array $newresponse) {
         // The chosen language is part of the response identity: a different
         // language grades differently, so re-picking it is a new gradable response
@@ -259,6 +294,12 @@ class qtype_codeatelier_question extends question_graded_automatically {
                 );
     }
 
+    /**
+     * A short plain-text summary of the response, for review and reports.
+     *
+     * @param array $response
+     * @return string|null
+     */
     public function summarise_response(array $response) {
         if ($this->uses_file_set()) {
             $files = $this->project_files_from_response($response);
@@ -270,6 +311,12 @@ class qtype_codeatelier_question extends question_graded_automatically {
         return shorten_text(trim($response['answer']), 200);
     }
 
+    /**
+     * Grade the response, returning the fraction and the resulting state.
+     *
+     * @param array $response
+     * @return array [float fraction, question_state state]
+     */
     public function grade_response(array $response) {
         if ($this->is_judge()) {
             return $this->grade_judge_response($response);
