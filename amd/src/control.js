@@ -54,7 +54,11 @@ const parseJson = (value) => {
 const friendlyError = (detail, strings) => {
     const text = String(detail);
     if (/loadfailed|nopyodideurl|nosqljsurl|runtimeloadtimeout/i.test(text)) {
-        return {degraded: true, message: strings.degraded || 'The code runtime could not be loaded. Check your connection, or ask your teacher.'};
+        return {
+            degraded: true,
+            message: strings.degraded
+                || 'The code runtime could not be loaded. Check your connection, or ask your teacher.',
+        };
     }
     return {degraded: false, message: text};
 };

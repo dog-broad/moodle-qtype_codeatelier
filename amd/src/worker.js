@@ -27,8 +27,6 @@
  * base URL supplied by the host and initialised once per worker.
  */
 
-/* eslint-disable promise/avoid-new */
-
 let pyodidePromise = null;
 
 /**
@@ -57,7 +55,7 @@ let sqlPromise = null;
  */
 const loadSqlRuntime = (baseurl) => {
     if (!sqlPromise) {
-        // sql.js ships a UMD loader that does not attach initSqlJs to the worker
+        // The sql.js UMD loader does not attach initSqlJs to the worker
         // global when imported as a module, so fetch and evaluate it to capture
         // the factory (eval is permitted in the worker, as for JS execution).
         sqlPromise = fetch(baseurl + 'sql-wasm.js')
@@ -343,7 +341,7 @@ const describeSchema = (sql, schemasql) => {
     }
 };
 
-self.onmessage = async (event) => {
+self.onmessage = async(event) => {
     const message = event.data;
     if (!message) {
         return;

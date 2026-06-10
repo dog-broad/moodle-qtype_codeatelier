@@ -104,6 +104,9 @@ const runOnce = (code, language, jobcases, opts) => {
         };
         pending[language] = finish;
 
+        /**
+         * Give up waiting for the runtime to load and report the timeout.
+         */
         function onInitTimeout() {
             dropWorker(language);
             finish({error: 'runtimeloadtimeout', results: []});
@@ -167,7 +170,8 @@ const run = (code, language, cases, options) => {
     const opts = options || {};
     const jobcases = (cases && cases.length) ? cases : [{input: ''}];
     const previous = queues[language] || Promise.resolve();
-    const next = previous.catch(() => {}).then(() => runOnce(code, language, jobcases, opts));
+    const next = previous.catch(() => { /* Ignore a prior run's failure; the queue continues. */ })
+        .then(() => runOnce(code, language, jobcases, opts));
     queues[language] = next;
     return next;
 };
