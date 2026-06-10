@@ -64,6 +64,7 @@
         {{/hasmean}}
     </div>
 
+    {{#hasgraded}}
     <h4>{{#str}}report_scoredist, qtype_codeatelier{{/str}}</h4>
     <div class="mb-4">
         {{#scoredist}}
@@ -77,6 +78,7 @@
         </div>
         {{/scoredist}}
     </div>
+    {{/hasgraded}}
 
     {{#isjudge}}{{#hasverdicts}}
     <h4>{{#str}}report_verdicts, qtype_codeatelier{{/str}}</h4>
@@ -87,7 +89,7 @@
     </p>
     {{/hasverdicts}}{{/isjudge}}
 
-    {{#isjudge}}
+    {{#isjudge}}{{#hasdetail}}
     <h4>{{#str}}report_pertest, qtype_codeatelier{{/str}}</h4>
     <p class="text-muted small">{{#str}}report_pertest_help, qtype_codeatelier{{/str}}</p>
     <table class="table table-sm w-auto mb-4">
@@ -109,7 +111,7 @@
         {{/pertest}}
         </tbody>
     </table>
-    {{/isjudge}}
+    {{/hasdetail}}{{/isjudge}}
 
     {{#multilang}}
     <h4>{{#str}}report_languages, qtype_codeatelier{{/str}}</h4>
@@ -200,8 +202,8 @@
     <div class="alert alert-secondary small">{{coveragenote}}</div>
     {{/coveragepartial}}
 
-    {{#isjudge}}
+    {{#isjudge}}{{#hasdetail}}
     <a href="{{csvurl}}" class="btn btn-outline-secondary btn-sm">{{#str}}report_exportcsv, qtype_codeatelier{{/str}}</a>
-    {{/isjudge}}
+    {{/hasdetail}}{{/isjudge}}
     {{/hasattempts}}
 </div>
