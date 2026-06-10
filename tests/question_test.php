@@ -43,11 +43,12 @@ final class question_test extends \advanced_testcase {
                 $question->get_expected_data());
     }
 
-    public function test_get_expected_data_judge_has_language_and_proctorlog(): void {
+    public function test_get_expected_data_judge_has_language_not_proctorlog(): void {
         $question = test_question_maker::make_question('codeatelier', 'judge');
         $expected = $question->get_expected_data();
         $this->assertArrayHasKey('language', $expected);
-        $this->assertArrayHasKey('proctorlog', $expected);
+        // Proctor events are now a server-side log, not a forgeable response variable.
+        $this->assertArrayNotHasKey('proctorlog', $expected);
     }
 
     public function test_get_allowed_languages_single_and_set(): void {

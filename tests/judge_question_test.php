@@ -144,18 +144,17 @@ final class judge_question_test extends \advanced_testcase {
         $this->assertEquals(question_state::$needsgrading, $state);
     }
 
-    public function test_judge_expects_a_proctor_log_field(): void {
+    public function test_proctor_log_is_not_a_response_var(): void {
         $this->resetAfterTest();
+        // Proctor events are recorded server-side (an append-only table), never carried
+        // as a response variable the browser could forge or clear.
         $question = $this->judge_question(new qtype_codeatelier_stub_runner(array()));
-        $expected = $question->get_expected_data();
-        $this->assertArrayHasKey('proctorlog', $expected);
-
-        // A practice question carries no proctor log.
+        $this->assertArrayNotHasKey('proctorlog', $question->get_expected_data());
         $practice = test_question_maker::make_question('codeatelier', 'function');
         $this->assertArrayNotHasKey('proctorlog', $practice->get_expected_data());
     }
 
-    public function test_proctor_log_does_not_affect_the_grade(): void {
+    public function test_proctor_events_are_decoupled_from_grading(): void {
         $this->resetAfterTest();
         $runner = new qtype_codeatelier_stub_runner(array(
             qtype_codeatelier_stub_runner::row('ran', "5\n"),
@@ -163,10 +162,7 @@ final class judge_question_test extends \advanced_testcase {
         ));
         $question = $this->judge_question($runner);
         $question->get_judge_result('correct');
-        list($fraction) = $question->grade_response(array(
-            'answer' => 'correct',
-            'proctorlog' => '[{"type":"focusaway","t":3}]',
-        ));
+        list($fraction) = $question->grade_response(array('answer' => 'correct'));
         $this->assertEquals(1.0, $fraction);
     }
 
