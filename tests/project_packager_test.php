@@ -62,7 +62,7 @@ final class project_packager_test extends \advanced_testcase {
     public function test_supports_only_project_languages(): void {
         $this->assertTrue(project_packager::supports('cpp'));
         $this->assertTrue(project_packager::supports('java'));
-        // The expanded set (D-260607-03).
+        // The expanded set beyond the original C/C++/Java/Python/JS.
         $this->assertTrue(project_packager::supports('go'));
         $this->assertTrue(project_packager::supports('rust'));
         $this->assertTrue(project_packager::supports('kotlin'));
@@ -72,7 +72,7 @@ final class project_packager_test extends \advanced_testcase {
 
     public function test_package_new_language_scripts_locate_the_compiler(): void {
         // The new languages are not on the multi-file box's default PATH, so the
-        // generated scripts prepend the versioned bin dir (D-260607-03).
+        // generated scripts prepend the versioned bin dir.
         $go = $this->zip_entries(project_packager::package('go',
                 array('main.go' => "package main\nfunc main(){}\n"), 'main.go'));
         $this->assertStringContainsString('/usr/local/go-*/bin', $go['compile']);

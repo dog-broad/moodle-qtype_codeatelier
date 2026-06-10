@@ -104,7 +104,10 @@ if ($questionid) {
     }
     $recent = \qtype_codeatelier\local\report\question_stats::recent_submissions(
             $questionid, $usagecontextid, 50);
-    echo $renderer->render_question_report($stats, $baseurl, $recent);
+    $submissions = \qtype_codeatelier\local\report\question_stats::code_submissions(
+            $questionid, $usagecontextid);
+    $similarity = \qtype_codeatelier\local\integrity\cohort_analyser::analyse($submissions);
+    echo $renderer->render_question_report($stats, $baseurl, $recent, $similarity);
     echo $OUTPUT->footer();
     exit;
 }

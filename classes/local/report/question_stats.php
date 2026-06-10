@@ -21,7 +21,7 @@ defined('MOODLE_INTERNAL') || die();
 /**
  * Aggregate statistics for one CodeAtelier question across its attempts.
  *
- * Two tiers of reliability ([D-260606-01]): durable basics (attempt counts, state
+ * Two tiers of reliability: durable basics (attempt counts, state
  * breakdown, score distribution, language breakdown, proctor flags) come from the
  * question-engine tables and always reflect reality; rich detail (verdict counts,
  * the per-test pass-rate table, time/memory) is read best-effort from the
@@ -64,6 +64,7 @@ class question_stats {
             return $stats;
         }
         $responses = self::load_responses(array_keys($basics));
+        $proctorcounts = \qtype_codeatelier\local\integrity\proctor_log::counts_for(array_keys($basics));
 
         $isjudge = $question->is_judge();
         $testcount = count($question->tests);
@@ -91,7 +92,7 @@ class question_stats {
             $language = $question->resolve_language($vars['language'] ?? null);
             $stats->languages[$language] = ($stats->languages[$language] ?? 0) + 1;
 
-            if ($isjudge && !empty($vars['proctorlog']) && self::has_proctor_events($vars['proctorlog'])) {
+            if ($isjudge && !empty($proctorcounts[$qaid])) {
                 $stats->proctorflagged++;
             }
 
@@ -207,6 +208,106 @@ class question_stats {
     }
 
     /**
+     * Every submission's code, for similarity analysis — one row per attempt, with the
+     * submitting student, the chosen language, and the comparable source text.
+     *
+     * "Comparable source" unwraps a multi-file answer (project / web file set) into the
+     * concatenated file contents, so those scenarios compare on code rather than JSON
+     * envelope; single-file scenarios use the raw answer. Attempts with no resolvable
+     * user (e.g. non-quiz usages) are still returned, labelled anonymously.
+     *
+     * @param int $questionid
+     * @param int|null $usagecontextid restrict to one quiz's attempts, or null for all
+     * @param int $max cap on the number of (most recent) submissions analysed
+     * @return \stdClass[] each {key, label, language, code, qaid, quizattemptid}
+     */
+    public static function code_submissions(int $questionid, ?int $usagecontextid = null,
+            int $max = 500): array {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/question/engine/lib.php');
+
+        $question = \question_bank::load_question($questionid);
+        if (!($question instanceof \qtype_codeatelier_question)) {
+            return [];
+        }
+
+        list($insql, $params) = $DB->get_in_or_equal(self::SUBMITTED_STATES, SQL_PARAMS_NAMED, 'st');
+        $params['qid'] = $questionid;
+        $params['preview'] = 'core_question_preview';
+        $contextwhere = '';
+        if ($usagecontextid !== null) {
+            $contextwhere = ' AND qu.contextid = :ctxid';
+            $params['ctxid'] = $usagecontextid;
+        }
+        $userfields = \core_user\fields::for_name()->get_sql('u', false, '', '', false)->selects;
+        $sql = "SELECT qa.id AS qaid, qza.id AS quizattemptid, u.id AS userid,
+                       $userfields
+                  FROM {question_attempts} qa
+                  JOIN {question_usages} qu ON qu.id = qa.questionusageid
+                  JOIN {question_attempt_steps} qas ON qas.questionattemptid = qa.id
+             LEFT JOIN {quiz_attempts} qza ON qza.uniqueid = qu.id
+             LEFT JOIN {user} u ON u.id = qza.userid
+                 WHERE qa.questionid = :qid
+                   AND qu.component <> :preview" . $contextwhere . "
+                   AND qas.sequencenumber = (
+                       SELECT MAX(s.sequencenumber)
+                         FROM {question_attempt_steps} s
+                        WHERE s.questionattemptid = qa.id)
+                   AND qas.state $insql
+              ORDER BY qa.id DESC";
+        $records = $DB->get_records_sql($sql, $params, 0, $max);
+        $responses = self::load_responses(array_keys($records));
+
+        $rows = [];
+        foreach ($records as $qaid => $rec) {
+            $vars = $responses[$qaid] ?? [];
+            $code = self::comparable_code($vars['answer'] ?? '');
+            if (trim($code) === '') {
+                continue;
+            }
+            $rows[] = (object) [
+                'key' => (int) $qaid,
+                'label' => $rec->userid ? fullname($rec) : get_string('report_unknownuser', 'qtype_codeatelier'),
+                'language' => $question->resolve_language($vars['language'] ?? null),
+                'code' => $code,
+                'qaid' => (int) $qaid,
+                'quizattemptid' => $rec->quizattemptid ? (int) $rec->quizattemptid : null,
+            ];
+        }
+        return $rows;
+    }
+
+    /**
+     * Unwrap a stored answer into comparable source text: a multi-file answer (a JSON
+     * array of {name, content}) becomes its file contents concatenated in name order;
+     * anything else is returned verbatim.
+     *
+     * @param string $answer the raw answer response var
+     * @return string
+     */
+    private static function comparable_code(string $answer): string {
+        $trimmed = ltrim($answer);
+        if ($trimmed === '' || $trimmed[0] !== '[') {
+            return $answer;
+        }
+        $decoded = json_decode($answer, true);
+        if (!is_array($decoded)) {
+            return $answer;
+        }
+        $files = [];
+        foreach ($decoded as $file) {
+            if (is_array($file) && isset($file['name'], $file['content'])) {
+                $files[(string) $file['name']] = (string) $file['content'];
+            }
+        }
+        if (!$files) {
+            return $answer;
+        }
+        ksort($files);
+        return implode("\n", $files);
+    }
+
+    /**
      * The per-question stats for every CodeAtelier question used in a quiz,
      * scoped to that quiz's attempts, in slot order.
      *
@@ -291,7 +392,7 @@ class question_stats {
         }
         list($inqa, $params) = $DB->get_in_or_equal($qaids, SQL_PARAMS_NAMED, 'qa');
         list($inname, $nameparams) = $DB->get_in_or_equal(
-                ['answer', 'language', 'proctorlog', 'score'], SQL_PARAMS_NAMED, 'nm');
+                ['answer', 'language', 'score'], SQL_PARAMS_NAMED, 'nm');
         $params += $nameparams;
         $sql = "SELECT qasd.id, qas.questionattemptid AS qaid, qas.sequencenumber AS seq,
                        qasd.name AS name, qasd.value AS value
@@ -346,17 +447,6 @@ class question_stats {
         } else {
             $stats->scoredist->partial++;
         }
-    }
-
-    /**
-     * Whether a stored proctor log actually recorded at least one event.
-     *
-     * @param string $proctorlog the JSON log
-     * @return bool
-     */
-    private static function has_proctor_events(string $proctorlog): bool {
-        $events = json_decode($proctorlog, true);
-        return is_array($events) && count($events) > 0;
     }
 
     /**

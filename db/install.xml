@@ -71,5 +71,20 @@
         <INDEX NAME="contenthash" UNIQUE="true" FIELDS="contenthash"/>
       </INDEXES>
     </TABLE>
+    <TABLE NAME="qtype_codeatelier_proctorlog" COMMENT="Server-side, append-only record of soft anti-cheat events on judge-tier attempts (focus-away, outside-paste). Written by an authenticated AJAX call during the attempt and stamped with the server's time and the authenticated user, so it cannot be forged or altered through the page like the former hidden field could.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="questionattemptid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The question_attempts.id the event belongs to."/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The authenticated user who generated the event (server-set, not client-supplied)."/>
+        <FIELD NAME="eventtype" TYPE="char" LENGTH="32" NOTNULL="true" SEQUENCE="false" COMMENT="The event kind: focusaway, extpaste, extdrop."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Server time the event was recorded."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="questionattemptid" UNIQUE="false" FIELDS="questionattemptid"/>
+      </INDEXES>
+    </TABLE>
   </TABLES>
 </XMLDB>

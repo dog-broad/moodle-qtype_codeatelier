@@ -30,7 +30,12 @@ $string['pluginnamesummary'] = 'An in-browser code question for instant, run-it-
 $string['pluginnameadding'] = 'Adding a CodeAtelier question';
 $string['pluginnameediting'] = 'Editing a CodeAtelier question';
 
-$string['privacy:metadata'] = 'The CodeAtelier question type does not store any personal data; submitted responses are held by the Moodle question engine.';
+$string['privacy:metadata:proctorlog'] = 'A server-side, append-only record of soft anti-cheat events (leaving the question, outside-paste attempts) on secure-mode attempts.';
+$string['privacy:metadata:proctorlog:questionattemptid'] = 'The question attempt the event was recorded against.';
+$string['privacy:metadata:proctorlog:userid'] = 'The user who generated the event.';
+$string['privacy:metadata:proctorlog:eventtype'] = 'The kind of event (leaving the question, an outside-paste attempt).';
+$string['privacy:metadata:proctorlog:timecreated'] = 'The server time the event was recorded.';
+$string['privacy:proctorpath'] = 'CodeAtelier activity flags';
 
 // Admin settings.
 $string['pyodidebaseurl'] = 'Pyodide base URL';
@@ -193,6 +198,14 @@ $string['report_review'] = 'Review';
 $string['report_practiceflag'] = 'Practice mode — the scores below are worked out in each student\'s browser and sent back to Moodle. They are self-reported and can be changed by the student, so treat them as practice, not as official marks. Use Secure mode for grades that count.';
 $string['report_selfreported'] = 'Self-reported';
 $string['report_selfreported_note'] = 'Questions marked "Self-reported" run in Practice mode: their means are worked out in students\' browsers and cannot be trusted for marks.';
+$string['report_unknownuser'] = 'Unknown student';
+$string['report_similarity'] = 'Code similarity';
+$string['report_similarity_help'] = 'Submissions in the same language are compared for structural similarity, ignoring renamed variables and reformatting. Similar groups are shown for you to review — this is a prompt to look, not a judgement. High similarity is only flagged when the rest of the cohort is varied; on a question with one obvious answer, similarity is expected and nothing is flagged.';
+$string['report_sim_cluster'] = 'Group of {$a} similar submissions';
+$string['report_sim_upto'] = 'up to {$a}% similar';
+$string['report_sim_noclusters'] = 'No submissions stand out as more similar to each other than the cohort as a whole.';
+$string['report_sim_tooshort'] = 'These submissions are too short to compare reliably — there is essentially one obvious answer, so similarity here is not a meaningful signal.';
+$string['report_sim_uniform'] = 'Almost every submission is similar, so there is one dominant way to solve this. Similarity cannot tell copying from coincidence here, so nothing is singled out.';
 $string['judgegrading'] = 'Grading your submission…';
 
 // Soft anti-cheat (judge tier).

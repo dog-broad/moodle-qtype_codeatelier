@@ -114,7 +114,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             } else {
                 $judgereviewhtml = $this->render_judge_review($cached);
             }
-            $proctorreviewhtml = $this->render_proctor_summary($qa->get_last_qt_var('proctorlog', ''));
+            $proctorreviewhtml = $this->render_proctor_summary((int) $qa->get_database_id());
         }
 
         // A judge attempt can offer "run against examples" only when an endpoint is
@@ -170,8 +170,6 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'previewlabel' => get_string('preview', 'qtype_codeatelier'),
             'judgenote' => $isjudge ? get_string('judgenote', 'qtype_codeatelier') : '',
             'judgereviewhtml' => $judgereviewhtml . $proctorreviewhtml,
-            'proctorname' => $qa->get_qt_field_name('proctorlog'),
-            'proctorvalue' => $qa->get_last_qt_var('proctorlog', ''),
             'proctornote' => $isjudge ? get_string('proctornote', 'qtype_codeatelier') : '',
             'canrunexamples' => $canrunexamples,
             'runexampleslabel' => get_string('runexamples', 'qtype_codeatelier'),
@@ -211,7 +209,11 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         // never on the formative practice tier).
         if ($isjudge && !$options->readonly) {
             $PAGE->requires->js_call_amd('qtype_codeatelier/proctor', 'init',
-                    array(array('wrapperid' => $wrapperid)));
+                    array(array(
+                        'wrapperid' => $wrapperid,
+                        'qubaid' => (int) $qa->get_usage_id(),
+                        'slot' => (int) $qa->get_slot(),
+                    )));
         }
 
         // Live grade status: poll while a submitted judge attempt awaits the
@@ -298,25 +300,17 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
     /**
      * The soft anti-cheat activity summary for a judge-tier review: a count per
-     * flagged event type. Empty when nothing was flagged. The underlying log is a
-     * client-accumulated deterrent, not a tamper-proof record.
+     * flagged event type, read from the server-side append-only proctor log. Empty when
+     * nothing was flagged. Detection, not prevention — a student can decline to send an
+     * event, but what is recorded here is server-authoritative.
      *
-     * @param string $raw the stored proctorlog JSON
+     * @param int $questionattemptid the question_attempts.id
      * @return string HTML (empty when there is nothing to show)
      */
-    protected function render_proctor_summary($raw) {
-        if (trim((string) $raw) === '') {
+    protected function render_proctor_summary($questionattemptid) {
+        $counts = \qtype_codeatelier\local\integrity\proctor_log::summarise($questionattemptid);
+        if (!$counts) {
             return '';
-        }
-        $events = json_decode($raw, true);
-        if (!is_array($events) || !$events) {
-            return '';
-        }
-
-        $counts = array();
-        foreach ($events as $event) {
-            $type = isset($event['type']) ? $event['type'] : 'other';
-            $counts[$type] = (isset($counts[$type]) ? $counts[$type] : 0) + 1;
         }
 
         $items = '';
@@ -585,11 +579,72 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      * @param \moodle_url $baseurl the report page URL
      * @return string HTML
      */
-    public function render_question_report($stats, \moodle_url $baseurl, array $recent = array()) {
+    public function render_question_report($stats, \moodle_url $baseurl, array $recent = array(),
+            array $similarity = array()) {
         $context = $this->report_context($stats, $baseurl);
         $context['recent'] = $this->recent_rows($recent);
         $context['hasrecent'] = !empty($context['recent']);
+        $context['similarity'] = $this->similarity_context($similarity);
+        $context['hassimilarity'] = !empty($context['similarity']);
         return $this->render_from_template('qtype_codeatelier/report', $context);
+    }
+
+    /**
+     * Shape the per-language similarity analysis for the template.
+     *
+     * Each language group is either analyzable (with zero or more clusters of similar
+     * submissions) or reported low-signal with the reason it can't be analysed — the
+     * report never presents a bare "% similar" without that context.
+     *
+     * @param \stdClass[] $similarity per-language results from cohort_analyser::analyse
+     * @return array
+     */
+    protected function similarity_context(array $similarity) {
+        $groups = array();
+        foreach ($similarity as $lang) {
+            $clusters = array();
+            foreach ($lang->clusters as $cluster) {
+                $members = array();
+                foreach ($cluster->members as $m) {
+                    $members[] = array(
+                        'label' => $m->label,
+                        'reviewurl' => $m->quizattemptid
+                                ? (new \moodle_url('/mod/quiz/review.php',
+                                        array('attempt' => $m->quizattemptid)))->out(false)
+                                : null,
+                    );
+                }
+                $pairs = array();
+                foreach ($cluster->pairs as $p) {
+                    $pairs[] = array('a' => $p->a, 'b' => $p->b, 'simpct' => round($p->sim * 100));
+                }
+                $maxsimpct = round($cluster->maxsim * 100);
+                $clusters[] = array(
+                    'members' => $members,
+                    'pairs' => $pairs,
+                    'clusterlabel' => get_string('report_sim_cluster', 'qtype_codeatelier', $cluster->size),
+                    'simlabel' => get_string('report_sim_upto', 'qtype_codeatelier', $maxsimpct),
+                );
+            }
+            $note = '';
+            if ($lang->reason === \qtype_codeatelier\local\integrity\cohort_analyser::REASON_TOOSHORT) {
+                $note = get_string('report_sim_tooshort', 'qtype_codeatelier');
+            } else if ($lang->reason === \qtype_codeatelier\local\integrity\cohort_analyser::REASON_UNIFORM) {
+                $note = get_string('report_sim_uniform', 'qtype_codeatelier');
+            } else if (empty($clusters)) {
+                $note = get_string('report_sim_noclusters', 'qtype_codeatelier');
+            }
+            $groups[] = array(
+                'language' => $lang->language,
+                'count' => $lang->count,
+                'analyzable' => $lang->analyzable,
+                'note' => $note,
+                'hasnote' => $note !== '',
+                'clusters' => $clusters,
+                'hasclusters' => !empty($clusters),
+            );
+        }
+        return $groups;
     }
 
     /**

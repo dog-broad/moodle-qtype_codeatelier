@@ -210,7 +210,7 @@ class project_packager {
      * A shell snippet that prepends the first matching /usr/local/<glob>/bin to
      * PATH, so a tool installed under Judge0's versioned layout is found without
      * hardcoding a version. A no-op when nothing matches (the tool is already on
-     * PATH). See [D-260607-03].
+     * PATH).
      *
      * @param string $glob a directory glob under /usr/local, e.g. 'go-*'
      * @return string the shell snippet (ends with a newline)

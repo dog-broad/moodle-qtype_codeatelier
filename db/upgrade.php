@@ -248,5 +248,23 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026062717, 'qtype', 'codeatelier');
     }
 
+    if ($oldversion < 2026062720) {
+        // Server-side, append-only proctor event log (replaces the tamperable hidden
+        // proctorlog response field). Events are written by an authenticated AJAX call
+        // and stamped server-side, so they cannot be forged or altered through the page.
+        $table = new xmldb_table('qtype_codeatelier_proctorlog');
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('questionattemptid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('eventtype', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_index('questionattemptid', XMLDB_INDEX_NOTUNIQUE, ['questionattemptid']);
+            $dbman->create_table($table);
+        }
+        upgrade_plugin_savepoint(true, 2026062720, 'qtype', 'codeatelier');
+    }
+
     return true;
 }

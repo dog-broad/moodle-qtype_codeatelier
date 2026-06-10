@@ -690,8 +690,8 @@ export const init = (config) => {
         }
     };
     // Secure (judge) tier: the editor runs a sandboxed in-memory clipboard, and an
-    // external-paste/drop attempt is reported to the proctor (the single proctorlog
-    // writer) via a CustomEvent on the question wrapper.
+    // external-paste/drop attempt is reported to the proctor module (the single
+    // reporter to the server-side event log) via a CustomEvent on the question wrapper.
     const sandbox = !!config.isjudge && !config.readonly;
     const editorOptions = {
         readonly: config.readonly,
