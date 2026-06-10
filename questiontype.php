@@ -67,6 +67,11 @@ class qtype_codeatelier extends question_type {
         return false;
     }
 
+    /**
+     * The options table and its columns saved with each question.
+     *
+     * @return array the table name followed by its option column names
+     */
     public function extra_question_fields() {
         return ['qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint',
                 'startercode', 'schemasql', 'cputimelimit', 'memorylimit', 'languages', 'starters',
@@ -74,6 +79,12 @@ class qtype_codeatelier extends question_type {
                 'checkerlang', 'checkersource'];
     }
 
+    /**
+     * Load the question's options plus its test cases.
+     *
+     * @param object $question the question being loaded
+     * @return bool
+     */
     public function get_question_options($question) {
         global $DB;
         parent::get_question_options($question);
@@ -85,6 +96,12 @@ class qtype_codeatelier extends question_type {
         return true;
     }
 
+    /**
+     * Save the question's options and test cases from the edit form.
+     *
+     * @param object $question the submitted question data
+     * @return bool
+     */
     public function save_question_options($question) {
         global $DB;
 
@@ -241,6 +258,13 @@ class qtype_codeatelier extends question_type {
         }
     }
 
+    /**
+     * Move the question's data files when it moves to a new context.
+     *
+     * @param int $questionid
+     * @param int $oldcontextid
+     * @param int $newcontextid
+     */
     public function move_files($questionid, $oldcontextid, $newcontextid) {
         parent::move_files($questionid, $oldcontextid, $newcontextid);
         get_file_storage()->move_area_files_to_new_context(
@@ -252,23 +276,47 @@ class qtype_codeatelier extends question_type {
         );
     }
 
+    /**
+     * Delete the question's data files.
+     *
+     * @param int $questionid
+     * @param int $contextid
+     */
     protected function delete_files($questionid, $contextid) {
         parent::delete_files($questionid, $contextid);
         get_file_storage()->delete_area_files($contextid, 'qtype_codeatelier', 'datafiles', $questionid);
     }
 
+    /**
+     * Populate the runtime question instance from its loaded data.
+     *
+     * @param question_definition $question
+     * @param object $questiondata
+     */
     protected function initialise_question_instance(question_definition $question, $questiondata) {
         parent::initialise_question_instance($question, $questiondata);
-        // $question->language is filled by the base class from extra_question_fields().
+        // The base class fills $question->language from extra_question_fields().
         $question->tests = array_values($questiondata->options->tests);
     }
 
+    /**
+     * Delete the question along with its test cases.
+     *
+     * @param int $questionid
+     * @param int $contextid
+     */
     public function delete_question($questionid, $contextid) {
         global $DB;
         $DB->delete_records('qtype_codeatelier_tests', ['questionid' => $questionid]);
         parent::delete_question($questionid, $contextid);
     }
 
+    /**
+     * No meaningful random-guess baseline (the result is supplied with the response).
+     *
+     * @param object $questiondata
+     * @return float|null
+     */
     public function get_random_guess_score($questiondata) {
         // The result is supplied with the response, so there is no meaningful
         // random-guess baseline to report.
@@ -353,7 +401,7 @@ class qtype_codeatelier extends question_type {
             $default = isset($defaults[$field]) ? $defaults[$field] : '';
             $qo->$field = $format->getpath($data, ['#', $field, 0, '#'], $default);
         }
-        // save_question_options expects the allowed-language SET as an array (the
+        // The save path expects the allowed-language SET as an array (the
         // multi-select value), not the stored comma string — casting a comma string
         // would collapse the whole set to one bad element.
         $qo->languages = ($qo->languages !== '' && $qo->languages !== null)
