@@ -54,4 +54,11 @@ $functions = [
         'type' => 'read',
         'ajax' => true,
     ],
+    'qtype_codeatelier_log_proctor' => [
+        'classname' => 'qtype_codeatelier\external\log_proctor_event',
+        'methodname' => 'execute',
+        'description' => 'Record a soft anti-cheat event (focus-away, outside-paste) against the caller\'s own live judge-tier attempt.',
+        'type' => 'write',
+        'ajax' => true,
+    ],
 ];
