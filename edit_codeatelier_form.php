@@ -31,70 +31,116 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_codeatelier_edit_form extends question_edit_form {
-
     protected function definition_inner($mform) {
         // When editing an existing question, link to its submissions report.
         if (!empty($this->question->id)) {
-            $reporturl = new moodle_url('/question/type/codeatelier/report.php',
-                    array('id' => $this->question->id));
-            $mform->addElement('static', 'reportlink', '',
-                    html_writer::link($reporturl, get_string('viewreport', 'qtype_codeatelier')));
+            $reporturl = new moodle_url(
+                '/question/type/codeatelier/report.php',
+                ['id' => $this->question->id]
+            );
+            $mform->addElement(
+                'static',
+                'reportlink',
+                '',
+                html_writer::link($reporturl, get_string('viewreport', 'qtype_codeatelier'))
+            );
         }
 
-        $mform->addElement('select', 'tier', get_string('tier', 'qtype_codeatelier'),
-                $this->tier_options());
+        $mform->addElement(
+            'select',
+            'tier',
+            get_string('tier', 'qtype_codeatelier'),
+            $this->tier_options()
+        );
         $mform->addHelpButton('tier', 'tier', 'qtype_codeatelier');
         $mform->setDefault('tier', $this->get_default_value('tier', 'practice'));
 
         // A trust badge: which grading tier is in effect (the authoring JS swaps the
         // wording on a tier change). Judge = secure/authoritative; practice = formative.
-        $mform->addElement('static', 'tierbadge', '',
-                html_writer::span('', '', array('id' => 'id_tierbadge')));
+        $mform->addElement(
+            'static',
+            'tierbadge',
+            '',
+            html_writer::span('', '', ['id' => 'id_tierbadge'])
+        );
 
         // Practice-tier grades are browser-computed and forgeable: warn the author
         // not to use this tier for graded assessment. Shown only for the practice tier.
-        $mform->addElement('static', 'practicewarning', '',
-                html_writer::div(get_string('practicewarning', 'qtype_codeatelier'), 'alert alert-warning'));
+        $mform->addElement(
+            'static',
+            'practicewarning',
+            '',
+            html_writer::div(get_string('practicewarning', 'qtype_codeatelier'), 'alert alert-warning')
+        );
         $mform->hideIf('practicewarning', 'tier', 'neq', 'practice');
 
-        $mform->addElement('select', 'language', get_string('language', 'qtype_codeatelier'),
-                $this->language_options());
+        $mform->addElement(
+            'select',
+            'language',
+            get_string('language', 'qtype_codeatelier'),
+            $this->language_options()
+        );
         $mform->addHelpButton('language', 'language', 'qtype_codeatelier');
         $mform->setDefault('language', $this->get_default_value('language', 'python'));
 
         // The set of languages the student may choose from. Empty means
         // single-language (just the primary Language above).
-        $mform->addElement('autocomplete', 'languages', get_string('languages', 'qtype_codeatelier'),
-                $this->language_options(), array('multiple' => true));
+        $mform->addElement(
+            'autocomplete',
+            'languages',
+            get_string('languages', 'qtype_codeatelier'),
+            $this->language_options(),
+            ['multiple' => true]
+        );
         $mform->addHelpButton('languages', 'languages', 'qtype_codeatelier');
 
-        $mform->addElement('select', 'scenario', get_string('scenario', 'qtype_codeatelier'),
-                $this->scenario_options());
+        $mform->addElement(
+            'select',
+            'scenario',
+            get_string('scenario', 'qtype_codeatelier'),
+            $this->scenario_options()
+        );
         $mform->addHelpButton('scenario', 'scenario', 'qtype_codeatelier');
         $mform->setDefault('scenario', $this->get_default_value('scenario', 'stdinstdout'));
         // Both tiers support all three scenarios; the per-scenario language rules
         // (e.g. judge function = dynamic languages only) are enforced in validation().
 
-        $mform->addElement('text', 'entrypoint', get_string('entrypoint', 'qtype_codeatelier'),
-                array('size' => 40));
+        $mform->addElement(
+            'text',
+            'entrypoint',
+            get_string('entrypoint', 'qtype_codeatelier'),
+            ['size' => 40]
+        );
         $mform->setType('entrypoint', PARAM_RAW_TRIMMED);
         $mform->addHelpButton('entrypoint', 'entrypoint', 'qtype_codeatelier');
         $mform->hideIf('entrypoint', 'scenario', 'neq', 'function');
 
-        $mform->addElement('text', 'functionsignature', get_string('functionsignature', 'qtype_codeatelier'),
-                array('size' => 40));
+        $mform->addElement(
+            'text',
+            'functionsignature',
+            get_string('functionsignature', 'qtype_codeatelier'),
+            ['size' => 40]
+        );
         $mform->setType('functionsignature', PARAM_RAW_TRIMMED);
         $mform->addHelpButton('functionsignature', 'functionsignature', 'qtype_codeatelier');
         $mform->hideIf('functionsignature', 'scenario', 'neq', 'function');
 
         // A structured builder (parameter/return type pickers) the authoring JS
         // renders here and keeps the signature field above in sync.
-        $mform->addElement('static', 'signaturebuilder', '',
-                html_writer::div('', 'codeatelier-sigbuilder', array('id' => 'id_signaturebuilder')));
+        $mform->addElement(
+            'static',
+            'signaturebuilder',
+            '',
+            html_writer::div('', 'codeatelier-sigbuilder', ['id' => 'id_signaturebuilder'])
+        );
         $mform->hideIf('signaturebuilder', 'scenario', 'neq', 'function');
 
-        $mform->addElement('textarea', 'startercode', get_string('startercode', 'qtype_codeatelier'),
-                array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
+        $mform->addElement(
+            'textarea',
+            'startercode',
+            get_string('startercode', 'qtype_codeatelier'),
+            ['rows' => 6, 'cols' => 60, 'spellcheck' => 'false']
+        );
         $mform->setType('startercode', PARAM_RAW);
         $mform->addHelpButton('startercode', 'startercode', 'qtype_codeatelier');
 
@@ -103,16 +149,28 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // are driven by the authoring JS, which keeps the JSON map in the hidden
         // 'starters' field; this section hides itself when only one language is
         // allowed. starterlang/starteredit are UI only and are not saved.
-        $mform->addElement('select', 'starterlang', get_string('starterlang', 'qtype_codeatelier'),
-                $this->language_options());
-        $mform->addElement('textarea', 'starteredit', get_string('starterother', 'qtype_codeatelier'),
-                array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
+        $mform->addElement(
+            'select',
+            'starterlang',
+            get_string('starterlang', 'qtype_codeatelier'),
+            $this->language_options()
+        );
+        $mform->addElement(
+            'textarea',
+            'starteredit',
+            get_string('starterother', 'qtype_codeatelier'),
+            ['rows' => 6, 'cols' => 60, 'spellcheck' => 'false']
+        );
         $mform->setType('starteredit', PARAM_RAW);
-        $mform->addElement('hidden', 'starters', '', array('id' => 'id_starters'));
+        $mform->addElement('hidden', 'starters', '', ['id' => 'id_starters']);
         $mform->setType('starters', PARAM_RAW);
 
-        $mform->addElement('textarea', 'schemasql', get_string('schemasql', 'qtype_codeatelier'),
-                array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
+        $mform->addElement(
+            'textarea',
+            'schemasql',
+            get_string('schemasql', 'qtype_codeatelier'),
+            ['rows' => 6, 'cols' => 60, 'spellcheck' => 'false']
+        );
         $mform->setType('schemasql', PARAM_RAW);
         $mform->addHelpButton('schemasql', 'schemasql', 'qtype_codeatelier');
         $mform->hideIf('schemasql', 'scenario', 'neq', 'sql');
@@ -121,14 +179,22 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // and the starter file set. The file set is a JS-managed file-tab editor
         // (the same one the student attempt uses) that keeps this textarea synced
         // to the canonical JSON.
-        $mform->addElement('text', 'entryfile', get_string('entryfile', 'qtype_codeatelier'),
-                array('size' => 40, 'id' => 'id_entryfile'));
+        $mform->addElement(
+            'text',
+            'entryfile',
+            get_string('entryfile', 'qtype_codeatelier'),
+            ['size' => 40, 'id' => 'id_entryfile']
+        );
         $mform->setType('entryfile', PARAM_RAW_TRIMMED);
         $mform->addHelpButton('entryfile', 'entryfile', 'qtype_codeatelier');
         $mform->hideIf('entryfile', 'scenario', 'neq', 'project');
 
-        $mform->addElement('textarea', 'projectfiles', get_string('projectfilesform', 'qtype_codeatelier'),
-                array('rows' => 10, 'cols' => 60, 'spellcheck' => 'false', 'id' => 'id_projectfiles'));
+        $mform->addElement(
+            'textarea',
+            'projectfiles',
+            get_string('projectfilesform', 'qtype_codeatelier'),
+            ['rows' => 10, 'cols' => 60, 'spellcheck' => 'false', 'id' => 'id_projectfiles']
+        );
         $mform->setType('projectfiles', PARAM_RAW);
         $mform->addHelpButton('projectfiles', 'projectfilesform', 'qtype_codeatelier');
         // The starter file set drives the project (multi-file build) and web
@@ -148,8 +214,12 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // A reference solution (in the primary language). The authoring JS can run
         // it to capture the Expected outputs and to validate the question; on the
         // judge tier a reference that fails any test blocks the save.
-        $mform->addElement('textarea', 'referencesolution', get_string('referencesolution', 'qtype_codeatelier'),
-                array('rows' => 6, 'cols' => 60, 'spellcheck' => 'false'));
+        $mform->addElement(
+            'textarea',
+            'referencesolution',
+            get_string('referencesolution', 'qtype_codeatelier'),
+            ['rows' => 6, 'cols' => 60, 'spellcheck' => 'false']
+        );
         $mform->setType('referencesolution', PARAM_RAW);
         $mform->addHelpButton('referencesolution', 'referencesolution', 'qtype_codeatelier');
         // For a project the reference is a complete file SET (a second file-tab editor
@@ -163,15 +233,23 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // as three files and prints an AC or WA token. Leave blank for no checker.
         $checkerlangs = $this->language_options();
         unset($checkerlangs['sql']);
-        $mform->addElement('select', 'checkerlang', get_string('checkerlang', 'qtype_codeatelier'),
-                $checkerlangs);
+        $mform->addElement(
+            'select',
+            'checkerlang',
+            get_string('checkerlang', 'qtype_codeatelier'),
+            $checkerlangs
+        );
         $mform->setDefault('checkerlang', 'python');
         $mform->addHelpButton('checkerlang', 'checkerlang', 'qtype_codeatelier');
         $mform->hideIf('checkerlang', 'tier', 'neq', 'judge');
         $mform->hideIf('checkerlang', 'scenario', 'neq', 'stdinstdout');
 
-        $mform->addElement('textarea', 'checkersource', get_string('checkersource', 'qtype_codeatelier'),
-                array('rows' => 8, 'cols' => 60, 'spellcheck' => 'false'));
+        $mform->addElement(
+            'textarea',
+            'checkersource',
+            get_string('checkersource', 'qtype_codeatelier'),
+            ['rows' => 8, 'cols' => 60, 'spellcheck' => 'false']
+        );
         $mform->setType('checkersource', PARAM_RAW);
         $mform->addHelpButton('checkersource', 'checkersource', 'qtype_codeatelier');
         $mform->hideIf('checkersource', 'tier', 'neq', 'judge');
@@ -179,25 +257,42 @@ class qtype_codeatelier_edit_form extends question_edit_form {
 
         // Support/data files: judge tier only. They are placed in the working
         // directory next to the program so it can read them at run time.
-        $mform->addElement('filemanager', 'datafiles', get_string('datafiles', 'qtype_codeatelier'),
-                null, qtype_codeatelier::datafiles_options());
+        $mform->addElement(
+            'filemanager',
+            'datafiles',
+            get_string('datafiles', 'qtype_codeatelier'),
+            null,
+            qtype_codeatelier::datafiles_options()
+        );
         $mform->addHelpButton('datafiles', 'datafiles', 'qtype_codeatelier');
 
         // Per-question judge limits (blank = site default). Judge tier only.
-        $mform->addElement('text', 'cputimelimit', get_string('cputimelimit', 'qtype_codeatelier'),
-                array('size' => 10));
+        $mform->addElement(
+            'text',
+            'cputimelimit',
+            get_string('cputimelimit', 'qtype_codeatelier'),
+            ['size' => 10]
+        );
         $mform->setType('cputimelimit', PARAM_RAW_TRIMMED);
         $mform->addHelpButton('cputimelimit', 'cputimelimit', 'qtype_codeatelier');
         $mform->hideIf('cputimelimit', 'tier', 'neq', 'judge');
 
-        $mform->addElement('text', 'memorylimit', get_string('memorylimit', 'qtype_codeatelier'),
-                array('size' => 10));
+        $mform->addElement(
+            'text',
+            'memorylimit',
+            get_string('memorylimit', 'qtype_codeatelier'),
+            ['size' => 10]
+        );
         $mform->setType('memorylimit', PARAM_RAW_TRIMMED);
         $mform->addHelpButton('memorylimit', 'memorylimit', 'qtype_codeatelier');
         $mform->hideIf('memorylimit', 'tier', 'neq', 'judge');
 
-        $mform->addElement('advcheckbox', 'allornothing', get_string('allornothing', 'qtype_codeatelier'),
-                get_string('allornothing_label', 'qtype_codeatelier'));
+        $mform->addElement(
+            'advcheckbox',
+            'allornothing',
+            get_string('allornothing', 'qtype_codeatelier'),
+            get_string('allornothing_label', 'qtype_codeatelier')
+        );
         $mform->setDefault('allornothing', 0);
         $mform->addHelpButton('allornothing', 'allornothing', 'qtype_codeatelier');
 
@@ -224,20 +319,33 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->setExpanded('previewheader', false);
 
         $previewid = 'codeatelier_preview';
-        $refresh = html_writer::tag('button', get_string('previewrefresh', 'qtype_codeatelier'),
-                array('type' => 'button', 'class' => 'btn btn-secondary', 'id' => $previewid . '_btn'));
-        $capture = html_writer::tag('button', get_string('captureexpected', 'qtype_codeatelier'),
-                array('type' => 'button', 'class' => 'btn btn-secondary ml-2', 'id' => $previewid . '_capture'));
-        $status = html_writer::tag('span', '', array('class' => 'codeatelier-status ml-2',
-                'id' => $previewid . '_status', 'role' => 'status', 'aria-live' => 'polite'));
-        $pane = html_writer::div('', 'codeatelier-preview', array('id' => $previewid));
-        $mform->addElement('static', 'codeatelier_previewarea', '',
-                html_writer::tag('p', get_string('previewintro', 'qtype_codeatelier'), array('class' => 'text-muted'))
-                . html_writer::tag('p', get_string('captureexpected_help', 'qtype_codeatelier'),
-                        array('class' => 'text-muted'))
-                . $refresh . $capture . $status . $pane);
+        $refresh = html_writer::tag(
+            'button',
+            get_string('previewrefresh', 'qtype_codeatelier'),
+            ['type' => 'button', 'class' => 'btn btn-secondary', 'id' => $previewid . '_btn']
+        );
+        $capture = html_writer::tag(
+            'button',
+            get_string('captureexpected', 'qtype_codeatelier'),
+            ['type' => 'button', 'class' => 'btn btn-secondary ml-2', 'id' => $previewid . '_capture']
+        );
+        $status = html_writer::tag('span', '', ['class' => 'codeatelier-status ml-2',
+                'id' => $previewid . '_status', 'role' => 'status', 'aria-live' => 'polite']);
+        $pane = html_writer::div('', 'codeatelier-preview', ['id' => $previewid]);
+        $mform->addElement(
+            'static',
+            'codeatelier_previewarea',
+            '',
+            html_writer::tag('p', get_string('previewintro', 'qtype_codeatelier'), ['class' => 'text-muted'])
+                . html_writer::tag(
+                    'p',
+                    get_string('captureexpected_help', 'qtype_codeatelier'),
+                    ['class' => 'text-muted']
+                )
+            . $refresh . $capture . $status . $pane
+        );
 
-        $PAGE->requires->js_call_amd('qtype_codeatelier/author', 'init', array(array(
+        $PAGE->requires->js_call_amd('qtype_codeatelier/author', 'init', [[
             'languageid' => 'id_language',
             'languagesid' => 'id_languages',
             'starterlangid' => 'id_starterlang',
@@ -252,19 +360,19 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'projectfilesid' => 'id_projectfiles',
             'entryfileid' => 'id_entryfile',
             'tierbadgeid' => 'id_tierbadge',
-            'tierbadges' => array(
+            'tierbadges' => [
                 'judge' => get_string('tierbadge_judge', 'qtype_codeatelier'),
                 'practice' => get_string('tierbadge_practice', 'qtype_codeatelier'),
-            ),
+            ],
             'functionsignatureid' => 'id_functionsignature',
             'signaturebuilderid' => 'id_signaturebuilder',
-            'sigbuilderstrings' => array(
+            'sigbuilderstrings' => [
                 'returns' => get_string('sigbuilder_returns', 'qtype_codeatelier'),
                 'addparam' => get_string('sigbuilder_addparam', 'qtype_codeatelier'),
                 'removeparam' => get_string('sigbuilder_removeparam', 'qtype_codeatelier'),
                 'noparams' => get_string('sigbuilder_noparams', 'qtype_codeatelier'),
                 'param' => get_string('sigbuilder_param', 'qtype_codeatelier'),
-            ),
+            ],
             'questiontextid' => 'id_questiontext',
             'previewbtnid' => $previewid . '_btn',
             'captureid' => $previewid . '_capture',
@@ -273,7 +381,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'contextid' => $this->context->id,
             'previewcontext' => qtype_codeatelier::ui_labels(),
             'strings' => qtype_codeatelier::ui_strings(),
-            'capturestrings' => array(
+            'capturestrings' => [
                 'running' => get_string('running', 'qtype_codeatelier'),
                 'capturedone' => get_string('capturedone', 'qtype_codeatelier'),
                 'captureerrors' => get_string('captureerrors', 'qtype_codeatelier'),
@@ -281,11 +389,11 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 'capturenoreference' => get_string('capturenoreference', 'qtype_codeatelier'),
                 'referencewarning' => get_string('referencewarning', 'qtype_codeatelier'),
                 'referenceverifyfail' => get_string('referenceverifyfail', 'qtype_codeatelier'),
-            ),
+            ],
             'pyodidebaseurl' => get_config('qtype_codeatelier', 'pyodidebaseurl'),
             'sqljsbaseurl' => get_config('qtype_codeatelier', 'sqljsbaseurl'),
             'timeoutms' => 5000,
-        )));
+        ]]);
     }
 
     /**
@@ -294,70 +402,126 @@ class qtype_codeatelier_edit_form extends question_edit_form {
      * @param MoodleQuickForm $mform the form being built
      */
     protected function add_test_case_fields($mform) {
-        $repeated = array();
-        $repeated[] = $mform->createElement('static', 'testcaselabel', '',
-                get_string('testcaseno', 'qtype_codeatelier', '{no}'));
-        $repeated[] = $mform->createElement('textarea', 'testinput',
-                get_string('input', 'qtype_codeatelier'), array('rows' => 3, 'cols' => 60));
-        $repeated[] = $mform->createElement('textarea', 'testexpected',
-                get_string('expected', 'qtype_codeatelier'), array('rows' => 3, 'cols' => 60));
+        $repeated = [];
+        $repeated[] = $mform->createElement(
+            'static',
+            'testcaselabel',
+            '',
+            get_string('testcaseno', 'qtype_codeatelier', '{no}')
+        );
+        $repeated[] = $mform->createElement(
+            'textarea',
+            'testinput',
+            get_string('input', 'qtype_codeatelier'),
+            ['rows' => 3, 'cols' => 60]
+        );
+        $repeated[] = $mform->createElement(
+            'textarea',
+            'testexpected',
+            get_string('expected', 'qtype_codeatelier'),
+            ['rows' => 3, 'cols' => 60]
+        );
         // Web scenario: one DOM assertion per row (selector + property + matcher),
         // with the value compared in the Expected field above. Shown only for web.
-        $repeated[] = $mform->createElement('text', 'selector',
-                get_string('assertselector', 'qtype_codeatelier'), array('size' => 40));
-        $repeated[] = $mform->createElement('text', 'assertproperty',
-                get_string('assertproperty', 'qtype_codeatelier'), array('size' => 24));
-        $repeated[] = $mform->createElement('select', 'assertmatcher',
-                get_string('assertmatcher', 'qtype_codeatelier'), $this->assertmatcher_options());
-        $repeated[] = $mform->createElement('textarea', 'actions',
-                get_string('assertactions', 'qtype_codeatelier'), array('rows' => 2, 'cols' => 60));
-        $repeated[] = $mform->createElement('select', 'matchmode',
-                get_string('matchmode', 'qtype_codeatelier'), $this->matchmode_options());
-        $repeated[] = $mform->createElement('text', 'tolerance',
-                get_string('tolerance', 'qtype_codeatelier'), array('size' => 10));
-        $repeated[] = $mform->createElement('text', 'testweight',
-                get_string('weight', 'qtype_codeatelier'), array('size' => 10));
-        $repeated[] = $mform->createElement('select', 'testvisibility',
-                get_string('visibility', 'qtype_codeatelier'), $this->visibility_options());
-        $repeated[] = $mform->createElement('text', 'subtask',
-                get_string('subtask', 'qtype_codeatelier'), array('size' => 6));
-        $repeated[] = $mform->createElement('textarea', 'checkerquery',
-                get_string('checkerquery', 'qtype_codeatelier'), array('rows' => 2, 'cols' => 60));
-        $repeated[] = $mform->createElement('textarea', 'testfeedback',
-                get_string('testfeedback', 'qtype_codeatelier'), array('rows' => 2, 'cols' => 60));
+        $repeated[] = $mform->createElement(
+            'text',
+            'selector',
+            get_string('assertselector', 'qtype_codeatelier'),
+            ['size' => 40]
+        );
+        $repeated[] = $mform->createElement(
+            'text',
+            'assertproperty',
+            get_string('assertproperty', 'qtype_codeatelier'),
+            ['size' => 24]
+        );
+        $repeated[] = $mform->createElement(
+            'select',
+            'assertmatcher',
+            get_string('assertmatcher', 'qtype_codeatelier'),
+            $this->assertmatcher_options()
+        );
+        $repeated[] = $mform->createElement(
+            'textarea',
+            'actions',
+            get_string('assertactions', 'qtype_codeatelier'),
+            ['rows' => 2, 'cols' => 60]
+        );
+        $repeated[] = $mform->createElement(
+            'select',
+            'matchmode',
+            get_string('matchmode', 'qtype_codeatelier'),
+            $this->matchmode_options()
+        );
+        $repeated[] = $mform->createElement(
+            'text',
+            'tolerance',
+            get_string('tolerance', 'qtype_codeatelier'),
+            ['size' => 10]
+        );
+        $repeated[] = $mform->createElement(
+            'text',
+            'testweight',
+            get_string('weight', 'qtype_codeatelier'),
+            ['size' => 10]
+        );
+        $repeated[] = $mform->createElement(
+            'select',
+            'testvisibility',
+            get_string('visibility', 'qtype_codeatelier'),
+            $this->visibility_options()
+        );
+        $repeated[] = $mform->createElement(
+            'text',
+            'subtask',
+            get_string('subtask', 'qtype_codeatelier'),
+            ['size' => 6]
+        );
+        $repeated[] = $mform->createElement(
+            'textarea',
+            'checkerquery',
+            get_string('checkerquery', 'qtype_codeatelier'),
+            ['rows' => 2, 'cols' => 60]
+        );
+        $repeated[] = $mform->createElement(
+            'textarea',
+            'testfeedback',
+            get_string('testfeedback', 'qtype_codeatelier'),
+            ['rows' => 2, 'cols' => 60]
+        );
 
         // Note: do not set a 'default' for the matchmode/testweight/testvisibility
         // elements here. For repeated elements a default overrides the values
         // loaded by data_preprocessing(), so an edited question would silently
         // reset them. The selects fall back to their first option for new rows;
         // weight is author-entered and checked in validation().
-        $repeatedoptions = array();
+        $repeatedoptions = [];
         $repeatedoptions['testinput']['type'] = PARAM_RAW;
         // The stdin input is not used by a web (DOM-assertion) question.
-        $repeatedoptions['testinput']['hideif'] = array('scenario', 'eq', 'web');
+        $repeatedoptions['testinput']['hideif'] = ['scenario', 'eq', 'web'];
         $repeatedoptions['testexpected']['type'] = PARAM_RAW;
         $repeatedoptions['matchmode']['type'] = PARAM_ALPHANUMEXT;
-        $repeatedoptions['matchmode']['hideif'] = array('scenario', 'eq', 'web');
+        $repeatedoptions['matchmode']['hideif'] = ['scenario', 'eq', 'web'];
         $repeatedoptions['tolerance']['type'] = PARAM_RAW_TRIMMED;
-        $repeatedoptions['tolerance']['disabledif'] = array('matchmode', 'neq', 'float');
-        $repeatedoptions['tolerance']['hideif'] = array('scenario', 'eq', 'web');
+        $repeatedoptions['tolerance']['disabledif'] = ['matchmode', 'neq', 'float'];
+        $repeatedoptions['tolerance']['hideif'] = ['scenario', 'eq', 'web'];
         $repeatedoptions['testweight']['type'] = PARAM_RAW_TRIMMED;
         $repeatedoptions['testvisibility']['type'] = PARAM_INT;
         // Subtask group id (0 = ungrouped). Not used by web (DOM-assertion) questions.
         $repeatedoptions['subtask']['type'] = PARAM_INT;
-        $repeatedoptions['subtask']['hideif'] = array('scenario', 'eq', 'web');
+        $repeatedoptions['subtask']['hideif'] = ['scenario', 'eq', 'web'];
         $repeatedoptions['checkerquery']['type'] = PARAM_RAW;
-        $repeatedoptions['checkerquery']['hideif'] = array('scenario', 'neq', 'sql');
+        $repeatedoptions['checkerquery']['hideif'] = ['scenario', 'neq', 'sql'];
         $repeatedoptions['testfeedback']['type'] = PARAM_RAW;
         // Web assertion fields: shown only for the web scenario.
         $repeatedoptions['selector']['type'] = PARAM_RAW_TRIMMED;
-        $repeatedoptions['selector']['hideif'] = array('scenario', 'neq', 'web');
+        $repeatedoptions['selector']['hideif'] = ['scenario', 'neq', 'web'];
         $repeatedoptions['assertproperty']['type'] = PARAM_RAW_TRIMMED;
-        $repeatedoptions['assertproperty']['hideif'] = array('scenario', 'neq', 'web');
+        $repeatedoptions['assertproperty']['hideif'] = ['scenario', 'neq', 'web'];
         $repeatedoptions['assertmatcher']['type'] = PARAM_ALPHA;
-        $repeatedoptions['assertmatcher']['hideif'] = array('scenario', 'neq', 'web');
+        $repeatedoptions['assertmatcher']['hideif'] = ['scenario', 'neq', 'web'];
         $repeatedoptions['actions']['type'] = PARAM_RAW;
-        $repeatedoptions['actions']['hideif'] = array('scenario', 'neq', 'web');
+        $repeatedoptions['actions']['hideif'] = ['scenario', 'neq', 'web'];
 
         if (!empty($this->question->options->tests)) {
             $repeats = count($this->question->options->tests);
@@ -365,31 +529,39 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             $repeats = 2;
         }
 
-        $this->repeat_elements($repeated, $repeats, $repeatedoptions, 'option_repeats',
-                'option_add_tests', 1, get_string('addmoretestcases', 'qtype_codeatelier'), true);
+        $this->repeat_elements(
+            $repeated,
+            $repeats,
+            $repeatedoptions,
+            'option_repeats',
+            'option_add_tests',
+            1,
+            get_string('addmoretestcases', 'qtype_codeatelier'),
+            true
+        );
     }
 
     /**
      * @return array scenario code => display name
      */
     protected function scenario_options() {
-        return array(
+        return [
             'stdinstdout' => get_string('scenario_stdinstdout', 'qtype_codeatelier'),
             'function' => get_string('scenario_function', 'qtype_codeatelier'),
             'sql' => get_string('scenario_sql', 'qtype_codeatelier'),
             'project' => get_string('scenario_project', 'qtype_codeatelier'),
             'web' => get_string('scenario_web', 'qtype_codeatelier'),
-        );
+        ];
     }
 
     /**
      * @return array tier code => display name
      */
     protected function tier_options() {
-        return array(
+        return [
             'practice' => get_string('tier_practice', 'qtype_codeatelier'),
             'judge' => get_string('tier_judge', 'qtype_codeatelier'),
-        );
+        ];
     }
 
     /**
@@ -400,7 +572,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
      * @return array language code => display name
      */
     protected function language_options() {
-        return array(
+        return [
             'python' => get_string('lang_python', 'qtype_codeatelier'),
             'sql' => get_string('lang_sql', 'qtype_codeatelier'),
             'javascript' => get_string('lang_javascript', 'qtype_codeatelier'),
@@ -414,21 +586,21 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'csharp' => get_string('lang_csharp', 'qtype_codeatelier'),
             'kotlin' => get_string('lang_kotlin', 'qtype_codeatelier'),
             'ruby' => get_string('lang_ruby', 'qtype_codeatelier'),
-        );
+        ];
     }
 
     /** @var array languages that run in the browser (practice tier). */
-    const PRACTICE_LANGUAGES = array('python', 'sql', 'javascript');
+    const PRACTICE_LANGUAGES = ['python', 'sql', 'javascript'];
 
     /** @var array languages that run in the server sandbox (judge tier). */
-    const JUDGE_LANGUAGES = array('c', 'cpp', 'java', 'python', 'javascript', 'sql',
-            'go', 'rust', 'php', 'typescript', 'csharp', 'kotlin', 'ruby');
+    const JUDGE_LANGUAGES = ['c', 'cpp', 'java', 'python', 'javascript', 'sql',
+            'go', 'rust', 'php', 'typescript', 'csharp', 'kotlin', 'ruby'];
 
     /**
      * @return array matching-mode code => display name
      */
     protected function matchmode_options() {
-        return array(
+        return [
             'exact' => get_string('match_exact', 'qtype_codeatelier'),
             'trimmed' => get_string('match_trimmed', 'qtype_codeatelier'),
             'regex' => get_string('match_regex', 'qtype_codeatelier'),
@@ -436,17 +608,17 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'structured' => get_string('match_structured', 'qtype_codeatelier'),
             'resultset' => get_string('match_resultset', 'qtype_codeatelier'),
             'resultset_ordered' => get_string('match_resultset_ordered', 'qtype_codeatelier'),
-        );
+        ];
     }
 
     /**
      * @return array visibility value => display name
      */
     protected function visibility_options() {
-        return array(
+        return [
             1 => get_string('visible_shown', 'qtype_codeatelier'),
             0 => get_string('visible_hidden', 'qtype_codeatelier'),
-        );
+        ];
     }
 
     /**
@@ -455,11 +627,11 @@ class qtype_codeatelier_edit_form extends question_edit_form {
      * @return array matcher code => display name
      */
     protected function assertmatcher_options() {
-        return array(
+        return [
             'equals' => get_string('assertmatch_equals', 'qtype_codeatelier'),
             'contains' => get_string('assertmatch_contains', 'qtype_codeatelier'),
             'regex' => get_string('assertmatch_regex', 'qtype_codeatelier'),
-        );
+        ];
     }
 
     /**
@@ -471,7 +643,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
      */
     protected static function valid_assert_property($property) {
         $property = trim((string) $property);
-        if (in_array($property, array('text', 'exists', 'count'), true)) {
+        if (in_array($property, ['text', 'exists', 'count'], true)) {
             return true;
         }
         return (bool) preg_match('/^(attr|style):\S+/', $property);
@@ -483,31 +655,37 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // The allowed-language set is stored as a comma-separated string; the
         // multi-select wants an array.
         $question->languages = (isset($question->languages) && trim((string) $question->languages) !== '')
-                ? explode(',', $question->languages) : array();
+                ? explode(',', $question->languages) : [];
 
         // Prepare the support/data files draft area from the saved files.
         $draftid = file_get_submitted_draft_itemid('datafiles');
-        file_prepare_draft_area($draftid, $this->context->id, 'qtype_codeatelier', 'datafiles',
-                !empty($question->id) ? (int) $question->id : null, qtype_codeatelier::datafiles_options());
+        file_prepare_draft_area(
+            $draftid,
+            $this->context->id,
+            'qtype_codeatelier',
+            'datafiles',
+            !empty($question->id) ? (int) $question->id : null,
+            qtype_codeatelier::datafiles_options()
+        );
         $question->datafiles = $draftid;
 
         if (empty($question->options->tests)) {
             return $question;
         }
 
-        $question->testinput = array();
-        $question->testexpected = array();
-        $question->matchmode = array();
-        $question->tolerance = array();
-        $question->testweight = array();
-        $question->testvisibility = array();
-        $question->checkerquery = array();
-        $question->testfeedback = array();
-        $question->selector = array();
-        $question->assertproperty = array();
-        $question->assertmatcher = array();
-        $question->actions = array();
-        $question->subtask = array();
+        $question->testinput = [];
+        $question->testexpected = [];
+        $question->matchmode = [];
+        $question->tolerance = [];
+        $question->testweight = [];
+        $question->testvisibility = [];
+        $question->checkerquery = [];
+        $question->testfeedback = [];
+        $question->selector = [];
+        $question->assertproperty = [];
+        $question->assertmatcher = [];
+        $question->actions = [];
+        $question->subtask = [];
 
         foreach (array_values($question->options->tests) as $i => $test) {
             $question->testinput[$i] = $test->input;
@@ -536,7 +714,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $tierlangs = $tier === 'judge' ? self::JUDGE_LANGUAGES : self::PRACTICE_LANGUAGES;
 
         // The full allowed set: the primary language plus the multi-select choices.
-        $allowed = array($data['language']);
+        $allowed = [$data['language']];
         if (!empty($data['languages']) && is_array($data['languages'])) {
             foreach ($data['languages'] as $lang) {
                 if (!in_array($lang, $allowed, true)) {
@@ -561,13 +739,13 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // languages the sandbox harness covers (static languages need a signature).
         if (!isset($errors['languages'])) {
             if ($scenario === 'sql') {
-                if ($allowed !== array('sql')) {
+                if ($allowed !== ['sql']) {
                     $errors['languages'] = get_string('sqlsinglelanguage', 'qtype_codeatelier');
                 }
             } else if ($scenario === 'function') {
                 $functionlangs = ($tier === 'judge')
                     ? \qtype_codeatelier\judge\function_harness::LANGUAGES
-                    : array('python', 'javascript');
+                    : ['python', 'javascript'];
                 $needssig = false;
                 foreach ($allowed as $lang) {
                     if (!in_array($lang, $functionlangs, true)) {
@@ -588,7 +766,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                     } else if (array_intersect($allowed, \qtype_codeatelier\judge\function_harness::SCALAR_ONLY)) {
                         // C grades scalar parameters/return only (arrays are awkward in C).
                         $parsed = \qtype_codeatelier\judge\signature::parse($sig);
-                        foreach (array_merge($parsed->params(), array($parsed->return_type())) as $t) {
+                        foreach (array_merge($parsed->params(), [$parsed->return_type()]) as $t) {
                             if (!\qtype_codeatelier\judge\signature::is_scalar($t)) {
                                 $errors['functionsignature'] = get_string('signaturescalaronly', 'qtype_codeatelier');
                                 break;
@@ -600,8 +778,10 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 // A project is judge-tier only and runs as a single-language build.
                 if ($tier !== 'judge') {
                     $errors['scenario'] = get_string('projectjudgeonly', 'qtype_codeatelier');
-                } else if (count($allowed) !== 1
-                        || !\qtype_codeatelier\judge\project_packager::supports($allowed[0])) {
+                } else if (
+                    count($allowed) !== 1
+                        || !\qtype_codeatelier\judge\project_packager::supports($allowed[0])
+                ) {
                     $errors['language'] = get_string('projectlanguageset', 'qtype_codeatelier');
                 }
             }
@@ -612,7 +792,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // A project must carry a valid file set with the entry file among the files.
         if ($scenario === 'project') {
             $files = \qtype_codeatelier\judge\project_packager::decode_files(
-                    isset($data['projectfiles']) ? (string) $data['projectfiles'] : '');
+                isset($data['projectfiles']) ? (string) $data['projectfiles'] : ''
+            );
             if (!$files) {
                 $errors['projectfiles'] = get_string('projectfilesempty', 'qtype_codeatelier');
             } else {
@@ -628,7 +809,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // A web question must carry a starter file set with an HTML page to render.
         if ($scenario === 'web') {
             $files = \qtype_codeatelier\judge\project_packager::decode_files(
-                    isset($data['projectfiles']) ? (string) $data['projectfiles'] : '');
+                isset($data['projectfiles']) ? (string) $data['projectfiles'] : ''
+            );
             $hashtml = false;
             foreach (array_keys($files) as $name) {
                 if (preg_match('/\.html?$/i', $name)) {
@@ -657,7 +839,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         }
 
         // Per-question limits, when given, must be positive numbers.
-        foreach (array('cputimelimit', 'memorylimit') as $limit) {
+        foreach (['cputimelimit', 'memorylimit'] as $limit) {
             $value = isset($data[$limit]) ? trim($data[$limit]) : '';
             if ($value !== '' && (!is_numeric($value) || (float) $value <= 0)) {
                 $errors[$limit] = get_string('limitpositive', 'qtype_codeatelier');
@@ -742,9 +924,11 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // would wrongly fail a reference that reads them.
         // For a project the reference is a file set; only validate when it has real
         // content (the file-tab editor seeds an empty default that must not block).
-        if ($tier === 'judge' && $count > 0 && !isset($errors['languages'])
+        if (
+            $tier === 'judge' && $count > 0 && !isset($errors['languages'])
                 && !isset($errors['checkersource']) && !isset($errors['checkerlang'])
-                && $hasreference && !$this->has_draft_data_files($data)) {
+                && $hasreference && !$this->has_draft_data_files($data)
+        ) {
             $errors = $this->validate_reference($data, $errors);
         }
 
@@ -819,8 +1003,11 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             // names the checker — that is a question error the author must fix, so
             // block. A genuinely unreachable sandbox cannot be validated, so allow.
             if (stripos((string) ($result['message'] ?? ''), 'checker') !== false) {
-                $errors['checkersource'] = get_string('checkerinvalid', 'qtype_codeatelier',
-                        (string) $result['message']);
+                $errors['checkersource'] = get_string(
+                    'checkerinvalid',
+                    'qtype_codeatelier',
+                    (string) $result['message']
+                );
             }
             return $errors;
         }
@@ -838,13 +1025,13 @@ class qtype_codeatelier_edit_form extends question_edit_form {
      * @return array test-case stdClass objects
      */
     protected function tests_from_form($data) {
-        $tests = array();
+        $tests = [];
         foreach ($data['testinput'] as $key => $input) {
             $expected = $data['testexpected'][$key];
             if (trim($input) === '' && trim($expected) === '') {
                 continue;
             }
-            $tests[] = (object) array(
+            $tests[] = (object) [
                 'input' => $input,
                 'expected' => $expected,
                 'matchmode' => $data['matchmode'][$key],
@@ -853,7 +1040,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 'visibility' => $data['testvisibility'][$key],
                 'checkerquery' => isset($data['checkerquery'][$key]) ? $data['checkerquery'][$key] : null,
                 'subtask' => isset($data['subtask'][$key]) ? (int) $data['subtask'][$key] : 0,
-            );
+            ];
         }
         return $tests;
     }
@@ -867,8 +1054,11 @@ class qtype_codeatelier_edit_form extends question_edit_form {
      */
     protected function reference_error_message($result) {
         if (($result['verdict'] ?? '') === 'CE') {
-            return get_string('referencecompileerror', 'qtype_codeatelier',
-                    shorten_text(trim((string) ($result['compileoutput'] ?? '')), 200));
+            return get_string(
+                'referencecompileerror',
+                'qtype_codeatelier',
+                shorten_text(trim((string) ($result['compileoutput'] ?? '')), 200)
+            );
         }
         foreach ($result['testresults'] as $tr) {
             if (empty($tr['passed'])) {

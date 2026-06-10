@@ -62,29 +62,31 @@ if ($questionid) {
     }
 
     $stats = \qtype_codeatelier\local\report\question_stats::for_question($questionid, $usagecontextid);
-    $baseurl = new moodle_url('/question/type/codeatelier/report.php',
-            $cmid ? array('id' => $questionid, 'cmid' => $cmid) : array('id' => $questionid));
+    $baseurl = new moodle_url(
+        '/question/type/codeatelier/report.php',
+        $cmid ? ['id' => $questionid, 'cmid' => $cmid] : ['id' => $questionid]
+    );
 
     if ($format === 'csv') {
         require_once($CFG->libdir . '/csvlib.class.php');
         $csv = new csv_export_writer();
         $csv->set_filename('codeatelier-question-' . $questionid . '-pertest');
-        $csv->add_data(array(
+        $csv->add_data([
             get_string('report_test', 'qtype_codeatelier'),
             get_string('visibility', 'qtype_codeatelier'),
             get_string('report_passes', 'qtype_codeatelier'),
             get_string('report_outof', 'qtype_codeatelier'),
             get_string('report_passrate', 'qtype_codeatelier'),
-        ));
+        ]);
         foreach ($stats->pertest as $row) {
-            $csv->add_data(array(
+            $csv->add_data([
                 $row->index + 1,
                 $row->visible ? get_string('visible_shown', 'qtype_codeatelier')
                         : get_string('visible_hidden', 'qtype_codeatelier'),
                 $row->passes,
                 $row->total,
                 $row->passrate === null ? '' : round($row->passrate * 100, 1) . '%',
-            ));
+            ]);
         }
         $csv->download_file();
         exit;
@@ -99,13 +101,19 @@ if ($questionid) {
     echo $OUTPUT->header();
     if ($cmid) {
         echo html_writer::div(html_writer::link(
-                new moodle_url('/question/type/codeatelier/report.php', array('cmid' => $cmid)),
-                get_string('report_backtoquiz', 'qtype_codeatelier')), 'mb-2');
+            new moodle_url('/question/type/codeatelier/report.php', ['cmid' => $cmid]),
+            get_string('report_backtoquiz', 'qtype_codeatelier')
+        ), 'mb-2');
     }
     $recent = \qtype_codeatelier\local\report\question_stats::recent_submissions(
-            $questionid, $usagecontextid, 50);
+        $questionid,
+        $usagecontextid,
+        50
+    );
     $submissions = \qtype_codeatelier\local\report\question_stats::code_submissions(
-            $questionid, $usagecontextid);
+        $questionid,
+        $usagecontextid
+    );
     $similarity = \qtype_codeatelier\local\integrity\cohort_analyser::analyse($submissions);
     echo $renderer->render_question_report($stats, $baseurl, $recent, $similarity);
     echo $OUTPUT->footer();
@@ -113,10 +121,10 @@ if ($questionid) {
 }
 
 // Per-quiz overview.
-$quiz = $DB->get_record('quiz', array('id' => $cm->instance), '*', MUST_EXIST);
+$quiz = $DB->get_record('quiz', ['id' => $cm->instance], '*', MUST_EXIST);
 $summaries = \qtype_codeatelier\local\report\question_stats::for_quiz($quiz->id, $quizcontext->id);
 
-$PAGE->set_url(new moodle_url('/question/type/codeatelier/report.php', array('cmid' => $cmid)));
+$PAGE->set_url(new moodle_url('/question/type/codeatelier/report.php', ['cmid' => $cmid]));
 $PAGE->set_title(get_string('report_quiztitle', 'qtype_codeatelier'));
 $PAGE->set_heading(format_string($quiz->name));
 $renderer = $PAGE->get_renderer('qtype_codeatelier');

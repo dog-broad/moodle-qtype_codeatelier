@@ -37,7 +37,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class run_examples extends external_api {
-
     /**
      * @return external_function_parameters
      */
@@ -45,8 +44,12 @@ class run_examples extends external_api {
         return new external_function_parameters([
             'questionid' => new external_value(PARAM_INT, 'The CodeAtelier question id'),
             'code' => new external_value(PARAM_RAW, 'The student submission to run'),
-            'language' => new external_value(PARAM_ALPHANUMEXT, 'The chosen language (re-validated server-side)',
-                    VALUE_DEFAULT, ''),
+            'language' => new external_value(
+                PARAM_ALPHANUMEXT,
+                'The chosen language (re-validated server-side)',
+                VALUE_DEFAULT,
+                ''
+            ),
         ]);
     }
 
@@ -62,8 +65,10 @@ class run_examples extends external_api {
         global $CFG, $USER;
         require_once($CFG->dirroot . '/question/engine/lib.php');
 
-        $params = self::validate_parameters(self::execute_parameters(),
-                ['questionid' => $questionid, 'code' => $code, 'language' => $language]);
+        $params = self::validate_parameters(
+            self::execute_parameters(),
+            ['questionid' => $questionid, 'code' => $code, 'language' => $language]
+        );
 
         $question = \question_bank::load_question($params['questionid']);
         if (!($question instanceof \qtype_codeatelier_question) || !$question->is_judge()) {

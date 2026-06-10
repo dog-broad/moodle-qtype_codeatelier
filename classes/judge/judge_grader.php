@@ -38,7 +38,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class judge_grader {
-
     /** @var judge0_runner the sandbox runner. */
     private $runner;
 
@@ -70,10 +69,19 @@ class judge_grader {
      *     testresults: array of {index, status (pass|fail|re|tle|ce), passed, visibility, time, memory}
      * }
      */
-    public function grade(string $code, string $language, array $tests, string $schemasql = '',
-            bool $allornothing = false, string $scenario = 'stdinstdout', string $entrypoint = '',
-            string $signature = '', string $entryfile = '', string $checkersource = '',
-            string $checkerlang = ''): array {
+    public function grade(
+        string $code,
+        string $language,
+        array $tests,
+        string $schemasql = '',
+        bool $allornothing = false,
+        string $scenario = 'stdinstdout',
+        string $entrypoint = '',
+        string $signature = '',
+        string $entryfile = '',
+        string $checkersource = '',
+        string $checkerlang = ''
+    ): array {
         $tests = array_values($tests);
         $issql = ($language === 'sql');
         $isfunction = ($scenario === 'function');
@@ -107,8 +115,11 @@ class judge_grader {
             // Package the project's files once (sources + a generated compile/run
             // script) and run that package against each case's stdin via Judge0's
             // multi-file language; the per-case stdout is compared like any program.
-            $zip = project_packager::package($language,
-                    project_packager::decode_files($code), $entryfile);
+            $zip = project_packager::package(
+                $language,
+                project_packager::decode_files($code),
+                $entryfile
+            );
             $runresults = $this->runner->run_multifile($zip, $cases);
         } else {
             $runresults = $this->runner->run($code, $language, $cases);
@@ -295,9 +306,16 @@ class judge_grader {
      * @param string $entryfile the entry/main file name (project scenario)
      * @return array per-test [{index, output, ok, error}], aligned with the tests
      */
-    public function run_outputs(string $code, string $language, array $tests, string $schemasql = '',
-            string $scenario = 'stdinstdout', string $entrypoint = '', string $signature = '',
-            string $entryfile = ''): array {
+    public function run_outputs(
+        string $code,
+        string $language,
+        array $tests,
+        string $schemasql = '',
+        string $scenario = 'stdinstdout',
+        string $entrypoint = '',
+        string $signature = '',
+        string $entryfile = ''
+    ): array {
         $tests = array_values($tests);
         $issql = ($language === 'sql');
         $isfunction = ($scenario === 'function');
@@ -320,8 +338,11 @@ class judge_grader {
         }
 
         if ($isproject) {
-            $zip = project_packager::package($language,
-                    project_packager::decode_files($code), $entryfile);
+            $zip = project_packager::package(
+                $language,
+                project_packager::decode_files($code),
+                $entryfile
+            );
             $runresults = $this->runner->run_multifile($zip, $cases);
         } else {
             $runresults = $this->runner->run($code, $language, $cases);
@@ -368,8 +389,16 @@ class judge_grader {
      * @param string $entryfile the entry/main file name (project scenario)
      * @return array {infrastructure, verdict, stdout, stderr, compileoutput}
      */
-    public function run_scratch(string $code, string $language, string $scenario, string $entrypoint,
-            string $signature, string $schemasql, string $input, string $entryfile = ''): array {
+    public function run_scratch(
+        string $code,
+        string $language,
+        string $scenario,
+        string $entrypoint,
+        string $signature,
+        string $schemasql,
+        string $input,
+        string $entryfile = ''
+    ): array {
         $isfunction = ($scenario === 'function');
         $isproject = ($scenario === 'project');
         $isstaticfn = $isfunction && function_harness::needs_signature($language);
@@ -383,8 +412,11 @@ class judge_grader {
         }
 
         if ($isproject) {
-            $zip = project_packager::package($language,
-                    project_packager::decode_files($code), $entryfile);
+            $zip = project_packager::package(
+                $language,
+                project_packager::decode_files($code),
+                $entryfile
+            );
             $results = $this->runner->run_multifile($zip, [$case]);
         } else {
             $results = $this->runner->run($code, $language, [$case]);

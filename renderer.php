@@ -37,9 +37,10 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_codeatelier_renderer extends qtype_renderer {
-
-    public function formulation_and_controls(question_attempt $qa,
-            question_display_options $options) {
+    public function formulation_and_controls(
+        question_attempt $qa,
+        question_display_options $options
+    ) {
         global $PAGE;
 
         $question = $qa->get_question();
@@ -73,12 +74,12 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         // hidden tests stay on the server, which is the whole integrity point. The
         // PRACTICE tier must ship all tests because the client grades them (those
         // hidden tests are only "polite-hidden").
-        $tests = array();
+        $tests = [];
         foreach ($question->tests as $test) {
             if ($isjudge && (int) $test->visibility !== 1) {
                 continue;
             }
-            $tests[] = array(
+            $tests[] = [
                 'input' => $test->input,
                 'expected' => $test->expected,
                 'matchmode' => $test->matchmode,
@@ -94,7 +95,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'assertproperty' => $test->assertproperty,
                 'assertmatcher' => $test->assertmatcher,
                 'actions' => $test->actions,
-            );
+            ];
         }
 
         // On a judge-tier review, render the authoritative result from the memo
@@ -108,9 +109,11 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 // Graded off-request: the scheduled task has not reached this attempt
                 // yet. A live indicator polls and refreshes when the grade lands.
                 $gradingpending = true;
-                $judgereviewhtml = html_writer::div(get_string('judgepending', 'qtype_codeatelier'),
-                        'codeatelier-judge-review codeatelier-judge-pending',
-                        array('data-role' => 'gradestatus'));
+                $judgereviewhtml = html_writer::div(
+                    get_string('judgepending', 'qtype_codeatelier'),
+                    'codeatelier-judge-review codeatelier-judge-pending',
+                    ['data-role' => 'gradestatus']
+                );
             } else {
                 $judgereviewhtml = $this->render_judge_review($cached);
             }
@@ -134,21 +137,21 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         // scenario, or the stdin text) rather than guessing at a blank box.
         $scratchdefault = ($canrunscratch && !empty($tests)) ? (string) $tests[0]['input'] : '';
 
-        $validationresponse = $isjudge ? array('answer' => $currentcode) : array('score' => $currentscore);
+        $validationresponse = $isjudge ? ['answer' => $currentcode] : ['score' => $currentscore];
 
         // The student-facing language picker shows only when there is a real choice
         // and the attempt is live; on review we show which language was used.
         $languagechoice = count($allowed) > 1 && !$options->readonly;
-        $languageoptions = array();
+        $languageoptions = [];
         foreach ($allowed as $code) {
-            $languageoptions[] = array(
+            $languageoptions[] = [
                 'code' => $code,
                 'label' => get_string('lang_' . $code, 'qtype_codeatelier'),
                 'selected' => ($code === $chosen),
-            );
+            ];
         }
 
-        $context = array(
+        $context = [
             'questiontext' => $question->format_questiontext($qa),
             'wrapperid' => $wrapperid,
             'answername' => $answername,
@@ -162,8 +165,11 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'languageoptions' => $languageoptions,
             'languagechooselabel' => get_string('chooselanguage', 'qtype_codeatelier'),
             'showlanguageused' => $options->readonly && count($allowed) > 1,
-            'languageusedlabel' => get_string('languageused', 'qtype_codeatelier',
-                    get_string('lang_' . $chosen, 'qtype_codeatelier')),
+            'languageusedlabel' => get_string(
+                'languageused',
+                'qtype_codeatelier',
+                get_string('lang_' . $chosen, 'qtype_codeatelier')
+            ),
             'readonly' => $options->readonly,
             'isjudge' => $isjudge,
             'isweb' => ($scenario === 'web'),
@@ -178,9 +184,9 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'scratchdefault' => $scratchdefault,
             'hasvalidationerror' => $qa->get_state() == question_state::$invalid,
             'validationerror' => $question->get_validation_error($validationresponse),
-        ) + qtype_codeatelier::ui_labels();
+        ] + qtype_codeatelier::ui_labels();
 
-        $PAGE->requires->js_call_amd('qtype_codeatelier/control', 'init', array(array(
+        $PAGE->requires->js_call_amd('qtype_codeatelier/control', 'init', [[
             'wrapperid' => $wrapperid,
             'language' => $chosen,
             'languages' => array_values($allowed),
@@ -203,37 +209,40 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'isjudge' => $isjudge,
             'allornothing' => (bool) $question->allornothing,
             'strings' => qtype_codeatelier::ui_strings(),
-        )));
+        ]]);
 
         // Soft anti-cheat runs on a live judge-tier attempt only (never on review,
         // never on the formative practice tier).
         if ($isjudge && !$options->readonly) {
-            $PAGE->requires->js_call_amd('qtype_codeatelier/proctor', 'init',
-                    array(array(
+            $PAGE->requires->js_call_amd(
+                'qtype_codeatelier/proctor',
+                'init',
+                [[
                         'wrapperid' => $wrapperid,
                         'qubaid' => (int) $qa->get_usage_id(),
                         'slot' => (int) $qa->get_slot(),
-                    )));
+                ]]
+            );
         }
 
         // Live grade status: poll while a submitted judge attempt awaits the
         // background task, and refresh the page once the grade lands.
         if ($gradingpending) {
-            $PAGE->requires->js_call_amd('qtype_codeatelier/gradestatus', 'init', array(array(
+            $PAGE->requires->js_call_amd('qtype_codeatelier/gradestatus', 'init', [[
                 'wrapperid' => $wrapperid,
                 'qubaid' => (int) $qa->get_usage_id(),
                 'slot' => (int) $qa->get_slot(),
                 'grading' => get_string('judgegrading', 'qtype_codeatelier'),
-            )));
+            ]]);
         }
 
         // The formative "run against examples" loop for the judge tier.
         if ($canrunexamples) {
-            $PAGE->requires->js_call_amd('qtype_codeatelier/judgerun', 'init', array(array(
+            $PAGE->requires->js_call_amd('qtype_codeatelier/judgerun', 'init', [[
                 'wrapperid' => $wrapperid,
                 'questionid' => (int) $question->id,
                 'language' => $chosen,
-                'strings' => array(
+                'strings' => [
                     'running' => get_string('running', 'qtype_codeatelier'),
                     'example' => get_string('result_test', 'qtype_codeatelier'),
                     'compileoutput' => get_string('compileoutputlabel', 'qtype_codeatelier'),
@@ -246,8 +255,8 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                     'tle' => get_string('verdict_TLE', 'qtype_codeatelier'),
                     'mle' => get_string('verdict_MLE', 'qtype_codeatelier'),
                     'nooutput' => get_string('scratchnooutput', 'qtype_codeatelier'),
-                ),
-            )));
+                ],
+            ]]);
         }
 
         return $this->render_from_template('qtype_codeatelier/editor_control', $context);
@@ -263,37 +272,52 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      */
     protected function render_judge_review($result) {
         if ($result === null) {
-            return html_writer::div(get_string('judgenoresult', 'qtype_codeatelier'),
-                    'codeatelier-judge-review text-muted');
+            return html_writer::div(
+                get_string('judgenoresult', 'qtype_codeatelier'),
+                'codeatelier-judge-review text-muted'
+            );
         }
 
         $verdict = isset($result['verdict']) ? (string) $result['verdict'] : 'WA';
         $out = html_writer::div(
-                html_writer::span(get_string('judgeverdict', 'qtype_codeatelier'),
-                        'codeatelier-judge-verdict-label') . ' '
-                . html_writer::span($this->verdict_label($verdict),
-                        'codeatelier-verdict codeatelier-verdict-' . $verdict),
-                'codeatelier-judge-verdict');
+            html_writer::span(
+                get_string('judgeverdict', 'qtype_codeatelier'),
+                'codeatelier-judge-verdict-label'
+            ) . ' '
+                . html_writer::span(
+                    $this->verdict_label($verdict),
+                    'codeatelier-verdict codeatelier-verdict-' . $verdict
+                ),
+            'codeatelier-judge-verdict'
+        );
 
         if ($verdict === 'CE' && !empty($result['compileoutput'])) {
-            $out .= html_writer::tag('p', get_string('compileoutputlabel', 'qtype_codeatelier'),
-                    array('class' => 'codeatelier-block-label'));
-            $out .= html_writer::tag('pre', s($result['compileoutput']),
-                    array('class' => 'codeatelier-compileoutput'));
+            $out .= html_writer::tag(
+                'p',
+                get_string('compileoutputlabel', 'qtype_codeatelier'),
+                ['class' => 'codeatelier-block-label']
+            );
+            $out .= html_writer::tag(
+                'pre',
+                s($result['compileoutput']),
+                ['class' => 'codeatelier-compileoutput']
+            );
         }
 
         // A custom checker decided AC/WA, so a passing answer may differ from the
         // shown Expected — note it so the comparison is not read as authoritative.
         if (!empty($result['checker'])) {
-            $out .= html_writer::div(get_string('gradedbychecker', 'qtype_codeatelier'),
-                    'codeatelier-checker-note text-muted');
+            $out .= html_writer::div(
+                get_string('gradedbychecker', 'qtype_codeatelier'),
+                'codeatelier-checker-note text-muted'
+            );
         }
 
         $items = '';
         foreach ($result['testresults'] as $tr) {
             $items .= $this->render_judge_test_row($tr);
         }
-        $out .= html_writer::tag('ul', $items, array('class' => 'codeatelier-judge-tests'));
+        $out .= html_writer::tag('ul', $items, ['class' => 'codeatelier-judge-tests']);
 
         return html_writer::div($out, 'codeatelier-judge-review');
     }
@@ -319,9 +343,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         }
 
         return html_writer::div(
-                html_writer::tag('h6', get_string('proctorsummary', 'qtype_codeatelier'))
-                . html_writer::tag('ul', $items, array('class' => 'codeatelier-proctor-list')),
-                'codeatelier-proctor-summary');
+            html_writer::tag('h6', get_string('proctorsummary', 'qtype_codeatelier'))
+                . html_writer::tag('ul', $items, ['class' => 'codeatelier-proctor-list']),
+            'codeatelier-proctor-summary'
+        );
     }
 
     /**
@@ -366,13 +391,16 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
         $head = html_writer::span(s($label), 'codeatelier-test-label')
             . ' '
-            . html_writer::span(s($statuslabel),
-                    'codeatelier-test-status codeatelier-status-' . ($passed ? 'pass' : $status));
+            . html_writer::span(
+                s($statuslabel),
+                'codeatelier-test-status codeatelier-status-' . ($passed ? 'pass' : $status)
+            );
         // Show the subtask group so grouped (all-or-nothing) scoring is legible.
         if (!empty($tr['subtask'])) {
             $head .= ' ' . html_writer::span(
-                    s(get_string('subtaskgroup', 'qtype_codeatelier', (int) $tr['subtask'])),
-                    'codeatelier-test-subtask');
+                s(get_string('subtaskgroup', 'qtype_codeatelier', (int) $tr['subtask'])),
+                'codeatelier-test-subtask'
+            );
         }
         $head .= $this->render_test_meta($tr);
 
@@ -382,14 +410,14 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 // A web (DOM-assertion) row: the check and the produced value.
                 $detail = $this->render_web_test_detail($tr);
             } else if (($status === 're' || $status === 'mle') && !empty($tr['stderr'])) {
-                $detail = html_writer::tag('pre', s($tr['stderr']), array('class' => 'codeatelier-test-error'));
+                $detail = html_writer::tag('pre', s($tr['stderr']), ['class' => 'codeatelier-test-error']);
             } else if ($status === 'fail') {
                 $detail = $this->render_test_diff($tr);
             }
         }
 
         $cls = 'codeatelier-judge-test ' . ($passed ? 'codeatelier-pass' : 'codeatelier-fail');
-        return html_writer::tag('li', $head . $detail, array('class' => $cls));
+        return html_writer::tag('li', $head . $detail, ['class' => $cls]);
     }
 
     /**
@@ -399,7 +427,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      * @return string HTML (empty when no measurements)
      */
     protected function render_test_meta(array $tr) {
-        $parts = array();
+        $parts = [];
         if (isset($tr['time']) && $tr['time'] !== null) {
             $parts[] = get_string('judgetime', 'qtype_codeatelier', format_float($tr['time'] * 1000, 0));
         }
@@ -423,10 +451,16 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         if (isset($tr['input']) && trim((string) $tr['input']) !== '') {
             $rows .= $this->diff_line(get_string('input', 'qtype_codeatelier'), $tr['input'], 'input');
         }
-        $rows .= $this->diff_line(get_string('expected', 'qtype_codeatelier'),
-                isset($tr['expected']) ? $tr['expected'] : '', 'expected');
-        $rows .= $this->diff_line(get_string('result_got', 'qtype_codeatelier'),
-                isset($tr['actual']) ? $tr['actual'] : '', 'got');
+        $rows .= $this->diff_line(
+            get_string('expected', 'qtype_codeatelier'),
+            isset($tr['expected']) ? $tr['expected'] : '',
+            'expected'
+        );
+        $rows .= $this->diff_line(
+            get_string('result_got', 'qtype_codeatelier'),
+            isset($tr['actual']) ? $tr['actual'] : '',
+            'got'
+        );
         return html_writer::div($rows, 'codeatelier-test-diff');
     }
 
@@ -437,10 +471,16 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      * @return string HTML
      */
     protected function render_web_test_detail(array $tr) {
-        $rows = $this->diff_line(get_string('assertexpect', 'qtype_codeatelier'),
-                isset($tr['check']) ? $tr['check'] : '', 'expected');
-        $rows .= $this->diff_line(get_string('result_got', 'qtype_codeatelier'),
-                isset($tr['actual']) ? $tr['actual'] : '', 'got');
+        $rows = $this->diff_line(
+            get_string('assertexpect', 'qtype_codeatelier'),
+            isset($tr['check']) ? $tr['check'] : '',
+            'expected'
+        );
+        $rows .= $this->diff_line(
+            get_string('result_got', 'qtype_codeatelier'),
+            isset($tr['actual']) ? $tr['actual'] : '',
+            'got'
+        );
         return html_writer::div($rows, 'codeatelier-test-diff');
     }
 
@@ -454,9 +494,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      */
     protected function diff_line($label, $value, $which) {
         return html_writer::div(
-                html_writer::span(s($label), 'codeatelier-diff-label')
-                . html_writer::tag('pre', s((string) $value), array('class' => 'codeatelier-diff-value')),
-                'codeatelier-diff-row codeatelier-diff-' . $which);
+            html_writer::span(s($label), 'codeatelier-diff-label')
+                . html_writer::tag('pre', s((string) $value), ['class' => 'codeatelier-diff-value']),
+            'codeatelier-diff-row codeatelier-diff-' . $which
+        );
     }
 
     /**
@@ -466,7 +507,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      * @return string
      */
     protected function verdict_label($verdict) {
-        $known = array('AC', 'WA', 'TLE', 'MLE', 'RE', 'CE');
+        $known = ['AC', 'WA', 'TLE', 'MLE', 'RE', 'CE'];
         if (in_array($verdict, $known, true)) {
             return get_string('verdict_' . $verdict, 'qtype_codeatelier');
         }
@@ -511,14 +552,16 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         $overrides = ($question->starters !== null && trim((string) $question->starters) !== '')
             ? json_decode((string) $question->starters, true) : null;
         if (!is_array($overrides)) {
-            $overrides = array();
+            $overrides = [];
         }
-        $map = array();
+        $map = [];
         foreach ($allowed as $code) {
             if (isset($overrides[$code]) && trim((string) $overrides[$code]) !== '') {
                 $map[$code] = (string) $overrides[$code];
-            } else if ($code === $question->language
-                    && $question->startercode !== null && $question->startercode !== '') {
+            } else if (
+                $code === $question->language
+                    && $question->startercode !== null && $question->startercode !== ''
+            ) {
                 $map[$code] = $question->startercode;
             } else {
                 $map[$code] = $this->starter_code($code);
@@ -579,8 +622,12 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      * @param \moodle_url $baseurl the report page URL
      * @return string HTML
      */
-    public function render_question_report($stats, \moodle_url $baseurl, array $recent = array(),
-            array $similarity = array()) {
+    public function render_question_report(
+        $stats,
+        \moodle_url $baseurl,
+        array $recent = [],
+        array $similarity = []
+    ) {
         $context = $this->report_context($stats, $baseurl);
         $context['recent'] = $this->recent_rows($recent);
         $context['hasrecent'] = !empty($context['recent']);
@@ -600,31 +647,33 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      * @return array
      */
     protected function similarity_context(array $similarity) {
-        $groups = array();
+        $groups = [];
         foreach ($similarity as $lang) {
-            $clusters = array();
+            $clusters = [];
             foreach ($lang->clusters as $cluster) {
-                $members = array();
+                $members = [];
                 foreach ($cluster->members as $m) {
-                    $members[] = array(
+                    $members[] = [
                         'label' => $m->label,
                         'reviewurl' => $m->quizattemptid
-                                ? (new \moodle_url('/mod/quiz/review.php',
-                                        array('attempt' => $m->quizattemptid)))->out(false)
+                                ? (new \moodle_url(
+                                    '/mod/quiz/review.php',
+                                    ['attempt' => $m->quizattemptid]
+                                ))->out(false)
                                 : null,
-                    );
+                    ];
                 }
-                $pairs = array();
+                $pairs = [];
                 foreach ($cluster->pairs as $p) {
-                    $pairs[] = array('a' => $p->a, 'b' => $p->b, 'simpct' => round($p->sim * 100));
+                    $pairs[] = ['a' => $p->a, 'b' => $p->b, 'simpct' => round($p->sim * 100)];
                 }
                 $maxsimpct = round($cluster->maxsim * 100);
-                $clusters[] = array(
+                $clusters[] = [
                     'members' => $members,
                     'pairs' => $pairs,
                     'clusterlabel' => get_string('report_sim_cluster', 'qtype_codeatelier', $cluster->size),
                     'simlabel' => get_string('report_sim_upto', 'qtype_codeatelier', $maxsimpct),
-                );
+                ];
             }
             $note = '';
             if ($lang->reason === \qtype_codeatelier\local\integrity\cohort_analyser::REASON_TOOSHORT) {
@@ -634,7 +683,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             } else if (empty($clusters)) {
                 $note = get_string('report_sim_noclusters', 'qtype_codeatelier');
             }
-            $groups[] = array(
+            $groups[] = [
                 'language' => $lang->language,
                 'count' => $lang->count,
                 'analyzable' => $lang->analyzable,
@@ -642,7 +691,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'hasnote' => $note !== '',
                 'clusters' => $clusters,
                 'hasclusters' => !empty($clusters),
-            );
+            ];
         }
         return $groups;
     }
@@ -654,9 +703,9 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      * @return array
      */
     protected function recent_rows(array $recent) {
-        $rows = array();
+        $rows = [];
         foreach ($recent as $r) {
-            $rows[] = array(
+            $rows[] = [
                 'user' => $r->userfullname !== null ? $r->userfullname : '—',
                 'language' => $r->language,
                 'graded' => $r->graded,
@@ -665,9 +714,9 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'verdictlabel' => $r->verdict ? $this->verdict_label($r->verdict) : '',
                 'time' => userdate($r->submittedtime, get_string('strftimedatetimeshort')),
                 'reviewurl' => $r->quizattemptid
-                        ? (new \moodle_url('/mod/quiz/review.php', array('attempt' => $r->quizattemptid)))->out(false)
+                        ? (new \moodle_url('/mod/quiz/review.php', ['attempt' => $r->quizattemptid]))->out(false)
                         : null,
-            );
+            ];
         }
         return $rows;
     }
@@ -681,15 +730,17 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      * @return string HTML
      */
     public function render_quiz_report(array $summaries, $cmid) {
-        $rows = array();
+        $rows = [];
         $haspractice = false;
         foreach ($summaries as $stats) {
             $ispractice = $stats->tier === 'practice';
             $haspractice = $haspractice || $ispractice;
-            $rows[] = array(
+            $rows[] = [
                 'name' => format_string($stats->name),
-                'reporturl' => (new \moodle_url('/question/type/codeatelier/report.php',
-                        array('id' => $stats->questionid, 'cmid' => $cmid)))->out(false),
+                'reporturl' => (new \moodle_url(
+                    '/question/type/codeatelier/report.php',
+                    ['id' => $stats->questionid, 'cmid' => $cmid]
+                ))->out(false),
                 'tierlabel' => $stats->tier ? get_string('tier_' . $stats->tier, 'qtype_codeatelier') : '',
                 'ispractice' => $ispractice,
                 'totalattempts' => $stats->totalattempts,
@@ -698,11 +749,13 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'hasneedsgrading' => $stats->needsgrading > 0,
                 'meanscorepct' => $stats->meanscore !== null ? round($stats->meanscore * 100, 1) : null,
                 'hasmean' => $stats->meanscore !== null,
-            );
+            ];
         }
-        return $this->render_from_template('qtype_codeatelier/report_quiz',
-                array('questions' => $rows, 'hasquestions' => !empty($rows),
-                        'haspractice' => $haspractice));
+        return $this->render_from_template(
+            'qtype_codeatelier/report_quiz',
+            ['questions' => $rows, 'hasquestions' => !empty($rows),
+            'haspractice' => $haspractice]
+        );
     }
 
     /**
@@ -715,34 +768,36 @@ class qtype_codeatelier_renderer extends qtype_renderer {
     protected function report_context($stats, \moodle_url $baseurl) {
         $graded = $stats->graded;
 
-        $scoredist = array();
-        foreach (array('zero' => 'report_score_zero', 'partial' => 'report_score_partial',
-                'full' => 'report_score_full') as $key => $stringid) {
+        $scoredist = [];
+        foreach (
+            ['zero' => 'report_score_zero', 'partial' => 'report_score_partial',
+                'full' => 'report_score_full'] as $key => $stringid
+        ) {
             $count = $stats->scoredist->$key;
-            $scoredist[] = array(
+            $scoredist[] = [
                 'label' => get_string($stringid, 'qtype_codeatelier'),
                 'count' => $count,
                 'pct' => $graded > 0 ? round($count / $graded * 100) : 0,
                 'key' => $key,
-            );
+            ];
         }
 
-        $verdicts = array();
+        $verdicts = [];
         $seen = $stats->verdicts;
-        foreach (array('AC', 'WA', 'TLE', 'MLE', 'RE', 'CE', 'INTERNAL') as $v) {
+        foreach (['AC', 'WA', 'TLE', 'MLE', 'RE', 'CE', 'INTERNAL'] as $v) {
             if (!empty($seen[$v])) {
-                $verdicts[] = array('code' => $v, 'label' => $this->verdict_label($v), 'count' => $seen[$v]);
+                $verdicts[] = ['code' => $v, 'label' => $this->verdict_label($v), 'count' => $seen[$v]];
                 unset($seen[$v]);
             }
         }
         foreach ($seen as $v => $c) {
-            $verdicts[] = array('code' => $v, 'label' => $v, 'count' => $c);
+            $verdicts[] = ['code' => $v, 'label' => $v, 'count' => $c];
         }
 
-        $pertest = array();
+        $pertest = [];
         foreach ($stats->pertest as $row) {
             $pct = $row->passrate === null ? null : round($row->passrate * 100, 1);
-            $pertest[] = array(
+            $pertest[] = [
                 'num' => $row->index + 1,
                 'visible' => $row->visible,
                 'visiblelabel' => $row->visible ? get_string('visible_shown', 'qtype_codeatelier')
@@ -753,16 +808,16 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'haspassrate' => $pct !== null,
                 // Flag a test almost everyone fails — often a wrong expected value.
                 'suspect' => $row->total >= 5 && $row->passrate !== null && $row->passrate < 0.2,
-            );
+            ];
         }
 
-        $languages = array();
+        $languages = [];
         arsort($stats->languages);
         foreach ($stats->languages as $lang => $count) {
-            $languages[] = array('language' => $lang, 'count' => $count);
+            $languages[] = ['language' => $lang, 'count' => $count];
         }
 
-        return array(
+        return [
             'name' => format_string($stats->name),
             'isjudge' => $stats->tier === 'judge',
             'ispractice' => $stats->tier === 'practice',
@@ -791,10 +846,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'proctorflagged' => $stats->proctorflagged,
             'hasproctor' => $stats->proctorflagged > 0,
             'coveragepartial' => $stats->detailcoverage->withresult < $stats->detailcoverage->total,
-            'coveragenote' => get_string('report_coverage', 'qtype_codeatelier', (object) array(
+            'coveragenote' => get_string('report_coverage', 'qtype_codeatelier', (object) [
                     'with' => $stats->detailcoverage->withresult,
-                    'total' => $stats->detailcoverage->total)),
-            'csvurl' => (new \moodle_url($baseurl, array('format' => 'csv')))->out(false),
-        );
+                    'total' => $stats->detailcoverage->total]),
+            'csvurl' => (new \moodle_url($baseurl, ['format' => 'csv']))->out(false),
+        ];
     }
 }

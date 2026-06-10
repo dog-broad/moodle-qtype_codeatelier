@@ -26,15 +26,15 @@ defined('MOODLE_INTERNAL') || die();
 
 $string['pluginname'] = 'CodeAtelier';
 $string['pluginname_help'] = 'A code question where students write code in an in-browser editor, run it against your test cases, and get instant feedback. In Practice mode the grade is worked out in the browser — good for instant practice, but not for marks. Secure mode runs and grades the code on the server with hidden tests, for work that counts.';
-$string['pluginnamesummary'] = 'An in-browser code question for instant, run-it-yourself coding practice (Python, SQL, JavaScript). Practice mode — for practice, not for grades that count.';
 $string['pluginnameadding'] = 'Adding a CodeAtelier question';
 $string['pluginnameediting'] = 'Editing a CodeAtelier question';
+$string['pluginnamesummary'] = 'An in-browser code question for instant, run-it-yourself coding practice (Python, SQL, JavaScript). Practice mode — for practice, not for grades that count.';
 
 $string['privacy:metadata:proctorlog'] = 'A server-side, append-only record of soft anti-cheat events (leaving the question, outside-paste attempts) on secure-mode attempts.';
-$string['privacy:metadata:proctorlog:questionattemptid'] = 'The question attempt the event was recorded against.';
-$string['privacy:metadata:proctorlog:userid'] = 'The user who generated the event.';
 $string['privacy:metadata:proctorlog:eventtype'] = 'The kind of event (leaving the question, an outside-paste attempt).';
+$string['privacy:metadata:proctorlog:questionattemptid'] = 'The question attempt the event was recorded against.';
 $string['privacy:metadata:proctorlog:timecreated'] = 'The server time the event was recorded.';
+$string['privacy:metadata:proctorlog:userid'] = 'The user who generated the event.';
 $string['privacy:proctorpath'] = 'CodeAtelier activity flags';
 
 // Admin settings.

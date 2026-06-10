@@ -34,7 +34,6 @@ require_once($CFG->dirroot . '/question/engine/lib.php');
  * @covers     \qtype_codeatelier\local\report\question_stats
  */
 final class question_stats_test extends \advanced_testcase {
-
     /** @var \context the usage context. */
     private $context;
 
@@ -50,8 +49,8 @@ final class question_stats_test extends \advanced_testcase {
         $course = $generator->create_course();
         $this->context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $this->context->id));
-        $q = $qgen->create_question('codeatelier', 'judge', array('category' => $cat->id));
+        $cat = $qgen->create_question_category(['contextid' => $this->context->id]);
+        $q = $qgen->create_question('codeatelier', 'judge', ['category' => $cat->id]);
         $this->questionid = $q->id;
     }
 
@@ -79,20 +78,20 @@ final class question_stats_test extends \advanced_testcase {
         $quba->set_preferred_behaviour('deferredfeedback');
         $slot = $quba->add_question($question, 1);
         $quba->start_all_questions();
-        $quba->process_action($slot, array('answer' => $answer, 'language' => 'python'));
+        $quba->process_action($slot, ['answer' => $answer, 'language' => 'python']);
         $quba->finish_all_questions();
         \question_engine::save_questions_usage_by_activity($quba);
     }
 
     public function test_aggregates_across_attempts(): void {
-        $allpass = array(
+        $allpass = [
             qtype_codeatelier_stub_runner::row('ran', "5\n"),
             qtype_codeatelier_stub_runner::row('ran', "30\n"),
-        );
-        $partial = array(
+        ];
+        $partial = [
             qtype_codeatelier_stub_runner::row('ran', "5\n"),
             qtype_codeatelier_stub_runner::row('ran', "999\n"),
-        );
+        ];
 
         // Two correct (AC, full), one partial (WA, 0.5), one never-graded.
         $this->warm('correct-a', $allpass);
@@ -139,10 +138,10 @@ final class question_stats_test extends \advanced_testcase {
     }
 
     public function test_scoped_to_usage_context(): void {
-        $allpass = array(
+        $allpass = [
             qtype_codeatelier_stub_runner::row('ran', "5\n"),
             qtype_codeatelier_stub_runner::row('ran', "30\n"),
-        );
+        ];
         $this->warm('shared', $allpass);
 
         // The same answer attempted in two different course contexts.
@@ -157,10 +156,10 @@ final class question_stats_test extends \advanced_testcase {
     }
 
     public function test_recent_submissions(): void {
-        $allpass = array(
+        $allpass = [
             qtype_codeatelier_stub_runner::row('ran', "5\n"),
             qtype_codeatelier_stub_runner::row('ran', "30\n"),
-        );
+        ];
         $this->warm('graded-one', $allpass);
         $this->attempt('graded-one');
         $this->attempt('not-graded');   // cold -> needs grading
@@ -169,11 +168,11 @@ final class question_stats_test extends \advanced_testcase {
         $this->assertCount(2, $rows);
         $this->assertSame('python', $rows[0]->language);
 
-        $verdicts = array_map(function($r) {
+        $verdicts = array_map(function ($r) {
             return $r->verdict;
         }, $rows);
         $this->assertContains('AC', $verdicts);
-        $graded = array_filter($rows, function($r) {
+        $graded = array_filter($rows, function ($r) {
             return $r->graded;
         });
         $this->assertCount(1, $graded);

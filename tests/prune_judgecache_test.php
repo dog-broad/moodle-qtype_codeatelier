@@ -27,7 +27,6 @@ defined('MOODLE_INTERNAL') || die();
  * @covers     \qtype_codeatelier\task\prune_judgecache
  */
 final class prune_judgecache_test extends \advanced_testcase {
-
     /**
      * Insert a cache row aged by the given number of seconds.
      *

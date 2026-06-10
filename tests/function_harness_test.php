@@ -27,11 +27,12 @@ defined('MOODLE_INTERNAL') || die();
  * @covers     \qtype_codeatelier\judge\function_harness
  */
 final class function_harness_test extends \advanced_testcase {
-
     public function test_supports(): void {
         // Dynamic and static function languages are both supported (C is scalar-only).
-        foreach (['python', 'javascript', 'ruby', 'php', 'typescript',
-                'java', 'cpp', 'go', 'rust', 'csharp', 'kotlin', 'c'] as $lang) {
+        foreach (
+            ['python', 'javascript', 'ruby', 'php', 'typescript',
+                'java', 'cpp', 'go', 'rust', 'csharp', 'kotlin', 'c'] as $lang
+        ) {
             $this->assertTrue(function_harness::supports($lang), $lang);
         }
         // SQL has no function harness.

@@ -31,7 +31,6 @@ require_once($CFG->dirroot . '/question/type/codeatelier/renderer.php');
  * @covers     \qtype_codeatelier_renderer::render_question_report
  */
 final class report_render_test extends \advanced_testcase {
-
     /**
      * A minimal stats aggregate of the shape report rendering expects.
      *

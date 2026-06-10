@@ -41,7 +41,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class fingerprint {
-
     /** @var int k-gram size (tokens per shingle). */
     const K = 5;
 

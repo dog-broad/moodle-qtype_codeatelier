@@ -32,7 +32,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class project_packager {
-
     /** @var string[] languages a project may be authored in (judge-tier only). */
     const LANGUAGES = ['c', 'cpp', 'java', 'python', 'javascript', 'go', 'rust', 'php',
         'typescript', 'csharp', 'kotlin', 'ruby'];

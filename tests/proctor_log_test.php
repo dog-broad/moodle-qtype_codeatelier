@@ -29,7 +29,6 @@ defined('MOODLE_INTERNAL') || die();
  * @covers     \qtype_codeatelier\local\integrity\proctor_log
  */
 final class proctor_log_test extends \advanced_testcase {
-
     public function test_record_and_summarise(): void {
         $this->resetAfterTest();
         $this->assertTrue(proctor_log::record(100, 7, 'focusaway'));

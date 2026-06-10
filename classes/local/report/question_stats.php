@@ -35,7 +35,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class question_stats {
-
     /** @var string[] latest-step states that count as a real, submitted attempt. */
     private const SUBMITTED_STATES = ['gradedright', 'gradedpartial', 'gradedwrong', 'needsgrading'];
 
@@ -145,8 +144,11 @@ class question_stats {
      * @param int $limit max rows
      * @return \stdClass[] one row per attempt
      */
-    public static function recent_submissions(int $questionid, ?int $usagecontextid = null,
-            int $limit = 50): array {
+    public static function recent_submissions(
+        int $questionid,
+        ?int $usagecontextid = null,
+        int $limit = 50
+    ): array {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/question/engine/lib.php');
 
@@ -155,7 +157,7 @@ class question_stats {
             return [];
         }
 
-        list($insql, $params) = $DB->get_in_or_equal(self::SUBMITTED_STATES, SQL_PARAMS_NAMED, 'st');
+        [$insql, $params] = $DB->get_in_or_equal(self::SUBMITTED_STATES, SQL_PARAMS_NAMED, 'st');
         $params['qid'] = $questionid;
         $params['preview'] = 'core_question_preview';
         $contextwhere = '';
@@ -221,8 +223,11 @@ class question_stats {
      * @param int $max cap on the number of (most recent) submissions analysed
      * @return \stdClass[] each {key, label, language, code, qaid, quizattemptid}
      */
-    public static function code_submissions(int $questionid, ?int $usagecontextid = null,
-            int $max = 500): array {
+    public static function code_submissions(
+        int $questionid,
+        ?int $usagecontextid = null,
+        int $max = 500
+    ): array {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/question/engine/lib.php');
 
@@ -231,7 +236,7 @@ class question_stats {
             return [];
         }
 
-        list($insql, $params) = $DB->get_in_or_equal(self::SUBMITTED_STATES, SQL_PARAMS_NAMED, 'st');
+        [$insql, $params] = $DB->get_in_or_equal(self::SUBMITTED_STATES, SQL_PARAMS_NAMED, 'st');
         $params['qid'] = $questionid;
         $params['preview'] = 'core_question_preview';
         $contextwhere = '';
@@ -352,7 +357,7 @@ class question_stats {
      */
     private static function load_basics(int $questionid, ?int $usagecontextid = null): array {
         global $DB;
-        list($insql, $params) = $DB->get_in_or_equal(self::SUBMITTED_STATES, SQL_PARAMS_NAMED, 'st');
+        [$insql, $params] = $DB->get_in_or_equal(self::SUBMITTED_STATES, SQL_PARAMS_NAMED, 'st');
         $params['qid'] = $questionid;
         $params['preview'] = 'core_question_preview';
         $contextwhere = '';
@@ -390,9 +395,12 @@ class question_stats {
         if (!$qaids) {
             return [];
         }
-        list($inqa, $params) = $DB->get_in_or_equal($qaids, SQL_PARAMS_NAMED, 'qa');
-        list($inname, $nameparams) = $DB->get_in_or_equal(
-                ['answer', 'language', 'score'], SQL_PARAMS_NAMED, 'nm');
+        [$inqa, $params] = $DB->get_in_or_equal($qaids, SQL_PARAMS_NAMED, 'qa');
+        [$inname, $nameparams] = $DB->get_in_or_equal(
+            ['answer', 'language', 'score'],
+            SQL_PARAMS_NAMED,
+            'nm'
+        );
         $params += $nameparams;
         $sql = "SELECT qasd.id, qas.questionattemptid AS qaid, qas.sequencenumber AS seq,
                        qasd.name AS name, qasd.value AS value

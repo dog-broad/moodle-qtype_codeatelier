@@ -31,9 +31,8 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_codeatelier_test_helper extends question_test_helper {
-
     public function get_test_questions() {
-        return array('function', 'judge', 'multilang', 'judge_sql', 'web');
+        return ['function', 'judge', 'multilang', 'judge_sql', 'web'];
     }
 
     /**
@@ -58,14 +57,14 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $q->schemasql = null;
         $q->languages = null;
         $q->starters = null;
-        $q->tests = array(
-            (object) array('sortorder' => 0, 'input' => '[2, 3]', 'expected' => '5',
+        $q->tests = [
+            (object) ['sortorder' => 0, 'input' => '[2, 3]', 'expected' => '5',
                 'matchmode' => 'structured', 'tolerance' => null, 'weight' => 1,
-                'visibility' => 1, 'checkerquery' => null, 'feedback' => 'Add the two numbers.'),
-            (object) array('sortorder' => 1, 'input' => '[10, 20]', 'expected' => '30',
+                'visibility' => 1, 'checkerquery' => null, 'feedback' => 'Add the two numbers.'],
+            (object) ['sortorder' => 1, 'input' => '[10, 20]', 'expected' => '30',
                 'matchmode' => 'structured', 'tolerance' => null, 'weight' => 1,
-                'visibility' => 0, 'checkerquery' => null, 'feedback' => null),
-        );
+                'visibility' => 0, 'checkerquery' => null, 'feedback' => null],
+        ];
         return $q;
     }
 
@@ -78,9 +77,9 @@ class qtype_codeatelier_test_helper extends question_test_helper {
     public function get_codeatelier_question_form_data_function() {
         $form = new stdClass();
         $form->name = 'CodeAtelier add';
-        $form->questiontext = array('text' => 'Write a function add(a, b) that returns their sum.',
-            'format' => FORMAT_HTML);
-        $form->generalfeedback = array('text' => '', 'format' => FORMAT_HTML);
+        $form->questiontext = ['text' => 'Write a function add(a, b) that returns their sum.',
+            'format' => FORMAT_HTML];
+        $form->generalfeedback = ['text' => '', 'format' => FORMAT_HTML];
         $form->defaultmark = 1.0;
         $form->penalty = 0.0;
         $form->language = 'javascript';
@@ -89,17 +88,17 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $form->entrypoint = 'add';
         $form->startercode = "function add(a, b) {\n}\n";
         $form->schemasql = '';
-        $form->testinput = array('[2, 3]', '[10, 20]');
-        $form->testexpected = array('5', '30');
-        $form->matchmode = array('structured', 'structured');
-        $form->tolerance = array('', '');
-        $form->testweight = array('1', '1');
-        $form->testvisibility = array(1, 0);
-        $form->checkerquery = array('', '');
-        $form->testfeedback = array('Add the two numbers.', '');
+        $form->testinput = ['[2, 3]', '[10, 20]'];
+        $form->testexpected = ['5', '30'];
+        $form->matchmode = ['structured', 'structured'];
+        $form->tolerance = ['', ''];
+        $form->testweight = ['1', '1'];
+        $form->testvisibility = [1, 0];
+        $form->checkerquery = ['', ''];
+        $form->testfeedback = ['Add the two numbers.', ''];
         $form->cputimelimit = '';
         $form->memorylimit = '';
-        $form->languages = array();
+        $form->languages = [];
         $form->starters = '';
         return $form;
     }
@@ -126,14 +125,14 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $q->schemasql = null;
         $q->languages = null;
         $q->starters = null;
-        $q->tests = array(
-            (object) array('sortorder' => 0, 'input' => "2 3\n", 'expected' => '5',
+        $q->tests = [
+            (object) ['sortorder' => 0, 'input' => "2 3\n", 'expected' => '5',
                 'matchmode' => 'trimmed', 'tolerance' => null, 'weight' => 1,
-                'visibility' => 1, 'checkerquery' => null, 'feedback' => null),
-            (object) array('sortorder' => 1, 'input' => "10 20\n", 'expected' => '30',
+                'visibility' => 1, 'checkerquery' => null, 'feedback' => null],
+            (object) ['sortorder' => 1, 'input' => "10 20\n", 'expected' => '30',
                 'matchmode' => 'trimmed', 'tolerance' => null, 'weight' => 1,
-                'visibility' => 0, 'checkerquery' => null, 'feedback' => null),
-        );
+                'visibility' => 0, 'checkerquery' => null, 'feedback' => null],
+        ];
         return $q;
     }
 
@@ -148,10 +147,10 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $q = $this->make_codeatelier_question_judge();
         $q->name = 'CodeAtelier judge sum (multi-language)';
         $q->languages = 'python,c,cpp';
-        $q->starters = json_encode(array(
+        $q->starters = json_encode([
             'c' => "#include <stdio.h>\nint main(void){return 0;}\n",
             'cpp' => "#include <iostream>\nint main(){return 0;}\n",
-        ));
+        ]);
         $q->referencesolution = "print(sum(map(int, input().split())))\n";
         return $q;
     }
@@ -164,11 +163,11 @@ class qtype_codeatelier_test_helper extends question_test_helper {
     public function get_codeatelier_question_form_data_multilang() {
         $form = $this->get_codeatelier_question_form_data_judge();
         $form->name = 'CodeAtelier judge sum (multi-language)';
-        $form->languages = array('python', 'c', 'cpp');
-        $form->starters = json_encode(array(
+        $form->languages = ['python', 'c', 'cpp'];
+        $form->starters = json_encode([
             'c' => "#include <stdio.h>\nint main(void){return 0;}\n",
             'cpp' => "#include <iostream>\nint main(){return 0;}\n",
-        ));
+        ]);
         $form->referencesolution = "print(sum(map(int, input().split())))\n";
         return $form;
     }
@@ -181,9 +180,9 @@ class qtype_codeatelier_test_helper extends question_test_helper {
     public function get_codeatelier_question_form_data_judge() {
         $form = new stdClass();
         $form->name = 'CodeAtelier judge sum';
-        $form->questiontext = array('text' => 'Read two integers from input and print their sum.',
-            'format' => FORMAT_HTML);
-        $form->generalfeedback = array('text' => '', 'format' => FORMAT_HTML);
+        $form->questiontext = ['text' => 'Read two integers from input and print their sum.',
+            'format' => FORMAT_HTML];
+        $form->generalfeedback = ['text' => '', 'format' => FORMAT_HTML];
         $form->defaultmark = 1.0;
         $form->penalty = 0.0;
         $form->language = 'python';
@@ -192,17 +191,17 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $form->entrypoint = '';
         $form->startercode = '';
         $form->schemasql = '';
-        $form->testinput = array("2 3\n", "10 20\n");
-        $form->testexpected = array('5', '30');
-        $form->matchmode = array('trimmed', 'trimmed');
-        $form->tolerance = array('', '');
-        $form->testweight = array('1', '1');
-        $form->testvisibility = array(1, 0);
-        $form->checkerquery = array('', '');
-        $form->testfeedback = array('', '');
+        $form->testinput = ["2 3\n", "10 20\n"];
+        $form->testexpected = ['5', '30'];
+        $form->matchmode = ['trimmed', 'trimmed'];
+        $form->tolerance = ['', ''];
+        $form->testweight = ['1', '1'];
+        $form->testvisibility = [1, 0];
+        $form->checkerquery = ['', ''];
+        $form->testfeedback = ['', ''];
         $form->cputimelimit = '';
         $form->memorylimit = '';
-        $form->languages = array();
+        $form->languages = [];
         $form->starters = '';
         return $form;
     }
@@ -230,14 +229,14 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $q->schemasql = "CREATE TABLE users(id INT, name TEXT);\nINSERT INTO users VALUES (1,'amy'),(2,'bo');";
         $q->languages = null;
         $q->starters = null;
-        $q->tests = array(
-            (object) array('sortorder' => 0, 'input' => '', 'expected' => '[[1,"amy"],[2,"bo"]]',
+        $q->tests = [
+            (object) ['sortorder' => 0, 'input' => '', 'expected' => '[[1,"amy"],[2,"bo"]]',
                 'matchmode' => 'resultset_ordered', 'tolerance' => null, 'weight' => 1,
-                'visibility' => 1, 'checkerquery' => null, 'feedback' => null),
-            (object) array('sortorder' => 1, 'input' => '', 'expected' => '[[1,"amy"],[2,"bo"]]',
+                'visibility' => 1, 'checkerquery' => null, 'feedback' => null],
+            (object) ['sortorder' => 1, 'input' => '', 'expected' => '[[1,"amy"],[2,"bo"]]',
                 'matchmode' => 'resultset', 'tolerance' => null, 'weight' => 1,
-                'visibility' => 0, 'checkerquery' => null, 'feedback' => null),
-        );
+                'visibility' => 0, 'checkerquery' => null, 'feedback' => null],
+        ];
         return $q;
     }
 
@@ -249,9 +248,9 @@ class qtype_codeatelier_test_helper extends question_test_helper {
     public function get_codeatelier_question_form_data_judge_sql() {
         $form = new stdClass();
         $form->name = 'CodeAtelier judge SQL';
-        $form->questiontext = array('text' => 'Select id and name from users, ordered by id.',
-            'format' => FORMAT_HTML);
-        $form->generalfeedback = array('text' => '', 'format' => FORMAT_HTML);
+        $form->questiontext = ['text' => 'Select id and name from users, ordered by id.',
+            'format' => FORMAT_HTML];
+        $form->generalfeedback = ['text' => '', 'format' => FORMAT_HTML];
         $form->defaultmark = 1.0;
         $form->penalty = 0.0;
         $form->language = 'sql';
@@ -260,17 +259,17 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $form->entrypoint = '';
         $form->startercode = "SELECT id, name FROM users ORDER BY id;\n";
         $form->schemasql = "CREATE TABLE users(id INT, name TEXT);\nINSERT INTO users VALUES (1,'amy'),(2,'bo');";
-        $form->testinput = array('', '');
-        $form->testexpected = array('[[1,"amy"],[2,"bo"]]', '[[1,"amy"],[2,"bo"]]');
-        $form->matchmode = array('resultset_ordered', 'resultset');
-        $form->tolerance = array('', '');
-        $form->testweight = array('1', '1');
-        $form->testvisibility = array(1, 0);
-        $form->checkerquery = array('', '');
-        $form->testfeedback = array('', '');
+        $form->testinput = ['', ''];
+        $form->testexpected = ['[[1,"amy"],[2,"bo"]]', '[[1,"amy"],[2,"bo"]]'];
+        $form->matchmode = ['resultset_ordered', 'resultset'];
+        $form->tolerance = ['', ''];
+        $form->testweight = ['1', '1'];
+        $form->testvisibility = [1, 0];
+        $form->checkerquery = ['', ''];
+        $form->testfeedback = ['', ''];
         $form->cputimelimit = '';
         $form->memorylimit = '';
-        $form->languages = array();
+        $form->languages = [];
         $form->starters = '';
         return $form;
     }
@@ -296,19 +295,19 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $q->schemasql = null;
         $q->languages = null;
         $q->starters = null;
-        $q->projectfiles = json_encode(array(
-            array('name' => 'index.html', 'content' => "<h1 id=\"t\">Hi</h1>\n"),
-        ));
-        $q->tests = array(
-            (object) array('sortorder' => 0, 'input' => '', 'expected' => 'Hi',
+        $q->projectfiles = json_encode([
+            ['name' => 'index.html', 'content' => "<h1 id=\"t\">Hi</h1>\n"],
+        ]);
+        $q->tests = [
+            (object) ['sortorder' => 0, 'input' => '', 'expected' => 'Hi',
                 'matchmode' => 'trimmed', 'tolerance' => null, 'weight' => 1, 'visibility' => 1,
                 'checkerquery' => null, 'feedback' => null, 'selector' => '#t',
-                'assertproperty' => 'text', 'assertmatcher' => 'equals', 'actions' => null),
-            (object) array('sortorder' => 1, 'input' => '', 'expected' => 'ok',
+                'assertproperty' => 'text', 'assertmatcher' => 'equals', 'actions' => null],
+            (object) ['sortorder' => 1, 'input' => '', 'expected' => 'ok',
                 'matchmode' => 'trimmed', 'tolerance' => null, 'weight' => 2, 'visibility' => 0,
                 'checkerquery' => null, 'feedback' => null, 'selector' => '#o',
-                'assertproperty' => 'text', 'assertmatcher' => 'equals', 'actions' => 'click #b'),
-        );
+                'assertproperty' => 'text', 'assertmatcher' => 'equals', 'actions' => 'click #b'],
+        ];
         return $q;
     }
 
@@ -321,9 +320,9 @@ class qtype_codeatelier_test_helper extends question_test_helper {
     public function get_codeatelier_question_form_data_web() {
         $form = new stdClass();
         $form->name = 'CodeAtelier web greeting';
-        $form->questiontext = array('text' => 'Make the heading say Hi and the button reveal a message.',
-            'format' => FORMAT_HTML);
-        $form->generalfeedback = array('text' => '', 'format' => FORMAT_HTML);
+        $form->questiontext = ['text' => 'Make the heading say Hi and the button reveal a message.',
+            'format' => FORMAT_HTML];
+        $form->generalfeedback = ['text' => '', 'format' => FORMAT_HTML];
         $form->defaultmark = 1.0;
         $form->penalty = 0.0;
         $form->language = 'javascript';
@@ -332,26 +331,26 @@ class qtype_codeatelier_test_helper extends question_test_helper {
         $form->entrypoint = '';
         $form->startercode = '';
         $form->schemasql = '';
-        $form->projectfiles = json_encode(array(
-            array('name' => 'index.html', 'content' => "<h1 id=\"t\">Hi</h1>\n<button id=\"b\">Go</button>\n<p id=\"o\"></p>\n"),
-            array('name' => 'script.js', 'content' => "document.getElementById('b').onclick=function(){document.getElementById('o').textContent='ok';};\n"),
-        ));
+        $form->projectfiles = json_encode([
+            ['name' => 'index.html', 'content' => "<h1 id=\"t\">Hi</h1>\n<button id=\"b\">Go</button>\n<p id=\"o\"></p>\n"],
+            ['name' => 'script.js', 'content' => "document.getElementById('b').onclick=function(){document.getElementById('o').textContent='ok';};\n"],
+        ]);
         $form->entryfile = '';
-        $form->selector = array('#t', '#o');
-        $form->assertproperty = array('text', 'text');
-        $form->assertmatcher = array('equals', 'equals');
-        $form->testexpected = array('Hi', 'ok');
-        $form->actions = array('', 'click #b');
-        $form->testweight = array('1', '2');
-        $form->testvisibility = array(1, 0);
-        $form->testfeedback = array('', '');
-        $form->testinput = array('', '');
-        $form->matchmode = array('trimmed', 'trimmed');
-        $form->tolerance = array('', '');
-        $form->checkerquery = array('', '');
+        $form->selector = ['#t', '#o'];
+        $form->assertproperty = ['text', 'text'];
+        $form->assertmatcher = ['equals', 'equals'];
+        $form->testexpected = ['Hi', 'ok'];
+        $form->actions = ['', 'click #b'];
+        $form->testweight = ['1', '2'];
+        $form->testvisibility = [1, 0];
+        $form->testfeedback = ['', ''];
+        $form->testinput = ['', ''];
+        $form->matchmode = ['trimmed', 'trimmed'];
+        $form->tolerance = ['', ''];
+        $form->checkerquery = ['', ''];
         $form->cputimelimit = '';
         $form->memorylimit = '';
-        $form->languages = array();
+        $form->languages = [];
         $form->starters = '';
         return $form;
     }

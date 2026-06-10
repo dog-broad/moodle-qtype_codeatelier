@@ -36,7 +36,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class web_judge_runner {
-
     /** @var string base URL of the web-judge service. */
     private $baseurl;
 

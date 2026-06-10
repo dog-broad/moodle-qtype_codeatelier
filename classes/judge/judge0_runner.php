@@ -37,7 +37,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class judge0_runner {
-
     /** @var array CodeAtelier language key => Judge0 language id (Judge0 CE 1.13.1). */
     private const LANGUAGE_IDS = [
         'c' => 50,
@@ -79,8 +78,12 @@ class judge0_runner {
      * @param float $cputimelimit CPU-time limit in seconds
      * @param int $memorylimit memory limit in kilobytes
      */
-    public function __construct(string $baseurl, ?string $apikey = null,
-            float $cputimelimit = 2.0, int $memorylimit = 128000) {
+    public function __construct(
+        string $baseurl,
+        ?string $apikey = null,
+        float $cputimelimit = 2.0,
+        int $memorylimit = 128000
+    ) {
         $this->baseurl = rtrim($baseurl, '/');
         $this->apikey = $apikey;
         $this->cputimelimit = $cputimelimit;
@@ -477,8 +480,11 @@ class judge0_runner {
      * @return array the decoded submissions aligned by index, or ['_error' => message]
      */
     private function submit_batch(array $submissions): array {
-        $created = $this->request('POST', '/submissions/batch?base64_encoded=true&wait=false',
-                json_encode(['submissions' => $submissions]));
+        $created = $this->request(
+            'POST',
+            '/submissions/batch?base64_encoded=true&wait=false',
+            json_encode(['submissions' => $submissions])
+        );
         if (isset($created['_error'])) {
             return $created;
         }

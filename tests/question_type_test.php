@@ -27,7 +27,6 @@ use question_bank;
  * @covers     \qtype_codeatelier
  */
 final class question_type_test extends \advanced_testcase {
-
     public function test_save_and_load_round_trip(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -36,9 +35,9 @@ final class question_type_test extends \advanced_testcase {
         $course = $generator->create_course();
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
-        $question = $qgen->create_question('codeatelier', 'function', array('category' => $cat->id));
+        $question = $qgen->create_question('codeatelier', 'function', ['category' => $cat->id]);
 
         $data = question_bank::load_question_data($question->id);
 
@@ -69,20 +68,20 @@ final class question_type_test extends \advanced_testcase {
         $course = $generator->create_course();
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
         // A trailing wholly-blank row must not be saved.
-        $question = $qgen->create_question('codeatelier', 'function', array(
+        $question = $qgen->create_question('codeatelier', 'function', [
             'category' => $cat->id,
-            'testinput' => array('[2, 3]', '[10, 20]', ''),
-            'testexpected' => array('5', '30', ''),
-            'matchmode' => array('structured', 'structured', 'structured'),
-            'tolerance' => array('', '', ''),
-            'testweight' => array('1', '1', '1'),
-            'testvisibility' => array(1, 0, 1),
-            'checkerquery' => array('', '', ''),
-            'testfeedback' => array('', '', ''),
-        ));
+            'testinput' => ['[2, 3]', '[10, 20]', ''],
+            'testexpected' => ['5', '30', ''],
+            'matchmode' => ['structured', 'structured', 'structured'],
+            'tolerance' => ['', '', ''],
+            'testweight' => ['1', '1', '1'],
+            'testvisibility' => [1, 0, 1],
+            'checkerquery' => ['', '', ''],
+            'testfeedback' => ['', '', ''],
+        ]);
 
         $data = question_bank::load_question_data($question->id);
         $this->assertCount(2, $data->options->tests);
@@ -96,17 +95,17 @@ final class question_type_test extends \advanced_testcase {
         $course = $generator->create_course();
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
         // Explicit per-question limits are stored.
-        $q1 = $qgen->create_question('codeatelier', 'judge', array(
-            'category' => $cat->id, 'cputimelimit' => '1.5', 'memorylimit' => '64000'));
+        $q1 = $qgen->create_question('codeatelier', 'judge', [
+            'category' => $cat->id, 'cputimelimit' => '1.5', 'memorylimit' => '64000']);
         $d1 = question_bank::load_question_data($q1->id);
         $this->assertEquals(1.5, (float) $d1->options->cputimelimit);
         $this->assertEquals(64000, (int) $d1->options->memorylimit);
 
         // Blank limits are stored as null (use the site default).
-        $q2 = $qgen->create_question('codeatelier', 'judge', array('category' => $cat->id));
+        $q2 = $qgen->create_question('codeatelier', 'judge', ['category' => $cat->id]);
         $d2 = question_bank::load_question_data($q2->id);
         $this->assertNull($d2->options->cputimelimit);
         $this->assertNull($d2->options->memorylimit);
@@ -122,12 +121,12 @@ final class question_type_test extends \advanced_testcase {
         $course = $generator->create_course();
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
-        $question = $qgen->create_question('codeatelier', 'function', array(
+        $question = $qgen->create_question('codeatelier', 'function', [
             'category' => $cat->id,
-            'matchmode' => array('resultset_ordered', 'resultset_ordered'),
-        ));
+            'matchmode' => ['resultset_ordered', 'resultset_ordered'],
+        ]);
 
         $data = question_bank::load_question_data($question->id);
         $this->assertEquals('resultset_ordered', array_values($data->options->tests)[0]->matchmode);
@@ -141,15 +140,15 @@ final class question_type_test extends \advanced_testcase {
         $course = $generator->create_course();
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
-        $question = $qgen->create_question('codeatelier', 'multilang', array('category' => $cat->id));
+        $question = $qgen->create_question('codeatelier', 'multilang', ['category' => $cat->id]);
         $data = question_bank::load_question_data($question->id);
 
         // The allowed set is stored as a comma string including the primary.
         $stored = explode(',', $data->options->languages);
         sort($stored);
-        $this->assertEquals(array('c', 'cpp', 'python'), $stored);
+        $this->assertEquals(['c', 'cpp', 'python'], $stored);
 
         // Per-language starters are a JSON map, pruned to the non-primary languages.
         $starters = json_decode($data->options->starters, true);
@@ -170,11 +169,11 @@ final class question_type_test extends \advanced_testcase {
         $course = $generator->create_course();
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
         // A multi-language judge question carries the awkward fields: a language set,
         // a per-language starter map, and a reference solution.
-        $question = $qgen->create_question('codeatelier', 'multilang', array('category' => $cat->id));
+        $question = $qgen->create_question('codeatelier', 'multilang', ['category' => $cat->id]);
         $questiondata = question_bank::load_question_data($question->id);
 
         $qtype = question_bank::get_qtype('codeatelier');
@@ -197,7 +196,7 @@ final class question_type_test extends \advanced_testcase {
         // The allowed set survives as an ARRAY (not a collapsed comma string).
         $langs = $qo->languages;
         sort($langs);
-        $this->assertEquals(array('c', 'cpp', 'python'), $langs);
+        $this->assertEquals(['c', 'cpp', 'python'], $langs);
         // The per-language starters and the reference solution survive.
         $starters = json_decode($qo->starters, true);
         $this->assertArrayHasKey('c', $starters);
@@ -220,11 +219,11 @@ final class question_type_test extends \advanced_testcase {
     private function draft_with_file(string $filename, string $content): int {
         global $USER;
         $draftid = file_get_unused_draft_itemid();
-        $record = (object) array(
+        $record = (object) [
             'contextid' => \context_user::instance($USER->id)->id,
             'component' => 'user', 'filearea' => 'draft', 'itemid' => $draftid,
             'filepath' => '/', 'filename' => $filename,
-        );
+        ];
         get_file_storage()->create_file_from_string($record, $content);
         return $draftid;
     }
@@ -237,15 +236,24 @@ final class question_type_test extends \advanced_testcase {
         $course = $generator->create_course();
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
         $draftid = $this->draft_with_file('data.txt', "hello world\n");
-        $question = $qgen->create_question('codeatelier', 'judge',
-                array('category' => $cat->id, 'datafiles' => $draftid));
+        $question = $qgen->create_question(
+            'codeatelier',
+            'judge',
+            ['category' => $cat->id, 'datafiles' => $draftid]
+        );
 
         // The uploaded file lands in the question's datafiles area.
-        $files = get_file_storage()->get_area_files($context->id, 'qtype_codeatelier', 'datafiles',
-                $question->id, 'filename', false);
+        $files = get_file_storage()->get_area_files(
+            $context->id,
+            'qtype_codeatelier',
+            'datafiles',
+            $question->id,
+            'filename',
+            false
+        );
         $this->assertCount(1, $files);
         $file = reset($files);
         $this->assertEquals('data.txt', $file->get_filename());
@@ -260,19 +268,19 @@ final class question_type_test extends \advanced_testcase {
         $course = $generator->create_course();
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
         // A judge question in Go with an additional Rust option and all-or-nothing on.
-        $question = $qgen->create_question('codeatelier', 'judge', array(
+        $question = $qgen->create_question('codeatelier', 'judge', [
             'category' => $cat->id, 'language' => 'go',
-            'languages' => array('go', 'rust'), 'allornothing' => 1));
+            'languages' => ['go', 'rust'], 'allornothing' => 1]);
         $data = question_bank::load_question_data($question->id);
 
         $this->assertEquals('go', $data->options->language);
         $this->assertEquals(1, (int) $data->options->allornothing);
         $langs = explode(',', $data->options->languages);
         sort($langs);
-        $this->assertEquals(array('go', 'rust'), $langs);
+        $this->assertEquals(['go', 'rust'], $langs);
     }
 
     public function test_checker_columns_round_trip(): void {
@@ -283,13 +291,13 @@ final class question_type_test extends \advanced_testcase {
         $course = $generator->create_course();
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
         // A judge stdin/stdout question with a Python custom checker.
         $checker = "import sys\nprint('AC')\n";
-        $question = $qgen->create_question('codeatelier', 'judge', array(
+        $question = $qgen->create_question('codeatelier', 'judge', [
             'category' => $cat->id, 'language' => 'cpp',
-            'checkersource' => $checker, 'checkerlang' => 'python'));
+            'checkersource' => $checker, 'checkerlang' => 'python']);
         $data = question_bank::load_question_data($question->id);
 
         $this->assertSame($checker, $data->options->checkersource);
@@ -304,11 +312,11 @@ final class question_type_test extends \advanced_testcase {
         $course = $generator->create_course();
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
         // The judge fixture has two tests; group them into subtask 1.
-        $question = $qgen->create_question('codeatelier', 'judge', array(
-            'category' => $cat->id, 'subtask' => array(1, 1)));
+        $question = $qgen->create_question('codeatelier', 'judge', [
+            'category' => $cat->id, 'subtask' => [1, 1]]);
         $data = question_bank::load_question_data($question->id);
 
         $tests = array_values($data->options->tests);
@@ -324,12 +332,12 @@ final class question_type_test extends \advanced_testcase {
         $course = $generator->create_course();
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
         // A stray checker language with no source must not look like a checker.
-        $question = $qgen->create_question('codeatelier', 'judge', array(
+        $question = $qgen->create_question('codeatelier', 'judge', [
             'category' => $cat->id, 'language' => 'cpp',
-            'checkersource' => '', 'checkerlang' => 'python'));
+            'checkersource' => '', 'checkerlang' => 'python']);
         $data = question_bank::load_question_data($question->id);
 
         $this->assertNull($data->options->checkersource);
@@ -344,11 +352,11 @@ final class question_type_test extends \advanced_testcase {
         $course = $generator->create_course();
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
         // The function fixture has an empty languages set: save still records the
         // primary so the loaded question is unambiguously single-language.
-        $question = $qgen->create_question('codeatelier', 'function', array('category' => $cat->id));
+        $question = $qgen->create_question('codeatelier', 'function', ['category' => $cat->id]);
         $data = question_bank::load_question_data($question->id);
         $this->assertEquals('javascript', $data->options->languages);
         $this->assertEmpty($data->options->starters);
@@ -362,9 +370,9 @@ final class question_type_test extends \advanced_testcase {
         $course = $generator->create_course();
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
-        $question = $qgen->create_question('codeatelier', 'judge', array('category' => $cat->id));
+        $question = $qgen->create_question('codeatelier', 'judge', ['category' => $cat->id]);
         $data = question_bank::load_question_data($question->id);
 
         $this->assertEquals('judge', $data->options->tier);
@@ -385,9 +393,9 @@ final class question_type_test extends \advanced_testcase {
         $course = $generator->create_course();
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
-        $question = $qgen->create_question('codeatelier', 'judge_sql', array('category' => $cat->id));
+        $question = $qgen->create_question('codeatelier', 'judge_sql', ['category' => $cat->id]);
         $data = question_bank::load_question_data($question->id);
 
         $this->assertEquals('judge', $data->options->tier);
@@ -410,16 +418,16 @@ final class question_type_test extends \advanced_testcase {
         $course = $generator->create_course();
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
-        $projectfiles = json_encode(array(
-            array('name' => 'main.cpp', 'content' => "#include \"helper.h\"\nint main(){}\n"),
-            array('name' => 'helper.h', 'content' => "int add(int,int);\n"),
-        ));
-        $question = $qgen->create_question('codeatelier', 'judge', array(
+        $projectfiles = json_encode([
+            ['name' => 'main.cpp', 'content' => "#include \"helper.h\"\nint main(){}\n"],
+            ['name' => 'helper.h', 'content' => "int add(int,int);\n"],
+        ]);
+        $question = $qgen->create_question('codeatelier', 'judge', [
             'category' => $cat->id, 'scenario' => 'project', 'language' => 'cpp',
             'projectfiles' => $projectfiles, 'entryfile' => 'main.cpp',
-        ));
+        ]);
         $data = question_bank::load_question_data($question->id);
 
         $this->assertEquals('judge', $data->options->tier);
@@ -428,7 +436,7 @@ final class question_type_test extends \advanced_testcase {
         $this->assertEquals('main.cpp', $data->options->entryfile);
         // The file set round-trips as the same canonical set.
         $files = \qtype_codeatelier\judge\project_packager::decode_files($data->options->projectfiles);
-        $this->assertSame(array('main.cpp', 'helper.h'), array_keys($files));
+        $this->assertSame(['main.cpp', 'helper.h'], array_keys($files));
         $this->assertStringContainsString('int add(int,int);', $files['helper.h']);
     }
 
@@ -442,24 +450,24 @@ final class question_type_test extends \advanced_testcase {
         $course = $generator->create_course();
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
-        $webfiles = json_encode(array(
-            array('name' => 'index.html', 'content' => "<h1 id=\"t\">Hi</h1>\n"),
-            array('name' => 'style.css', 'content' => "#t { color: red; }\n"),
-            array('name' => 'script.js', 'content' => "document.title = 'hi';\n"),
-        ));
-        $question = $qgen->create_question('codeatelier', 'judge', array(
+        $webfiles = json_encode([
+            ['name' => 'index.html', 'content' => "<h1 id=\"t\">Hi</h1>\n"],
+            ['name' => 'style.css', 'content' => "#t { color: red; }\n"],
+            ['name' => 'script.js', 'content' => "document.title = 'hi';\n"],
+        ]);
+        $question = $qgen->create_question('codeatelier', 'judge', [
             'category' => $cat->id, 'tier' => 'practice', 'scenario' => 'web',
             'language' => 'javascript', 'projectfiles' => $webfiles,
-        ));
+        ]);
         $data = question_bank::load_question_data($question->id);
 
         $this->assertEquals('practice', $data->options->tier);
         $this->assertEquals('web', $data->options->scenario);
         // The file set round-trips as the same canonical set.
         $files = \qtype_codeatelier\judge\project_packager::decode_files($data->options->projectfiles);
-        $this->assertSame(array('index.html', 'style.css', 'script.js'), array_keys($files));
+        $this->assertSame(['index.html', 'style.css', 'script.js'], array_keys($files));
         $this->assertStringContainsString('color: red', $files['style.css']);
     }
 
@@ -473,9 +481,9 @@ final class question_type_test extends \advanced_testcase {
         $course = $generator->create_course();
         $context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $context->id));
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
-        $question = $qgen->create_question('codeatelier', 'web', array('category' => $cat->id));
+        $question = $qgen->create_question('codeatelier', 'web', ['category' => $cat->id]);
         $data = question_bank::load_question_data($question->id);
 
         $this->assertEquals('web', $data->options->scenario);

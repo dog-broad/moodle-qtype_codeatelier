@@ -25,7 +25,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runner {
-
     /** @var array the per-case result rows to return. */
     private $rows;
 
@@ -64,7 +63,7 @@ class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runn
     public function run_checker(string $checkerlang, string $checkersource, array $cases): array {
         $this->calls++;
         $this->lastcheckercases = array_values($cases);
-        return $this->checkerrows ?? array();
+        return $this->checkerrows ?? [];
     }
 
     /**
@@ -115,8 +114,8 @@ class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runn
      * @param array $extra overrides (e.g. compileoutput, statusdesc)
      * @return array
      */
-    public static function row(string $outcome, string $stdout = '', array $extra = array()): array {
-        return array_merge(array(
+    public static function row(string $outcome, string $stdout = '', array $extra = []): array {
+        return array_merge([
             'outcome' => $outcome,
             'stdout' => $stdout,
             'stderr' => '',
@@ -125,6 +124,6 @@ class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runn
             'memory' => 1000,
             'statusid' => 3,
             'statusdesc' => '',
-        ), $extra);
+        ], $extra);
     }
 }

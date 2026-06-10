@@ -35,7 +35,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class grade_status extends external_api {
-
     /**
      * @return external_function_parameters
      */
@@ -55,8 +54,10 @@ class grade_status extends external_api {
         global $CFG, $DB, $USER;
         require_once($CFG->dirroot . '/question/engine/lib.php');
 
-        $params = self::validate_parameters(self::execute_parameters(),
-                ['qubaid' => $qubaid, 'slot' => $slot]);
+        $params = self::validate_parameters(
+            self::execute_parameters(),
+            ['qubaid' => $qubaid, 'slot' => $slot]
+        );
 
         // Gate to the attempt's owner (or a teacher who can see the quiz reports).
         $attempt = $DB->get_record('quiz_attempts', ['uniqueid' => $params['qubaid']]);

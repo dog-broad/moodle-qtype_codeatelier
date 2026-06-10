@@ -32,7 +32,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class backup_qtype_codeatelier_plugin extends backup_qtype_plugin {
-
     /**
      * Returns the qtype information to attach to the question element.
      *
@@ -44,23 +43,28 @@ class backup_qtype_codeatelier_plugin extends backup_qtype_plugin {
         $pluginwrapper = new backup_nested_element($this->get_recommended_name());
         $plugin->add_child($pluginwrapper);
 
-        $options = new backup_nested_element('codeatelier_options', array('id'), array(
+        $options = new backup_nested_element('codeatelier_options', ['id'], [
             'language', 'tier', 'scenario', 'entrypoint', 'startercode', 'schemasql',
             'cputimelimit', 'memorylimit', 'languages', 'starters', 'referencesolution', 'allornothing',
-            'functionsignature', 'projectfiles', 'entryfile', 'checkerlang', 'checkersource'));
+            'functionsignature', 'projectfiles', 'entryfile', 'checkerlang', 'checkersource']);
         $pluginwrapper->add_child($options);
-        $options->set_source_table('qtype_codeatelier_options',
-                array('questionid' => backup::VAR_PARENTID));
+        $options->set_source_table(
+            'qtype_codeatelier_options',
+            ['questionid' => backup::VAR_PARENTID]
+        );
 
         $tests = new backup_nested_element('codeatelier_tests');
-        $test = new backup_nested_element('codeatelier_test', array('id'), array(
+        $test = new backup_nested_element('codeatelier_test', ['id'], [
             'sortorder', 'input', 'expected', 'matchmode', 'tolerance',
             'weight', 'visibility', 'checkerquery', 'feedback',
-            'selector', 'assertproperty', 'assertmatcher', 'actions', 'subtask'));
+            'selector', 'assertproperty', 'assertmatcher', 'actions', 'subtask']);
         $pluginwrapper->add_child($tests);
         $tests->add_child($test);
-        $test->set_source_table('qtype_codeatelier_tests',
-                array('questionid' => backup::VAR_PARENTID), 'sortorder ASC, id ASC');
+        $test->set_source_table(
+            'qtype_codeatelier_tests',
+            ['questionid' => backup::VAR_PARENTID],
+            'sortorder ASC, id ASC'
+        );
 
         return $plugin;
     }
@@ -72,6 +76,6 @@ class backup_qtype_codeatelier_plugin extends backup_qtype_plugin {
      * @return array filearea => mapping name
      */
     public static function get_qtype_fileareas() {
-        return array('datafiles' => 'question_created');
+        return ['datafiles' => 'question_created'];
     }
 }

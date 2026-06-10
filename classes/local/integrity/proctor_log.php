@@ -37,7 +37,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class proctor_log {
-
     /** @var string the table holding the events. */
     const TABLE = 'qtype_codeatelier_proctorlog';
 
@@ -57,14 +56,20 @@ class proctor_log {
      * @param int|null $time server time (defaults to now)
      * @return bool whether a row was written
      */
-    public static function record(int $questionattemptid, int $userid, string $eventtype,
-            ?int $time = null): bool {
+    public static function record(
+        int $questionattemptid,
+        int $userid,
+        string $eventtype,
+        ?int $time = null
+    ): bool {
         global $DB;
         if (!in_array($eventtype, self::TYPES, true)) {
             return false;
         }
-        if ($DB->count_records(self::TABLE, ['questionattemptid' => $questionattemptid])
-                >= self::MAX_PER_ATTEMPT) {
+        if (
+            $DB->count_records(self::TABLE, ['questionattemptid' => $questionattemptid])
+                >= self::MAX_PER_ATTEMPT
+        ) {
             return false;
         }
         $DB->insert_record(self::TABLE, (object) [
@@ -85,11 +90,12 @@ class proctor_log {
     public static function summarise(int $questionattemptid): array {
         global $DB;
         $rows = $DB->get_records_sql(
-                "SELECT eventtype, COUNT(*) AS n
+            "SELECT eventtype, COUNT(*) AS n
                    FROM {" . self::TABLE . "}
                   WHERE questionattemptid = :qaid
                GROUP BY eventtype",
-                ['qaid' => $questionattemptid]);
+            ['qaid' => $questionattemptid]
+        );
         $out = [];
         foreach ($rows as $row) {
             $out[$row->eventtype] = (int) $row->n;
@@ -108,13 +114,14 @@ class proctor_log {
         if (!$questionattemptids) {
             return [];
         }
-        list($insql, $params) = $DB->get_in_or_equal($questionattemptids, SQL_PARAMS_NAMED, 'qa');
+        [$insql, $params] = $DB->get_in_or_equal($questionattemptids, SQL_PARAMS_NAMED, 'qa');
         $rows = $DB->get_records_sql(
-                "SELECT questionattemptid, COUNT(*) AS n
+            "SELECT questionattemptid, COUNT(*) AS n
                    FROM {" . self::TABLE . "}
                   WHERE questionattemptid $insql
                GROUP BY questionattemptid",
-                $params);
+            $params
+        );
         $out = [];
         foreach ($rows as $row) {
             $out[(int) $row->questionattemptid] = (int) $row->n;

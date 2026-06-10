@@ -42,7 +42,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class cohort_analyser {
-
     /** @var int below this median normalized-token length, a cohort is not analyzable. */
     const MIN_TOKENS = 25;
 

@@ -37,7 +37,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class function_harness {
-
     /** @var string[] dynamic languages: JSON maps onto native values, no signature needed. */
     const DYNAMIC = ['python', 'javascript', 'ruby', 'php', 'typescript'];
 

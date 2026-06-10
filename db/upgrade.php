@@ -47,20 +47,44 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         // Add the scenario, entrypoint and starter-code options.
         $table = new xmldb_table('qtype_codeatelier_options');
 
-        $scenario = new xmldb_field('scenario', XMLDB_TYPE_CHAR, '32', null,
-                XMLDB_NOTNULL, null, 'stdinstdout', 'language');
+        $scenario = new xmldb_field(
+            'scenario',
+            XMLDB_TYPE_CHAR,
+            '32',
+            null,
+            XMLDB_NOTNULL,
+            null,
+            'stdinstdout',
+            'language'
+        );
         if (!$dbman->field_exists($table, $scenario)) {
             $dbman->add_field($table, $scenario);
         }
 
-        $entrypoint = new xmldb_field('entrypoint', XMLDB_TYPE_CHAR, '64', null,
-                null, null, null, 'scenario');
+        $entrypoint = new xmldb_field(
+            'entrypoint',
+            XMLDB_TYPE_CHAR,
+            '64',
+            null,
+            null,
+            null,
+            null,
+            'scenario'
+        );
         if (!$dbman->field_exists($table, $entrypoint)) {
             $dbman->add_field($table, $entrypoint);
         }
 
-        $startercode = new xmldb_field('startercode', XMLDB_TYPE_TEXT, null, null,
-                null, null, null, 'entrypoint');
+        $startercode = new xmldb_field(
+            'startercode',
+            XMLDB_TYPE_TEXT,
+            null,
+            null,
+            null,
+            null,
+            null,
+            'entrypoint'
+        );
         if (!$dbman->field_exists($table, $startercode)) {
             $dbman->add_field($table, $startercode);
         }
@@ -98,8 +122,16 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
     if ($oldversion < 2026061400) {
         // Per-question execution tier: practice (in-browser) or judge (server sandbox).
         $optionstable = new xmldb_table('qtype_codeatelier_options');
-        $tier = new xmldb_field('tier', XMLDB_TYPE_CHAR, '16', null,
-                XMLDB_NOTNULL, null, 'practice', 'language');
+        $tier = new xmldb_field(
+            'tier',
+            XMLDB_TYPE_CHAR,
+            '16',
+            null,
+            XMLDB_NOTNULL,
+            null,
+            'practice',
+            'language'
+        );
         if (!$dbman->field_exists($optionstable, $tier)) {
             $dbman->add_field($optionstable, $tier);
         }
@@ -125,8 +157,16 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         // Widen matchmode: 'resultset_ordered' is 17 chars and overflowed char(16),
         // which errored on PostgreSQL (and silently truncated on MySQL).
         $table = new xmldb_table('qtype_codeatelier_tests');
-        $field = new xmldb_field('matchmode', XMLDB_TYPE_CHAR, '32', null,
-                XMLDB_NOTNULL, null, 'trimmed', 'expected');
+        $field = new xmldb_field(
+            'matchmode',
+            XMLDB_TYPE_CHAR,
+            '32',
+            null,
+            XMLDB_NOTNULL,
+            null,
+            'trimmed',
+            'expected'
+        );
         if ($dbman->field_exists($table, $field)) {
             $dbman->change_field_precision($table, $field);
         }
@@ -194,8 +234,16 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
     if ($oldversion < 2026062701) {
         // Multi-file projects: the starter file set (JSON) and the entry file name.
         $table = new xmldb_table('qtype_codeatelier_options');
-        $projectfiles = new xmldb_field('projectfiles', XMLDB_TYPE_TEXT, null, null, null, null, null,
-                'functionsignature');
+        $projectfiles = new xmldb_field(
+            'projectfiles',
+            XMLDB_TYPE_TEXT,
+            null,
+            null,
+            null,
+            null,
+            null,
+            'functionsignature'
+        );
         if (!$dbman->field_exists($table, $projectfiles)) {
             $dbman->add_field($table, $projectfiles);
         }
@@ -210,12 +258,12 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         // Web scenario: per-test-case DOM assertion (selector, property, matcher)
         // and optional interaction actions, on the test-case table.
         $table = new xmldb_table('qtype_codeatelier_tests');
-        $fields = array(
+        $fields = [
             new xmldb_field('selector', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'feedback'),
             new xmldb_field('assertproperty', XMLDB_TYPE_CHAR, '64', null, null, null, null, 'selector'),
             new xmldb_field('assertmatcher', XMLDB_TYPE_CHAR, '32', null, null, null, null, 'assertproperty'),
             new xmldb_field('actions', XMLDB_TYPE_TEXT, null, null, null, null, null, 'assertmatcher'),
-        );
+        ];
         foreach ($fields as $field) {
             if (!$dbman->field_exists($table, $field)) {
                 $dbman->add_field($table, $field);

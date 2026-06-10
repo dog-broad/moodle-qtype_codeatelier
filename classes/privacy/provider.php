@@ -47,11 +47,7 @@ defined('MOODLE_INTERNAL') || die();
  * @copyright  2026 CodeAtelier
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class provider implements
-        \core_privacy\local\metadata\provider,
-        \core_privacy\local\request\plugin\provider,
-        \core_privacy\local\request\core_userlist_provider {
-
+class provider implements \core_privacy\local\metadata\provider, \core_privacy\local\request\core_userlist_provider, \core_privacy\local\request\plugin\provider {
     /** @var string the proctor-log table. */
     private const TABLE = 'qtype_codeatelier_proctorlog';
 
@@ -113,13 +109,14 @@ class provider implements
         $userid = $contextlist->get_user()->id;
         foreach ($contextlist->get_contexts() as $context) {
             $events = $DB->get_records_sql(
-                    "SELECT p.id, p.eventtype, p.timecreated
+                "SELECT p.id, p.eventtype, p.timecreated
                        FROM {" . self::TABLE . "} p
                        JOIN {question_attempts} qa ON qa.id = p.questionattemptid
                        JOIN {question_usages} qu ON qu.id = qa.questionusageid
                       WHERE qu.contextid = :contextid AND p.userid = :userid
                    ORDER BY p.timecreated ASC",
-                    ['contextid' => $context->id, 'userid' => $userid]);
+                ['contextid' => $context->id, 'userid' => $userid]
+            );
             if (!$events) {
                 continue;
             }
@@ -131,8 +128,9 @@ class provider implements
                 ];
             }
             writer::with_context($context)->export_data(
-                    [get_string('privacy:proctorpath', 'qtype_codeatelier')],
-                    (object) ['events' => $data]);
+                [get_string('privacy:proctorpath', 'qtype_codeatelier')],
+                (object) ['events' => $data]
+            );
         }
     }
 
@@ -143,13 +141,15 @@ class provider implements
      */
     public static function delete_data_for_all_users_in_context(\context $context): void {
         global $DB;
-        $DB->delete_records_select(self::TABLE,
-                "questionattemptid IN (
+        $DB->delete_records_select(
+            self::TABLE,
+            "questionattemptid IN (
                      SELECT qa.id
                        FROM {question_attempts} qa
                        JOIN {question_usages} qu ON qu.id = qa.questionusageid
                       WHERE qu.contextid = :contextid)",
-                ['contextid' => $context->id]);
+            ['contextid' => $context->id]
+        );
     }
 
     /**
@@ -164,15 +164,17 @@ class provider implements
         if (!$contextids) {
             return;
         }
-        list($insql, $params) = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED);
+        [$insql, $params] = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED);
         $params['userid'] = $userid;
-        $DB->delete_records_select(self::TABLE,
-                "userid = :userid AND questionattemptid IN (
+        $DB->delete_records_select(
+            self::TABLE,
+            "userid = :userid AND questionattemptid IN (
                      SELECT qa.id
                        FROM {question_attempts} qa
                        JOIN {question_usages} qu ON qu.id = qa.questionusageid
                       WHERE qu.contextid $insql)",
-                $params);
+            $params
+        );
     }
 
     /**
@@ -186,14 +188,16 @@ class provider implements
         if (!$userids) {
             return;
         }
-        list($insql, $params) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
+        [$insql, $params] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
         $params['contextid'] = $userlist->get_context()->id;
-        $DB->delete_records_select(self::TABLE,
-                "userid $insql AND questionattemptid IN (
+        $DB->delete_records_select(
+            self::TABLE,
+            "userid $insql AND questionattemptid IN (
                      SELECT qa.id
                        FROM {question_attempts} qa
                        JOIN {question_usages} qu ON qu.id = qa.questionusageid
                       WHERE qu.contextid = :contextid)",
-                $params);
+            $params
+        );
     }
 }

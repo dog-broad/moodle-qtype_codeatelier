@@ -65,8 +65,11 @@ if ($endpoint === '') {
     $ping = $runner->ping();
     if (!empty($ping['ok'])) {
         $rows[] = [get_string('status_health', 'qtype_codeatelier'),
-                html_writer::span(get_string('status_reachable', 'qtype_codeatelier',
-                        s($ping['version'])), 'badge badge-success')];
+                html_writer::span(get_string(
+                    'status_reachable',
+                    'qtype_codeatelier',
+                    s($ping['version'])
+                ), 'badge badge-success')];
         if (isset($ping['workers']) && is_array($ping['workers'])) {
             $summary = [];
             foreach ($ping['workers'] as $w) {
@@ -77,8 +80,11 @@ if ($endpoint === '') {
                 $size = isset($w['size']) ? (int) $w['size'] : 0;
                 $available = isset($w['available']) ? (int) $w['available'] : 0;
                 $idle = isset($w['idle']) ? (int) $w['idle'] : 0;
-                $summary[] = get_string('status_workerline', 'qtype_codeatelier',
-                        ['queue' => $queue, 'size' => $size, 'available' => $available, 'idle' => $idle]);
+                $summary[] = get_string(
+                    'status_workerline',
+                    'qtype_codeatelier',
+                    ['queue' => $queue, 'size' => $size, 'available' => $available, 'idle' => $idle]
+                );
             }
             if ($summary) {
                 $rows[] = [get_string('status_workers', 'qtype_codeatelier'),
@@ -87,8 +93,11 @@ if ($endpoint === '') {
         }
     } else {
         $rows[] = [get_string('status_health', 'qtype_codeatelier'),
-                html_writer::span(get_string('status_unreachable', 'qtype_codeatelier',
-                        s($ping['error'] ?? '')), 'badge badge-danger')];
+                html_writer::span(get_string(
+                    'status_unreachable',
+                    'qtype_codeatelier',
+                    s($ping['error'] ?? '')
+                ), 'badge badge-danger')];
     }
 }
 
@@ -103,12 +112,18 @@ if ($webrunner === null) {
     $webping = $webrunner->ping();
     if (!empty($webping['ok'])) {
         $rows[] = [get_string('status_webhealth', 'qtype_codeatelier'),
-                html_writer::span(get_string('status_reachable', 'qtype_codeatelier',
-                        s($webping['version'])), 'badge badge-success')];
+                html_writer::span(get_string(
+                    'status_reachable',
+                    'qtype_codeatelier',
+                    s($webping['version'])
+                ), 'badge badge-success')];
     } else {
         $rows[] = [get_string('status_webhealth', 'qtype_codeatelier'),
-                html_writer::span(get_string('status_unreachable', 'qtype_codeatelier',
-                        s($webping['error'] ?? '')), 'badge badge-danger')];
+                html_writer::span(get_string(
+                    'status_unreachable',
+                    'qtype_codeatelier',
+                    s($webping['error'] ?? '')
+                ), 'badge badge-danger')];
     }
 }
 

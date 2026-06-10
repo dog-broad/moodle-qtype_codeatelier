@@ -39,7 +39,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class run_reference extends external_api {
-
     /** @var \qtype_codeatelier\judge\judge0_runner|null test-injected runner; null builds from config. */
     protected static $runneroverride = null;
 
@@ -88,9 +87,19 @@ class run_reference extends external_api {
      * @param array $tests the tests ({input, matchmode, checkerquery})
      * @return array the produced outputs per test
      */
-    public static function execute(int $contextid, string $code, string $language, string $scenario = 'stdinstdout',
-            string $entrypoint = '', string $functionsignature = '', string $entryfile = '', string $schemasql = '',
-            string $cputimelimit = '', string $memorylimit = '', array $tests = []): array {
+    public static function execute(
+        int $contextid,
+        string $code,
+        string $language,
+        string $scenario = 'stdinstdout',
+        string $entrypoint = '',
+        string $functionsignature = '',
+        string $entryfile = '',
+        string $schemasql = '',
+        string $cputimelimit = '',
+        string $memorylimit = '',
+        array $tests = []
+    ): array {
         $params = self::validate_parameters(self::execute_parameters(), [
             'contextid' => $contextid, 'code' => $code, 'language' => $language, 'scenario' => $scenario,
             'entrypoint' => $entrypoint, 'functionsignature' => $functionsignature, 'entryfile' => $entryfile,
@@ -118,9 +127,16 @@ class run_reference extends external_api {
 
         $schemasql = ($params['scenario'] === 'sql') ? $params['schemasql'] : '';
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
-        $outputs = $grader->run_outputs($params['code'], $params['language'], $testobjects, $schemasql,
-                (string) $params['scenario'], (string) $params['entrypoint'], (string) $params['functionsignature'],
-                (string) $params['entryfile']);
+        $outputs = $grader->run_outputs(
+            $params['code'],
+            $params['language'],
+            $testobjects,
+            $schemasql,
+            (string) $params['scenario'],
+            (string) $params['entrypoint'],
+            (string) $params['functionsignature'],
+            (string) $params['entryfile']
+        );
 
         $results = [];
         foreach ($outputs as $output) {

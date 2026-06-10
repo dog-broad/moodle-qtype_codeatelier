@@ -34,7 +34,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class run_scratch extends external_api {
-
     /**
      * @return external_function_parameters
      */
@@ -60,8 +59,10 @@ class run_scratch extends external_api {
         global $CFG, $USER;
         require_once($CFG->dirroot . '/question/engine/lib.php');
 
-        $params = self::validate_parameters(self::execute_parameters(),
-                ['questionid' => $questionid, 'code' => $code, 'language' => $language, 'input' => $input]);
+        $params = self::validate_parameters(
+            self::execute_parameters(),
+            ['questionid' => $questionid, 'code' => $code, 'language' => $language, 'input' => $input]
+        );
 
         $question = \question_bank::load_question($params['questionid']);
         if (!($question instanceof \qtype_codeatelier_question) || !$question->is_judge()) {
@@ -73,8 +74,11 @@ class run_scratch extends external_api {
         // Share the per-user throttle with run-against-examples: both run the sandbox on demand.
         run_examples::enforce_cooldown((int) $USER->id);
 
-        $result = $question->run_scratch($params['code'], $question->resolve_language($params['language']),
-                $params['input']);
+        $result = $question->run_scratch(
+            $params['code'],
+            $question->resolve_language($params['language']),
+            $params['input']
+        );
         if ($result === null) {
             throw new \moodle_exception('judgenotconfigured', 'qtype_codeatelier');
         }

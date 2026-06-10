@@ -32,7 +32,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class prune_judgecache extends \core\task\scheduled_task {
-
     public function get_name() {
         return get_string('task_prune_judgecache', 'qtype_codeatelier');
     }

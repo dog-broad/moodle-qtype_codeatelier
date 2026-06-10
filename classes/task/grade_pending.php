@@ -31,7 +31,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class grade_pending extends \core\task\scheduled_task {
-
     /** @var int max question usages to process per run (the rest wait for the next). */
     const MAX_USAGES_PER_RUN = 200;
 

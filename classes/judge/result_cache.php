@@ -33,7 +33,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class result_cache {
-
     /** @var int the result-blob shape version; bump to invalidate older cached entries. */
     const BLOB_VERSION = 11;
 
@@ -57,10 +56,21 @@ class result_cache {
      * @param string $checkerlang the custom-checker language
      * @return string a 40-char SHA-1
      */
-    public static function key(string $language, string $code, array $tests, array $limits,
-            string $schemasql = '', bool $allornothing = false, string $datafileshash = '',
-            string $scenario = 'stdinstdout', string $entrypoint = '', string $funcsig = '',
-            string $entryfile = '', string $checkersource = '', string $checkerlang = ''): string {
+    public static function key(
+        string $language,
+        string $code,
+        array $tests,
+        array $limits,
+        string $schemasql = '',
+        bool $allornothing = false,
+        string $datafileshash = '',
+        string $scenario = 'stdinstdout',
+        string $entrypoint = '',
+        string $funcsig = '',
+        string $entryfile = '',
+        string $checkersource = '',
+        string $checkerlang = ''
+    ): string {
         $signature = [];
         foreach (array_values($tests) as $test) {
             $signature[] = [
