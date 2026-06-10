@@ -30,7 +30,12 @@ $string['pluginnamesummary'] = 'An in-browser code question for instant, run-it-
 $string['pluginnameadding'] = 'Adding a CodeAtelier question';
 $string['pluginnameediting'] = 'Editing a CodeAtelier question';
 
-$string['privacy:metadata'] = 'The CodeAtelier question type does not store any personal data; submitted responses are held by the Moodle question engine.';
+$string['privacy:metadata:proctorlog'] = 'A server-side, append-only record of soft anti-cheat events (leaving the question, outside-paste attempts) on secure-mode attempts.';
+$string['privacy:metadata:proctorlog:questionattemptid'] = 'The question attempt the event was recorded against.';
+$string['privacy:metadata:proctorlog:userid'] = 'The user who generated the event.';
+$string['privacy:metadata:proctorlog:eventtype'] = 'The kind of event (leaving the question, an outside-paste attempt).';
+$string['privacy:metadata:proctorlog:timecreated'] = 'The server time the event was recorded.';
+$string['privacy:proctorpath'] = 'CodeAtelier activity flags';
 
 // Admin settings.
 $string['pyodidebaseurl'] = 'Pyodide base URL';
