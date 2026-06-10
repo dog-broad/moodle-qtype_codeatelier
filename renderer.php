@@ -585,11 +585,72 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      * @param \moodle_url $baseurl the report page URL
      * @return string HTML
      */
-    public function render_question_report($stats, \moodle_url $baseurl, array $recent = array()) {
+    public function render_question_report($stats, \moodle_url $baseurl, array $recent = array(),
+            array $similarity = array()) {
         $context = $this->report_context($stats, $baseurl);
         $context['recent'] = $this->recent_rows($recent);
         $context['hasrecent'] = !empty($context['recent']);
+        $context['similarity'] = $this->similarity_context($similarity);
+        $context['hassimilarity'] = !empty($context['similarity']);
         return $this->render_from_template('qtype_codeatelier/report', $context);
+    }
+
+    /**
+     * Shape the per-language similarity analysis for the template.
+     *
+     * Each language group is either analyzable (with zero or more clusters of similar
+     * submissions) or reported low-signal with the reason it can't be analysed — the
+     * report never presents a bare "% similar" without that context.
+     *
+     * @param \stdClass[] $similarity per-language results from cohort_analyser::analyse
+     * @return array
+     */
+    protected function similarity_context(array $similarity) {
+        $groups = array();
+        foreach ($similarity as $lang) {
+            $clusters = array();
+            foreach ($lang->clusters as $cluster) {
+                $members = array();
+                foreach ($cluster->members as $m) {
+                    $members[] = array(
+                        'label' => $m->label,
+                        'reviewurl' => $m->quizattemptid
+                                ? (new \moodle_url('/mod/quiz/review.php',
+                                        array('attempt' => $m->quizattemptid)))->out(false)
+                                : null,
+                    );
+                }
+                $pairs = array();
+                foreach ($cluster->pairs as $p) {
+                    $pairs[] = array('a' => $p->a, 'b' => $p->b, 'simpct' => round($p->sim * 100));
+                }
+                $maxsimpct = round($cluster->maxsim * 100);
+                $clusters[] = array(
+                    'members' => $members,
+                    'pairs' => $pairs,
+                    'clusterlabel' => get_string('report_sim_cluster', 'qtype_codeatelier', $cluster->size),
+                    'simlabel' => get_string('report_sim_upto', 'qtype_codeatelier', $maxsimpct),
+                );
+            }
+            $note = '';
+            if ($lang->reason === \qtype_codeatelier\local\integrity\cohort_analyser::REASON_TOOSHORT) {
+                $note = get_string('report_sim_tooshort', 'qtype_codeatelier');
+            } else if ($lang->reason === \qtype_codeatelier\local\integrity\cohort_analyser::REASON_UNIFORM) {
+                $note = get_string('report_sim_uniform', 'qtype_codeatelier');
+            } else if (empty($clusters)) {
+                $note = get_string('report_sim_noclusters', 'qtype_codeatelier');
+            }
+            $groups[] = array(
+                'language' => $lang->language,
+                'count' => $lang->count,
+                'analyzable' => $lang->analyzable,
+                'note' => $note,
+                'hasnote' => $note !== '',
+                'clusters' => $clusters,
+                'hasclusters' => !empty($clusters),
+            );
+        }
+        return $groups;
     }
 
     /**
