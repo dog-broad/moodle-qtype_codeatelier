@@ -71,6 +71,8 @@ class judge0_runner {
     private $additionalfiles = null;
 
     /**
+     * Create a runner targeting a Judge0 instance.
+     *
      * @param string $baseurl base URL of the Judge0 instance
      * @param string|null $apikey optional auth token
      * @param float $cputimelimit CPU-time limit in seconds
@@ -125,7 +127,9 @@ class judge0_runner {
     }
 
     /**
-     * @return float the site-default CPU-time limit (admin setting, or built-in)
+     * The site-default CPU-time limit (admin setting, or the built-in fallback).
+     *
+     * @return float
      */
     public static function default_cpu_time_limit(): float {
         $value = get_config('qtype_codeatelier', 'judge0cputimelimit');
@@ -133,7 +137,9 @@ class judge0_runner {
     }
 
     /**
-     * @return int the site-default memory limit in kilobytes (admin setting, or built-in)
+     * The site-default memory limit in kilobytes (admin setting, or built-in fallback).
+     *
+     * @return int
      */
     public static function default_memory_limit(): int {
         $value = get_config('qtype_codeatelier', 'judge0memorylimit');
@@ -141,14 +147,18 @@ class judge0_runner {
     }
 
     /**
-     * @return float the per-run CPU-time limit in seconds
+     * The per-run CPU-time limit in seconds.
+     *
+     * @return float
      */
     public function get_cpu_time_limit(): float {
         return $this->cputimelimit;
     }
 
     /**
-     * @return int the per-run memory limit in kilobytes
+     * The per-run memory limit in kilobytes.
+     *
+     * @return int
      */
     public function get_memory_limit(): int {
         return $this->memorylimit;
@@ -185,7 +195,7 @@ class judge0_runner {
         }
         $result = ['ok' => true, 'version' => (string) ($about['version'] ?? '')];
         $workers = $this->request('GET', '/workers', null);
-        // /workers is a list of queue descriptors (available/active/idle counts);
+        // The /workers endpoint lists queue descriptors (available/active/idle counts);
         // a deployment may not expose it, so its absence is not a failure.
         if (is_array($workers) && !isset($workers['_error'])) {
             $result['workers'] = $workers;
@@ -381,7 +391,7 @@ class judge0_runner {
         $memory = isset($response['memory']) ? (int) $response['memory'] : null;
         return [
             'outcome' => $this->outcome_for($statusid, $memory),
-            // stdout drives grading, so it is never altered; stderr and the compiler
+            // Stdout drives grading, so it is never altered; stderr and the compiler
             // output are student-facing diagnostics, so the sandbox noise is trimmed.
             'stdout' => self::decode($response['stdout'] ?? null),
             'stderr' => self::clean_diagnostic(self::decode($response['stderr'] ?? null)),
@@ -547,7 +557,7 @@ class judge0_runner {
         global $CFG;
         require_once($CFG->libdir . '/filelib.php');
 
-        // ignoresecurity: the base URL is an admin-configured, trusted judge server,
+        // The ignoresecurity option is deliberate: the base URL is an admin-configured, trusted judge server,
         // commonly on a private network. Moodle's SSRF blocklist exists to stop
         // user-supplied URLs reaching internal services; it does not apply to a
         // trusted server-to-server endpoint an admin deliberately configured.
