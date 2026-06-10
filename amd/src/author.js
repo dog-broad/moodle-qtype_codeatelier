@@ -462,9 +462,11 @@ export const init = (config) => {
                     }
                 }
                 : undefined;
+            const fblang = langSel ? langSel.value : 'cpp';
+            const fbentry = entryfileField ? entryfileField.value.trim() : 'main';
             projectEditor = setupProjectFiles(null, projectfilesTa, {
-                language: scen === 'web' ? 'html' : (langSel ? langSel.value : 'cpp'),
-                entryfile: scen === 'web' ? 'index.html' : (entryfileField ? entryfileField.value.trim() : 'main'),
+                language: scen === 'web' ? 'html' : fblang,
+                entryfile: scen === 'web' ? 'index.html' : fbentry,
                 readonly: false,
             }, config.strings || {}, onChange);
             if (scen === 'web') {
@@ -638,7 +640,12 @@ export const init = (config) => {
             scenSel.addEventListener('change', mountRef);
         }
     }
-    const referenceValue = () => (refEditor ? refEditor.getValue() : (refSolTa ? refSolTa.value : ''));
+    const referenceValue = () => {
+        if (refEditor) {
+            return refEditor.getValue();
+        }
+        return refSolTa ? refSolTa.value : '';
+    };
 
     const btn = byId(config.previewbtnid);
     const container = byId(config.previewid);

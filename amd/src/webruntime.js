@@ -167,7 +167,12 @@ const HARNESS = `
   }
   var pickHover = null;
   function clearHover(){ if (pickHover){ pickHover.style.outline = pickHover.__caOutline || ''; pickHover = null; } }
-  function onPickOver(e){ clearHover(); pickHover = e.target; pickHover.__caOutline = pickHover.style.outline; e.target.style.outline = '2px solid #1f6fd6'; }
+  function onPickOver(e){
+    clearHover();
+    pickHover = e.target;
+    pickHover.__caOutline = pickHover.style.outline;
+    e.target.style.outline = '2px solid #1f6fd6';
+  }
   function onPickClick(e){
     e.preventDefault(); e.stopPropagation();
     clearHover();
@@ -335,7 +340,7 @@ export const gradeWeb = (files, tests, options) => {
     document.body.appendChild(iframe);
     const doc = compose(files, {harness: true});
 
-    return (async () => {
+    return (async() => {
         let totalweight = 0;
         let earned = 0;
         const testresults = [];
@@ -347,7 +352,6 @@ export const gradeWeb = (files, tests, options) => {
                 matcher: t.assertmatcher || 'equals',
                 expected: t.expected,
             };
-            // eslint-disable-next-line no-await-in-loop
             const r = await gradeOne(iframe, doc, assertion, parseActions(t.actions));
             const weight = parseFloat(t.weight) || 0;
             totalweight += weight;

@@ -170,8 +170,13 @@ export const setup = (root, answerTa, config, strings, onChange) => {
 
     const tabEls = () => Array.prototype.slice.call(tablist.querySelectorAll('[role="tab"]'));
 
-    // selectFile and renderTabs are mutually recursive (a tab click selects; a
-    // select re-renders the tabs), so they are function declarations (hoisted).
+    // The selectFile and renderTabs functions are mutually recursive (a tab click
+    // selects; a select re-renders the tabs), so they are declared (hoisted).
+    /**
+     * Switch the active file to the given index.
+     *
+     * @param {Number} index the file index to activate
+     */
     function selectFile(index) {
         if (index === active) {
             return;
@@ -188,6 +193,9 @@ export const setup = (root, answerTa, config, strings, onChange) => {
         }
     }
 
+    /**
+     * Re-render the file tabs for the current file set and active file.
+     */
     function renderTabs() {
         tablist.textContent = '';
         files.forEach((file, index) => {
@@ -274,7 +282,8 @@ export const setup = (root, answerTa, config, strings, onChange) => {
         const addButton = button(strings.addfile || 'Add file', () => {
             let n = files.length + 1;
             let name = 'file' + n;
-            while (files.some((f) => f.name === name)) {
+            const taken = (candidate) => files.some((f) => f.name === candidate);
+            while (taken(name)) {
                 n++;
                 name = 'file' + n;
             }
