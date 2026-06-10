@@ -98,6 +98,12 @@ const button = (label, onClick) => {
  */
 export const setup = (root, answerTa, config, strings, onChange) => {
     const readonly = !!config.readonly;
+    // Secure tier: each file-tab editor uses the same sandboxed clipboard as the
+    // single-file editor; external attempts flag through the question wrapper.
+    const sandbox = !!config.isjudge && !readonly;
+    const onExternal = sandbox
+        ? (type) => root.dispatchEvent(new CustomEvent('codeatelier:clip-external', {detail: {type: type}}))
+        : null;
     let files = parseFiles(answerTa.value);
     if (!files || !files.length) {
         files = [{name: config.entryfile || 'main', content: ''}];
@@ -145,6 +151,8 @@ export const setup = (root, answerTa, config, strings, onChange) => {
             cm = create(fileEditor, languageForFile(files[active].name, config.language), {
                 readonly: readonly,
                 ariaLabel: files[active].name,
+                sandbox: sandbox,
+                onExternal: onExternal,
                 onChange: () => {
                     files[active].content = fileEditor.value;
                     serialise();
@@ -316,6 +324,11 @@ export const setup = (root, answerTa, config, strings, onChange) => {
 
     return {
         getValue: () => answerTa.value,
+        openSearch: () => {
+            if (cm && typeof cm.openSearch === 'function') {
+                cm.openSearch();
+            }
+        },
         destroy: () => {
             if (cm && cm.destroy) {
                 cm.destroy();

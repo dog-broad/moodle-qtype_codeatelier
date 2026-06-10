@@ -16,9 +16,11 @@
 /**
  * Soft anti-cheat for judge-tier attempts.
  *
- * Deters clipboard and context-menu use on the editor, and logs focus-away
- * (tab/window switch) and blocked-paste events into a hidden response field that
- * is submitted and stored with the attempt. This is deterrence + detection, never
+ * Logs focus-away (tab/window switch) and external-clipboard attempts into a hidden
+ * response field that is submitted and stored with the attempt. The clipboard
+ * itself is governed by the editor's sandboxed in-memory clipboard (see editor.js):
+ * internal copy/cut/paste work, the OS clipboard is never touched, and an attempt to
+ * paste/drop outside content is reported here. This is deterrence + detection, never
  * prevention: the log is client-accumulated and so tamperable by a determined
  * student. The real integrity guarantees are the authoritative server grade and
  * Safe Exam Browser; this raises the cost and surfaces the obvious cases.
@@ -69,18 +71,14 @@ export const init = (config) => {
         field.value = JSON.stringify(events);
     };
 
-    // Deter clipboard and context-menu use on the work pane (the editor lives here).
-    // Capture phase so CodeMirror's own handlers do not run first.
-    const pane = root.querySelector('[data-role="pane-work"]') || root;
-    ['copy', 'cut', 'contextmenu'].forEach((name) => {
-        pane.addEventListener(name, (e) => {
-            e.preventDefault();
-        }, true);
+    // The editor governs the clipboard itself on the secure tier — a sandboxed
+    // in-memory clipboard (internal copy/cut/paste work; the OS clipboard is never
+    // touched, so external paste is impossible and copy-out is prevented). It
+    // reports an external-origin attempt (paste/drop carrying outside content) here
+    // so this module stays the single writer of the proctor log.
+    root.addEventListener('codeatelier:clip-external', (e) => {
+        record((e.detail && e.detail.type) || 'extpaste');
     });
-    pane.addEventListener('paste', (e) => {
-        e.preventDefault();
-        record('paste');
-    }, true);
 
     // Log leaving the question: a window blur, or the tab being hidden.
     const focusaway = () => {

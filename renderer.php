@@ -340,8 +340,11 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         switch ($type) {
             case 'focusaway':
                 return get_string('proctor_focusaway', 'qtype_codeatelier');
+            case 'extpaste':
             case 'paste':
-                return get_string('proctor_paste', 'qtype_codeatelier');
+                return get_string('proctor_extpaste', 'qtype_codeatelier');
+            case 'extdrop':
+                return get_string('proctor_extdrop', 'qtype_codeatelier');
             default:
                 return $type;
         }

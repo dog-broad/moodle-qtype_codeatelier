@@ -74,6 +74,15 @@
             <noscript>
                 <style>.qtype_codeatelier .codeatelier-answer{display:block}.qtype_codeatelier .codeatelier-skeleton{display:none}</style>
             </noscript>
+            {{^readonly}}
+            <div class="codeatelier-editor-tools" data-role="editor-tools">
+                <button type="button" class="btn btn-link btn-sm codeatelier-editor-find" data-role="editor-find">{{findlabel}}</button>
+                <details class="codeatelier-shortcuts">
+                    <summary>{{shortcutstitle}}</summary>
+                    <div class="codeatelier-shortcuts-body">{{{shortcutshtml}}}</div>
+                </details>
+            </div>
+            {{/readonly}}
         </div>
         {{#isweb}}
         <div class="codeatelier-preview">

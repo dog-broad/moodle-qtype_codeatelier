@@ -64,6 +64,17 @@ $string['answerlabel'] = 'Your code';
 $string['chooselanguage'] = 'Language';
 $string['languageused'] = 'Language used: {$a}';
 $string['loadingeditor'] = 'Loading editor…';
+$string['editorfind'] = 'Find / replace';
+$string['editorshortcutstitle'] = 'Editor keyboard shortcuts';
+$string['editorshortcuts'] = '<ul class="codeatelier-shortcut-list">
+<li><kbd>Ctrl/Cmd</kbd>+<kbd>F</kbd> — find and replace</li>
+<li><kbd>Ctrl/Cmd</kbd>+<kbd>D</kbd> — select the next occurrence (multiple cursors)</li>
+<li><kbd>Ctrl/Cmd</kbd>+<kbd>/</kbd> — toggle line comment</li>
+<li><kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>↓</kbd> — move the current line up or down</li>
+<li><kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>↓</kbd> — duplicate the current line</li>
+<li><kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> / <kbd>Y</kbd> — undo / redo</li>
+<li><kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> — indent or outdent (press <kbd>Esc</kbd> first to tab out of the editor)</li>
+</ul>';
 $string['runlabel'] = 'Run';
 $string['checklabel'] = 'Check';
 $string['stoplabel'] = 'Stop';
@@ -189,6 +200,8 @@ $string['proctornote'] = 'Switching away from this question and paste attempts a
 $string['proctorsummary'] = 'Activity flags';
 $string['proctor_focusaway'] = 'Switched away from the question';
 $string['proctor_paste'] = 'Paste blocked';
+$string['proctor_extpaste'] = 'Outside paste blocked';
+$string['proctor_extdrop'] = 'Outside text drop blocked';
 
 // Authoring: grading mode.
 $string['tier'] = 'Grading mode';

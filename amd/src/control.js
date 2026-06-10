@@ -615,6 +615,14 @@ export const init = (config) => {
         if (skeleton) {
             skeleton.style.display = 'none';
         }
+        const webfindbtn = root.querySelector('[data-role="editor-find"]');
+        if (webfindbtn) {
+            webfindbtn.addEventListener('click', () => {
+                if (webeditor && typeof webeditor.openSearch === 'function') {
+                    webeditor.openSearch();
+                }
+            });
+        }
         if (examplesel) {
             renderWebExamples(examplesel, config, strings);
         }
@@ -681,10 +689,18 @@ export const init = (config) => {
             resultsel.appendChild(note);
         }
     };
+    // Secure (judge) tier: the editor runs a sandboxed in-memory clipboard, and an
+    // external-paste/drop attempt is reported to the proctor (the single proctorlog
+    // writer) via a CustomEvent on the question wrapper.
+    const sandbox = !!config.isjudge && !config.readonly;
     const editorOptions = {
         readonly: config.readonly,
         ariaLabel: editorlabel ? editorlabel.textContent : null,
         onChange: markStale,
+        sandbox: sandbox,
+        onExternal: sandbox
+            ? (type) => root.dispatchEvent(new CustomEvent('codeatelier:clip-external', {detail: {type: type}}))
+            : null,
     };
     let editor;
     if (config.scenario === 'project') {
@@ -701,6 +717,17 @@ export const init = (config) => {
     }
     if (skeleton) {
         skeleton.style.display = 'none';
+    }
+
+    // Visible find/replace control — the touch-friendly path to Ctrl/Cmd+F. Reads
+    // the current editor (it is re-created on a language switch).
+    const findbtn = root.querySelector('[data-role="editor-find"]');
+    if (findbtn) {
+        findbtn.addEventListener('click', () => {
+            if (editor && typeof editor.openSearch === 'function') {
+                editor.openSearch();
+            }
+        });
     }
 
     // Language picker: re-mount the editor in the chosen language and record the

@@ -28,6 +28,7 @@ import {EditorState} from '@codemirror/state';
 import {keymap} from '@codemirror/view';
 import {indentWithTab} from '@codemirror/commands';
 import {lintGutter, setDiagnostics} from '@codemirror/lint';
+import {openSearchPanel} from '@codemirror/search';
 import {python} from '@codemirror/lang-python';
 import {sql} from '@codemirror/lang-sql';
 import {javascript} from '@codemirror/lang-javascript';
@@ -164,6 +165,97 @@ export const highlightWithin = (root) => {
 };
 
 /**
+ * The secure tier's in-memory clipboard buffer.
+ *
+ * Shared across every sandboxed editor on the page so copy in one file tab and
+ * paste in another (the same project answer) works, while the OS clipboard is
+ * never touched — see {@see sandboxClipboard}.
+ *
+ * @var {String}
+ */
+let clipboardBuffer = '';
+
+/**
+ * The text of the current (possibly multi-range) selection, read from the editor
+ * STATE — not the DOM — so it is complete even when the selection extends past the
+ * rendered viewport, and captures every cursor in a multi-selection.
+ *
+ * @param {EditorState} state
+ * @return {String}
+ */
+const selectionText = (state) => state.selection.ranges
+    .filter((range) => !range.empty)
+    .map((range) => state.sliceDoc(range.from, range.to))
+    .join('\n');
+
+/**
+ * A CodeMirror extension that gives the editor its own in-memory clipboard for the
+ * secure (judge) tier: copy/cut/paste operate on {@see clipboardBuffer} and the OS
+ * clipboard is never read or written. Internal copy/cut/paste work normally;
+ * EXTERNAL paste is impossible by construction (we never read the OS clipboard) and
+ * copy-OUT is prevented (we never write it). Every external-origin attempt (a paste
+ * or drop carrying OS content that is not our own buffer) is reported via onExternal
+ * so the proctor can log it. Governs the keyboard, the context menu, middle-click
+ * (Linux primary selection) and drag-and-drop alike — they all surface as these DOM
+ * events. The practice tier never installs this (it is formative).
+ *
+ * @param {Function} onExternal called with an event type ('extpaste' | 'extdrop')
+ * @return {Object} a CodeMirror extension
+ */
+export const sandboxClipboard = (onExternal) => EditorView.domEventHandlers({
+    copy(event, view) {
+        const text = selectionText(view.state);
+        if (text) {
+            clipboardBuffer = text;
+        }
+        // Prevent the browser/CodeMirror writing the selection to the OS clipboard.
+        event.preventDefault();
+        return true;
+    },
+    cut(event, view) {
+        const text = selectionText(view.state);
+        if (text) {
+            clipboardBuffer = text;
+            view.dispatch(view.state.replaceSelection(''));
+        }
+        event.preventDefault();
+        return true;
+    },
+    paste(event, view) {
+        event.preventDefault();
+        if (clipboardBuffer) {
+            // We have an internal copy to satisfy the paste — treat it as internal
+            // (the OS clipboard is never read). External content cannot enter, and
+            // we do not false-flag a normal internal paste just because the student
+            // happens to have unrelated content on their OS clipboard.
+            view.dispatch(view.state.replaceSelection(clipboardBuffer));
+        } else {
+            // Nothing was copied inside the editor, so a paste carrying OS content is
+            // necessarily an attempt to bring outside text in: blocked (nothing is
+            // inserted) and flagged.
+            const os = event.clipboardData ? event.clipboardData.getData('text') : '';
+            if (os && typeof onExternal === 'function') {
+                onExternal('extpaste');
+            }
+        }
+        return true;
+    },
+    dragstart(event) {
+        // Block dragging a selection out of the secure editor (exfiltration).
+        event.preventDefault();
+        return true;
+    },
+    drop(event) {
+        const os = event.dataTransfer ? event.dataTransfer.getData('text') : '';
+        if (os && typeof onExternal === 'function') {
+            onExternal('extdrop');
+        }
+        event.preventDefault();
+        return true;
+    },
+});
+
+/**
  * Enhance a textarea with a CodeMirror 6 editor.
  *
  * The textarea remains the form field: edits are mirrored back into it so the
@@ -171,12 +263,18 @@ export const highlightWithin = (root) => {
  *
  * @param {HTMLTextAreaElement} textarea the backing form field
  * @param {String} language the syntax-highlighting language
- * @param {Object} options optional {readonly: bool, onChange: function}
+ * @param {Object} options optional {readonly: bool, onChange: function,
+ *   sandbox: bool, onExternal: function}
  * @return {Object} {getValue} accessor for the current source
  */
 export const create = (textarea, language, options) => {
     const opts = options || {};
     const extensions = [basicSetup, lintGutter()];
+
+    // Secure tier: a sandboxed in-editor clipboard (internal copy/paste only).
+    if (opts.sandbox && !opts.readonly) {
+        extensions.push(sandboxClipboard(opts.onExternal));
+    }
 
     // Give the contenteditable an accessible name: the backing textarea (which
     // carries the visible label) is hidden, so a screen reader needs it here.
@@ -220,6 +318,14 @@ export const create = (textarea, language, options) => {
 
     return {
         getValue: () => view.state.doc.toString(),
+        /**
+         * Open the find/replace panel and focus it — the visible, touch-friendly
+         * path to the search that Ctrl/Cmd+F also opens.
+         */
+        openSearch: () => {
+            view.focus();
+            openSearchPanel(view);
+        },
         /**
          * Tear the editor down and reveal the backing textarea again. Used when
          * an editor must be re-created for a different language.
