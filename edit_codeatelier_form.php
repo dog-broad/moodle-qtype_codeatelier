@@ -29,6 +29,11 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_codeatelier_edit_form extends question_edit_form {
+    /**
+     * Add the CodeAtelier-specific fields to the question edit form.
+     *
+     * @param \MoodleQuickForm $mform the form being built
+     */
     protected function definition_inner($mform) {
         // When editing an existing question, link to its submissions report.
         if (!empty($this->question->id)) {
@@ -540,6 +545,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
     }
 
     /**
+     * The selectable question-format (scenario) options.
+     *
      * @return array scenario code => display name
      */
     protected function scenario_options() {
@@ -553,6 +560,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
     }
 
     /**
+     * The selectable grading-mode (tier) options.
+     *
      * @return array tier code => display name
      */
     protected function tier_options() {
@@ -595,6 +604,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'go', 'rust', 'php', 'typescript', 'csharp', 'kotlin', 'ruby'];
 
     /**
+     * The selectable matching-mode options.
+     *
      * @return array matching-mode code => display name
      */
     protected function matchmode_options() {
@@ -610,6 +621,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
     }
 
     /**
+     * The selectable test-visibility options.
+     *
      * @return array visibility value => display name
      */
     protected function visibility_options() {
@@ -647,6 +660,12 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         return (bool) preg_match('/^(attr|style):\S+/', $property);
     }
 
+    /**
+     * Prepare the loaded question data for display in the form.
+     *
+     * @param object $question the question being edited
+     * @return object
+     */
     protected function data_preprocessing($question) {
         $question = parent::data_preprocessing($question);
 
@@ -704,6 +723,13 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         return $question;
     }
 
+    /**
+     * Validate the submitted form data.
+     *
+     * @param array $data the submitted values
+     * @param array $files the submitted files
+     * @return array field name => error message
+     */
     public function validation($data, $files) {
         $errors = parent::validation($data, $files);
 
@@ -971,6 +997,13 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         return false;
     }
 
+    /**
+     * Validate the reference solution by running it through the grade path.
+     *
+     * @param array $data the submitted values
+     * @param array $errors the errors collected so far
+     * @return array the errors, with any reference failure added
+     */
     protected function validate_reference($data, $errors) {
         question_bank::load_question_definition_classes('codeatelier');
         $question = new qtype_codeatelier_question();
@@ -1066,6 +1099,11 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         return get_string('referencefailed', 'qtype_codeatelier', 1);
     }
 
+    /**
+     * The question type name this form edits.
+     *
+     * @return string
+     */
     public function qtype() {
         return 'codeatelier';
     }

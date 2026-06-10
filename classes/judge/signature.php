@@ -48,6 +48,8 @@ class signature {
     private $return;
 
     /**
+     * Build a parsed signature from its parameter and return types.
+     *
      * @param string[] $params the parameter types
      * @param string $return the return type
      */
@@ -148,12 +150,20 @@ class signature {
         throw new \invalid_parameter_exception("unsupported type: {$type}");
     }
 
-    /** @return string[] the parameter types */
+    /**
+     * The parameter types, in order.
+     *
+     * @return string[]
+     */
     public function params(): array {
         return $this->params;
     }
 
-    /** @return string the return type */
+    /**
+     * The return type.
+     *
+     * @return string
+     */
     public function return_type(): string {
         return $this->return;
     }
@@ -272,7 +282,7 @@ class signature {
                 return rtrim(rtrim(sprintf('%.12g', (float) $value), '0'), '.');
             case 'bool':
                 return $value ? '1' : '0';
-            default: // string
+            default: // String.
                 return (string) $value;
         }
     }
@@ -294,7 +304,7 @@ class signature {
                 return (float) trim($token);
             case 'bool':
                 return trim($token) === '1' || strtolower(trim($token)) === 'true';
-            default: // string — a scalar return is the whole stdout minus one trailing newline.
+            default: // String — a scalar return is the whole stdout minus one trailing newline.
                 return $wholeoutput ? preg_replace('/\n$/', '', str_replace("\r\n", "\n", $token)) : $token;
         }
     }
