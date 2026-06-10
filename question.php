@@ -107,13 +107,11 @@ class qtype_codeatelier_question extends question_graded_automatically {
         // question may allow a set of languages). It is re-validated server-side
         // on every grading path, so a tampered value can only fall back to the
         // primary language — see resolve_language().
-        $expected = array('answer' => PARAM_RAW, 'score' => PARAM_RAW_TRIMMED, 'language' => PARAM_ALPHANUMEXT);
-        if ($this->is_judge()) {
-            // The soft anti-cheat log travels as a response variable; it is stored
-            // with the attempt and never affects the grade.
-            $expected['proctorlog'] = PARAM_RAW;
-        }
-        return $expected;
+        // Soft anti-cheat events are no longer a response variable: they are written
+        // to a server-side append-only log during the attempt (see the proctor module
+        // and qtype_codeatelier\local\integrity\proctor_log), so they cannot be forged
+        // or cleared through the form.
+        return array('answer' => PARAM_RAW, 'score' => PARAM_RAW_TRIMMED, 'language' => PARAM_ALPHANUMEXT);
     }
 
     /**

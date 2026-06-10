@@ -64,6 +64,7 @@ class question_stats {
             return $stats;
         }
         $responses = self::load_responses(array_keys($basics));
+        $proctorcounts = \qtype_codeatelier\local\integrity\proctor_log::counts_for(array_keys($basics));
 
         $isjudge = $question->is_judge();
         $testcount = count($question->tests);
@@ -91,7 +92,7 @@ class question_stats {
             $language = $question->resolve_language($vars['language'] ?? null);
             $stats->languages[$language] = ($stats->languages[$language] ?? 0) + 1;
 
-            if ($isjudge && !empty($vars['proctorlog']) && self::has_proctor_events($vars['proctorlog'])) {
+            if ($isjudge && !empty($proctorcounts[$qaid])) {
                 $stats->proctorflagged++;
             }
 
@@ -391,7 +392,7 @@ class question_stats {
         }
         list($inqa, $params) = $DB->get_in_or_equal($qaids, SQL_PARAMS_NAMED, 'qa');
         list($inname, $nameparams) = $DB->get_in_or_equal(
-                ['answer', 'language', 'proctorlog', 'score'], SQL_PARAMS_NAMED, 'nm');
+                ['answer', 'language', 'score'], SQL_PARAMS_NAMED, 'nm');
         $params += $nameparams;
         $sql = "SELECT qasd.id, qas.questionattemptid AS qaid, qas.sequencenumber AS seq,
                        qasd.name AS name, qasd.value AS value
@@ -446,17 +447,6 @@ class question_stats {
         } else {
             $stats->scoredist->partial++;
         }
-    }
-
-    /**
-     * Whether a stored proctor log actually recorded at least one event.
-     *
-     * @param string $proctorlog the JSON log
-     * @return bool
-     */
-    private static function has_proctor_events(string $proctorlog): bool {
-        $events = json_decode($proctorlog, true);
-        return is_array($events) && count($events) > 0;
     }
 
     /**

@@ -16,66 +16,66 @@
 /**
  * Soft anti-cheat for judge-tier attempts.
  *
- * Logs focus-away (tab/window switch) and external-clipboard attempts into a hidden
- * response field that is submitted and stored with the attempt. The clipboard
- * itself is governed by the editor's sandboxed in-memory clipboard (see editor.js):
- * internal copy/cut/paste work, the OS clipboard is never touched, and an attempt to
- * paste/drop outside content is reported here. This is deterrence + detection, never
- * prevention: the log is client-accumulated and so tamperable by a determined
- * student. The real integrity guarantees are the authoritative server grade and
- * Safe Exam Browser; this raises the cost and surfaces the obvious cases.
+ * Reports focus-away (tab/window switch) and outside-clipboard attempts to the server
+ * as they happen, through an authenticated AJAX call that appends them to a server-side,
+ * append-only log stamped with the server clock and the authenticated user. The
+ * clipboard itself is governed by the editor's sandboxed in-memory clipboard (see
+ * editor.js): internal copy/cut/paste work, the OS clipboard is never touched, and an
+ * attempt to paste/drop outside content is reported here.
+ *
+ * This is deterrence + detection, never prevention: a student can still decline to send
+ * an event (the honest boundary of any browser-side measure). The gain over the former
+ * hidden field is that what *is* recorded is server-authoritative and cannot be forged
+ * or cleared through the page. The real integrity guarantees remain the authoritative
+ * server grade and Safe Exam Browser.
  *
  * @module qtype_codeatelier/proctor
  */
 
-/** @var {Number} cap on stored events, so the log cannot grow without bound. */
-const MAX_EVENTS = 100;
+import Ajax from 'core/ajax';
+
+/** @var {Number} client-side cap on events sent, so we never flood the endpoint. */
+const MAX_EVENTS = 200;
 
 /** @var {Number} a tab switch can fire both blur and visibilitychange; collapse them. */
 const FOCUS_DEBOUNCE_MS = 1500;
 
 /**
- * Wire up the deterrents and the event log for one question.
+ * Wire up the deterrents and the server-side event log for one question.
  *
  * @param {Object} config
  * @param {String} config.wrapperid the question wrapper element id
+ * @param {Number} config.qubaid the question usage id
+ * @param {Number} config.slot the slot within the usage
  */
 export const init = (config) => {
     const root = document.getElementById(config.wrapperid);
     if (!root) {
         return;
     }
-    const field = root.querySelector('[data-role="proctorlog"]');
-    if (!field) {
-        return;
-    }
 
-    let events;
-    try {
-        events = JSON.parse(field.value || '[]');
-    } catch (e) {
-        events = [];
-    }
-    if (!Array.isArray(events)) {
-        events = [];
-    }
-
-    const start = Date.now();
+    let sent = 0;
     let lastfocus = 0;
 
     const record = (type) => {
-        if (events.length >= MAX_EVENTS) {
+        if (sent >= MAX_EVENTS) {
             return;
         }
-        events.push({type: type, t: Math.round((Date.now() - start) / 1000)});
-        field.value = JSON.stringify(events);
+        sent++;
+        Ajax.call([{
+            methodname: 'qtype_codeatelier_log_proctor',
+            args: {qubaid: config.qubaid, slot: config.slot, eventtype: type},
+        }])[0].catch(() => {
+            // A dropped event is no worse than a suppressed one; never disrupt the attempt.
+            return null;
+        });
     };
 
     // The editor governs the clipboard itself on the secure tier — a sandboxed
     // in-memory clipboard (internal copy/cut/paste work; the OS clipboard is never
-    // touched, so external paste is impossible and copy-out is prevented). It
-    // reports an external-origin attempt (paste/drop carrying outside content) here
-    // so this module stays the single writer of the proctor log.
+    // touched, so external paste is impossible and copy-out is prevented). It reports an
+    // external-origin attempt (paste/drop carrying outside content) here so this module
+    // stays the single reporter of proctor events.
     root.addEventListener('codeatelier:clip-external', (e) => {
         record((e.detail && e.detail.type) || 'extpaste');
     });
