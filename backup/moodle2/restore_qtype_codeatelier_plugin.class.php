@@ -22,8 +22,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Restores CodeAtelier questions: the per-question options row and the
  * test-case rows. Only inserts when the parent question was newly created by
@@ -33,19 +31,22 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class restore_qtype_codeatelier_plugin extends restore_qtype_plugin {
-
     /**
      * Returns the paths to be handled by the plugin at question level.
      *
      * @return restore_path_element[]
      */
     protected function define_question_plugin_structure() {
-        $paths = array();
+        $paths = [];
 
-        $paths[] = new restore_path_element('codeatelier_options',
-                $this->get_pathfor('/codeatelier_options'));
-        $paths[] = new restore_path_element('codeatelier_test',
-                $this->get_pathfor('/codeatelier_tests/codeatelier_test'));
+        $paths[] = new restore_path_element(
+            'codeatelier_options',
+            $this->get_pathfor('/codeatelier_options')
+        );
+        $paths[] = new restore_path_element(
+            'codeatelier_test',
+            $this->get_pathfor('/codeatelier_tests/codeatelier_test')
+        );
 
         return $paths;
     }

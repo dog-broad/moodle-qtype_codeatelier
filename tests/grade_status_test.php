@@ -34,7 +34,6 @@ require_once($CFG->dirroot . '/question/engine/lib.php');
  * @covers     \qtype_codeatelier\external\grade_status
  */
 final class grade_status_test extends \advanced_testcase {
-
     /** @var \context */
     private $context;
 
@@ -50,8 +49,8 @@ final class grade_status_test extends \advanced_testcase {
         $course = $generator->create_course();
         $this->context = \context_course::instance($course->id);
         $qgen = $generator->get_plugin_generator('core_question');
-        $cat = $qgen->create_question_category(array('contextid' => $this->context->id));
-        $this->questionid = $qgen->create_question('codeatelier', 'judge', array('category' => $cat->id))->id;
+        $cat = $qgen->create_question_category(['contextid' => $this->context->id]);
+        $this->questionid = $qgen->create_question('codeatelier', 'judge', ['category' => $cat->id])->id;
     }
 
     /**
@@ -64,10 +63,10 @@ final class grade_status_test extends \advanced_testcase {
     private function submit(string $answer, bool $warm): array {
         if ($warm) {
             $q = \question_bank::load_question($this->questionid);
-            $q->judgerunner = new qtype_codeatelier_stub_runner(array(
+            $q->judgerunner = new qtype_codeatelier_stub_runner([
                 qtype_codeatelier_stub_runner::row('ran', "5\n"),
                 qtype_codeatelier_stub_runner::row('ran', "30\n"),
-            ));
+            ]);
             $q->get_judge_result($answer, 'python');
         }
         $question = \question_bank::load_question($this->questionid);
@@ -75,15 +74,15 @@ final class grade_status_test extends \advanced_testcase {
         $quba->set_preferred_behaviour('deferredfeedback');
         $slot = $quba->add_question($question, 1);
         $quba->start_all_questions();
-        $quba->process_action($slot, array('answer' => $answer, 'language' => 'python'));
+        $quba->process_action($slot, ['answer' => $answer, 'language' => 'python']);
         $quba->finish_all_questions();
         \question_engine::save_questions_usage_by_activity($quba);
-        return array($quba->get_id(), $slot);
+        return [$quba->get_id(), $slot];
     }
 
     public function test_status_reflects_grading(): void {
-        list($gradedqubaid, $gradedslot) = $this->submit('warm-answer', true);
-        list($pendingqubaid, $pendingslot) = $this->submit('cold-answer', false);
+        [$gradedqubaid, $gradedslot] = $this->submit('warm-answer', true);
+        [$pendingqubaid, $pendingslot] = $this->submit('cold-answer', false);
 
         $graded = grade_status::execute($gradedqubaid, $gradedslot);
         $this->assertTrue($graded['graded']);

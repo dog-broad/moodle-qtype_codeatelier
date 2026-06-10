@@ -19,8 +19,6 @@ namespace qtype_codeatelier;
 use qtype_codeatelier\local\integrity\cohort_analyser;
 use qtype_codeatelier\local\integrity\fingerprint;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Tests for the code-similarity engine: the structural fingerprint and the
  * cohort-relative detection (floor, uniform suppression, baseline outliers, clusters).
@@ -32,7 +30,6 @@ defined('MOODLE_INTERNAL') || die();
  * @covers     \qtype_codeatelier\local\integrity\fingerprint
  */
 final class cohort_analyser_test extends \advanced_testcase {
-
     /**
      * Build a submission record the analyser accepts.
      *
@@ -72,12 +69,23 @@ final class cohort_analyser_test extends \advanced_testcase {
                      . "            if nums[i] + nums[j] == target:\n                return [i, j]\n    return []";
 
         $sim = fn($x, $y) => $this->jaccard(fingerprint::of($x), fingerprint::of($y));
-        $this->assertEqualsWithDelta(1.0, $sim($orig, $renamed), 0.001,
-                'a fully renamed copy must still be detected');
-        $this->assertEqualsWithDelta(1.0, $sim($orig, $reformatted), 0.001,
-                'reformatting must not hide a copy');
-        $this->assertLessThan(0.3, $sim($orig, $independent),
-                'an independent solution must score low');
+        $this->assertEqualsWithDelta(
+            1.0,
+            $sim($orig, $renamed),
+            0.001,
+            'a fully renamed copy must still be detected'
+        );
+        $this->assertEqualsWithDelta(
+            1.0,
+            $sim($orig, $reformatted),
+            0.001,
+            'reformatting must not hide a copy'
+        );
+        $this->assertLessThan(
+            0.3,
+            $sim($orig, $independent),
+            'an independent solution must score low'
+        );
     }
 
     /**
@@ -119,8 +127,10 @@ final class cohort_analyser_test extends \advanced_testcase {
         ];
         $results = cohort_analyser::analyse($subs);
         $this->assertCount(1, $results);
-        $this->assertFalse($results[0]->analyzable,
-                'a uniform cohort must not be analysed for outliers');
+        $this->assertFalse(
+            $results[0]->analyzable,
+            'a uniform cohort must not be analysed for outliers'
+        );
         $this->assertSame(cohort_analyser::REASON_UNIFORM, $results[0]->reason);
         $this->assertGreaterThan(cohort_analyser::UNIFORM_MEDIAN, $results[0]->median);
         $this->assertSame([], $results[0]->clusters);
@@ -192,14 +202,18 @@ final class cohort_analyser_test extends \advanced_testcase {
             $this->sub(4, 'python', "def parse(text):\n    return [(p.split(chr(44))[0], int(p.split(chr(44))[1]))\n"
                     . "            for p in text.split(chr(10)) if chr(44) in p]"),
             $this->sub(5, 'python', "def parse(text):\n    pairs = {}\n    for entry in text.splitlines():\n"
-                    . "        k, _, v = entry.partition(chr(44))\n        pairs[k.strip()] = int(v)\n    return list(pairs.items())"),
+                    . "        k, _, v = entry.partition(chr(44))\n"
+                    . "        pairs[k.strip()] = int(v)\n    return list(pairs.items())"),
         ];
         $results = cohort_analyser::analyse($subs);
         $this->assertCount(1, $results);
         $this->assertTrue($results[0]->analyzable);
         $this->assertCount(1, $results[0]->clusters);
-        $this->assertSame(3, $results[0]->clusters[0]->size,
-                'the three renamed copies form one cluster, not separate pairs');
+        $this->assertSame(
+            3,
+            $results[0]->clusters[0]->size,
+            'the three renamed copies form one cluster, not separate pairs'
+        );
     }
 
     /**

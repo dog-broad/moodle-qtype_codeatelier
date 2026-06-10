@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier\judge;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Tests for the typed function signature: parsing, validation, and the typed
  * stdin/stdout protocol used to drive static-language harnesses.
@@ -28,7 +26,6 @@ defined('MOODLE_INTERNAL') || die();
  * @covers     \qtype_codeatelier\judge\signature
  */
 final class signature_test extends \advanced_testcase {
-
     public function test_parse_scalars_and_lists(): void {
         $s = signature::parse('int, int -> int');
         $this->assertSame(['int', 'int'], $s->params());
@@ -77,8 +74,10 @@ final class signature_test extends \advanced_testcase {
 
     public function test_encode_decode_maps(): void {
         // A map argument: count, then a key line and a value line per entry.
-        $this->assertSame("2\na\n1\nb\n2\n",
-                signature::parse('map<string,int>->int')->encode_args([['a' => 1, 'b' => 2]]));
+        $this->assertSame(
+            "2\na\n1\nb\n2\n",
+            signature::parse('map<string,int>->int')->encode_args([['a' => 1, 'b' => 2]])
+        );
         // A map return decodes to an object (to deep-equal the JSON-object expected).
         $out = signature::parse('->map<string,int>')->decode_return("2\na\n1\nb\n2");
         $this->assertEquals((object) ['a' => 1, 'b' => 2], $out);

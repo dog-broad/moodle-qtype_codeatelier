@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier\task;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Prune old judge-tier grading cache entries.
  *
@@ -32,11 +30,18 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class prune_judgecache extends \core\task\scheduled_task {
-
+    /**
+     * The task's display name.
+     *
+     * @return string
+     */
     public function get_name() {
         return get_string('task_prune_judgecache', 'qtype_codeatelier');
     }
 
+    /**
+     * Delete judge-cache entries older than the configured retention period.
+     */
     public function execute() {
         global $DB;
 

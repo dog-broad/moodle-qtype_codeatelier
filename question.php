@@ -41,7 +41,6 @@ require_once($CFG->dirroot . '/question/type/questionbase.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_codeatelier_question extends question_graded_automatically {
-
     /** @var string the primary/default language; always a member of the allowed set. */
     public $language;
 
@@ -94,7 +93,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
     public $checkersource = null;
 
     /** @var array the test cases (rows from qtype_codeatelier_tests). */
-    public $tests = array();
+    public $tests = [];
 
     /** @var \qtype_codeatelier\judge\judge0_runner|null injected runner; null means build from config. */
     public $judgerunner = null;
@@ -102,6 +101,11 @@ class qtype_codeatelier_question extends question_graded_automatically {
     /** @var \qtype_codeatelier\judge\web_judge_runner|null injected web-judge runner; null means build from config. */
     public $webjudgerunner = null;
 
+    /**
+     * The response variables this question expects, with their PARAM types.
+     *
+     * @return array
+     */
     public function get_expected_data() {
         // The student's chosen language is a per-attempt response variable (a
         // question may allow a set of languages). It is re-validated server-side
@@ -111,7 +115,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
         // to a server-side append-only log during the attempt (see the proctor module
         // and qtype_codeatelier\local\integrity\proctor_log), so they cannot be forged
         // or cleared through the form.
-        return array('answer' => PARAM_RAW, 'score' => PARAM_RAW_TRIMMED, 'language' => PARAM_ALPHANUMEXT);
+        return ['answer' => PARAM_RAW, 'score' => PARAM_RAW_TRIMMED, 'language' => PARAM_ALPHANUMEXT];
     }
 
     /**
@@ -121,7 +125,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
      * @return string[] the allowed language codes, primary first
      */
     public function get_allowed_languages() {
-        $allowed = array();
+        $allowed = [];
         if ($this->languages !== null && trim((string) $this->languages) !== '') {
             foreach (explode(',', (string) $this->languages) as $lang) {
                 $lang = trim($lang);
@@ -191,11 +195,22 @@ class qtype_codeatelier_question extends question_graded_automatically {
         return \qtype_codeatelier\judge\project_packager::decode_files($answer);
     }
 
+    /**
+     * The correct response, where one can be expressed.
+     *
+     * @return array|null
+     */
     public function get_correct_response() {
         // There is no single canonical solution to display.
         return null;
     }
 
+    /**
+     * Whether the response is complete enough to be graded.
+     *
+     * @param array $response
+     * @return bool
+     */
     public function is_complete_response(array $response) {
         if ($this->is_judge()) {
             if ($this->is_project()) {
@@ -216,10 +231,22 @@ class qtype_codeatelier_question extends question_graded_automatically {
                 && is_numeric($response['score']);
     }
 
+    /**
+     * Whether the response can be graded at all.
+     *
+     * @param array $response
+     * @return bool
+     */
     public function is_gradable_response(array $response) {
         return $this->is_complete_response($response);
     }
 
+    /**
+     * The message shown when a response is not gradable.
+     *
+     * @param array $response
+     * @return string
+     */
     public function get_validation_error(array $response) {
         if ($this->is_gradable_response($response)) {
             return '';
@@ -229,25 +256,50 @@ class qtype_codeatelier_question extends question_graded_automatically {
                 : get_string('pleaserun', 'qtype_codeatelier');
     }
 
+    /**
+     * Whether two responses are equivalent (so the engine can skip re-grading).
+     *
+     * @param array $prevresponse
+     * @param array $newresponse
+     * @return bool
+     */
     public function is_same_response(array $prevresponse, array $newresponse) {
         // The chosen language is part of the response identity: a different
         // language grades differently, so re-picking it is a new gradable response
         // (and must regrade rather than be deduplicated).
         $samelanguage = question_utils::arrays_same_at_key_missing_is_blank(
-                $prevresponse, $newresponse, 'language');
+            $prevresponse,
+            $newresponse,
+            'language'
+        );
         if ($this->is_judge()) {
             // The grade derives from the code (and language); a re-check that only
             // changes the (ignored) client score is the same gradable response.
             return $samelanguage && question_utils::arrays_same_at_key_missing_is_blank(
-                    $prevresponse, $newresponse, 'answer');
+                $prevresponse,
+                $newresponse,
+                'answer'
+            );
         }
         return $samelanguage
                 && question_utils::arrays_same_at_key_missing_is_blank(
-                        $prevresponse, $newresponse, 'answer')
+                    $prevresponse,
+                    $newresponse,
+                    'answer'
+                )
                 && question_utils::arrays_same_at_key_missing_is_blank(
-                        $prevresponse, $newresponse, 'score');
+                    $prevresponse,
+                    $newresponse,
+                    'score'
+                );
     }
 
+    /**
+     * A short plain-text summary of the response, for review and reports.
+     *
+     * @param array $response
+     * @return string|null
+     */
     public function summarise_response(array $response) {
         if ($this->uses_file_set()) {
             $files = $this->project_files_from_response($response);
@@ -259,12 +311,18 @@ class qtype_codeatelier_question extends question_graded_automatically {
         return shorten_text(trim($response['answer']), 200);
     }
 
+    /**
+     * Grade the response, returning the fraction and the resulting state.
+     *
+     * @param array $response
+     * @return array [float fraction, question_state state]
+     */
     public function grade_response(array $response) {
         if ($this->is_judge()) {
             return $this->grade_judge_response($response);
         }
         $fraction = $this->fraction_from_response($response);
-        return array($fraction, question_state::graded_state_for_fraction($fraction));
+        return [$fraction, question_state::graded_state_for_fraction($fraction)];
     }
 
     /**
@@ -302,10 +360,10 @@ class qtype_codeatelier_question extends question_graded_automatically {
         // runs the sandbox, populates the memo, and regrades the attempt.
         $result = $this->cached_judge_result($code, $language);
         if ($result === null) {
-            return array(0.0, question_state::$needsgrading);
+            return [0.0, question_state::$needsgrading];
         }
         $fraction = max(0.0, min(1.0, (float) $result['fraction']));
-        return array($fraction, question_state::graded_state_for_fraction($fraction));
+        return [$fraction, question_state::graded_state_for_fraction($fraction)];
     }
 
     /**
@@ -318,8 +376,9 @@ class qtype_codeatelier_question extends question_graded_automatically {
             return $this->judgerunner;
         }
         return \qtype_codeatelier\judge\judge0_runner::from_config(
-                $this->cputimelimit !== null ? (float) $this->cputimelimit : null,
-                $this->memorylimit !== null ? (int) $this->memorylimit : null);
+            $this->cputimelimit !== null ? (float) $this->cputimelimit : null,
+            $this->memorylimit !== null ? (int) $this->memorylimit : null
+        );
     }
 
     /**
@@ -331,14 +390,14 @@ class qtype_codeatelier_question extends question_graded_automatically {
      */
     protected function judge_limits($runner) {
         if ($runner !== null) {
-            return array('cputime' => $runner->get_cpu_time_limit(), 'memory' => $runner->get_memory_limit());
+            return ['cputime' => $runner->get_cpu_time_limit(), 'memory' => $runner->get_memory_limit()];
         }
-        return array(
+        return [
             'cputime' => $this->cputimelimit !== null ? (float) $this->cputimelimit
                     : \qtype_codeatelier\judge\judge0_runner::default_cpu_time_limit(),
             'memory' => $this->memorylimit !== null ? (int) $this->memorylimit
                     : \qtype_codeatelier\judge\judge0_runner::default_memory_limit(),
-        );
+        ];
     }
 
     /**
@@ -364,19 +423,39 @@ class qtype_codeatelier_question extends question_graded_automatically {
         $schemasql = (string) $this->schemasql;
         $allornothing = !empty($this->allornothing);
         $hash = \qtype_codeatelier\judge\result_cache::key(
-                $language, (string) $code, $this->tests, $limits, $schemasql, $allornothing,
-                $this->data_files_hash(), (string) $this->scenario, (string) $this->entrypoint,
-                (string) $this->functionsignature, (string) $this->entryfile,
-                (string) $this->checkersource, (string) $this->checkerlang);
+            $language,
+            (string) $code,
+            $this->tests,
+            $limits,
+            $schemasql,
+            $allornothing,
+            $this->data_files_hash(),
+            (string) $this->scenario,
+            (string) $this->entrypoint,
+            (string) $this->functionsignature,
+            (string) $this->entryfile,
+            (string) $this->checkersource,
+            (string) $this->checkerlang
+        );
         $cached = \qtype_codeatelier\judge\result_cache::get($hash);
         if ($cached !== null) {
             return $cached;
         }
         $runner->set_additional_files($this->data_files_zip());
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
-        $result = $grader->grade((string) $code, $language, $this->tests, $schemasql, $allornothing,
-                (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature,
-                (string) $this->entryfile, (string) $this->checkersource, (string) $this->checkerlang);
+        $result = $grader->grade(
+            (string) $code,
+            $language,
+            $this->tests,
+            $schemasql,
+            $allornothing,
+            (string) $this->scenario,
+            (string) $this->entrypoint,
+            (string) $this->functionsignature,
+            (string) $this->entryfile,
+            (string) $this->checkersource,
+            (string) $this->checkerlang
+        );
         if (empty($result['infrastructure'])) {
             \qtype_codeatelier\judge\result_cache::put($hash, $result);
         }
@@ -405,8 +484,18 @@ class qtype_codeatelier_question extends question_graded_automatically {
      */
     protected function web_cache_key($code) {
         return \qtype_codeatelier\judge\result_cache::key(
-                'javascript', (string) $code, $this->tests, array(), '', !empty($this->allornothing),
-                '', 'web', '', '', '');
+            'javascript',
+            (string) $code,
+            $this->tests,
+            [],
+            '',
+            !empty($this->allornothing),
+            '',
+            'web',
+            '',
+            '',
+            ''
+        );
     }
 
     /**
@@ -449,21 +538,30 @@ class qtype_codeatelier_question extends question_graded_automatically {
         if ($runner === null) {
             return null;
         }
-        $visible = array();
+        $visible = [];
         foreach ($this->tests as $test) {
             if ((int) $test->visibility === 1) {
                 $visible[] = $test;
             }
         }
         if (!$visible) {
-            return array('verdict' => 'AC', 'compileoutput' => '', 'testresults' => array());
+            return ['verdict' => 'AC', 'compileoutput' => '', 'testresults' => []];
         }
         $runner->set_additional_files($this->data_files_zip());
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
-        return $grader->grade((string) $code, $this->resolve_language($language), $visible,
-                (string) $this->schemasql, !empty($this->allornothing),
-                (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature,
-                (string) $this->entryfile, (string) $this->checkersource, (string) $this->checkerlang);
+        return $grader->grade(
+            (string) $code,
+            $this->resolve_language($language),
+            $visible,
+            (string) $this->schemasql,
+            !empty($this->allornothing),
+            (string) $this->scenario,
+            (string) $this->entrypoint,
+            (string) $this->functionsignature,
+            (string) $this->entryfile,
+            (string) $this->checkersource,
+            (string) $this->checkerlang
+        );
     }
 
     /**
@@ -482,9 +580,16 @@ class qtype_codeatelier_question extends question_graded_automatically {
         }
         $runner->set_additional_files($this->data_files_zip());
         $grader = new \qtype_codeatelier\judge\judge_grader($runner);
-        return $grader->run_scratch((string) $code, $this->resolve_language($language),
-                (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature,
-                (string) $this->schemasql, (string) $input, (string) $this->entryfile);
+        return $grader->run_scratch(
+            (string) $code,
+            $this->resolve_language($language),
+            (string) $this->scenario,
+            (string) $this->entrypoint,
+            (string) $this->functionsignature,
+            (string) $this->schemasql,
+            (string) $input,
+            (string) $this->entryfile
+        );
     }
 
     /**
@@ -501,10 +606,20 @@ class qtype_codeatelier_question extends question_graded_automatically {
         }
         $limits = $this->judge_limits($this->judge_runner());
         $hash = \qtype_codeatelier\judge\result_cache::key(
-                $this->resolve_language($language), (string) $code, $this->tests, $limits,
-                (string) $this->schemasql, !empty($this->allornothing), $this->data_files_hash(),
-                (string) $this->scenario, (string) $this->entrypoint, (string) $this->functionsignature,
-                (string) $this->entryfile, (string) $this->checkersource, (string) $this->checkerlang);
+            $this->resolve_language($language),
+            (string) $code,
+            $this->tests,
+            $limits,
+            (string) $this->schemasql,
+            !empty($this->allornothing),
+            $this->data_files_hash(),
+            (string) $this->scenario,
+            (string) $this->entrypoint,
+            (string) $this->functionsignature,
+            (string) $this->entryfile,
+            (string) $this->checkersource,
+            (string) $this->checkerlang
+        );
         return \qtype_codeatelier\judge\result_cache::get($hash);
     }
 
@@ -515,10 +630,16 @@ class qtype_codeatelier_question extends question_graded_automatically {
      */
     protected function data_files() {
         if (empty($this->contextid) || empty($this->id)) {
-            return array();
+            return [];
         }
-        return get_file_storage()->get_area_files($this->contextid, 'qtype_codeatelier', 'datafiles',
-                $this->id, 'filepath, filename', false);
+        return get_file_storage()->get_area_files(
+            $this->contextid,
+            'qtype_codeatelier',
+            'datafiles',
+            $this->id,
+            'filepath, filename',
+            false
+        );
     }
 
     /**
@@ -528,7 +649,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
      * @return string
      */
     protected function data_files_hash() {
-        $signature = array();
+        $signature = [];
         foreach ($this->data_files() as $file) {
             $signature[] = $file->get_filepath() . $file->get_filename() . ':' . $file->get_contenthash();
         }
@@ -550,7 +671,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
         if (!$files) {
             return null;
         }
-        $map = array();
+        $map = [];
         foreach ($files as $file) {
             $map[ltrim($file->get_filepath() . $file->get_filename(), '/')] = $file;
         }

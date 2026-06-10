@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier\judge;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Packages a multi-file project for Judge0's "Multi-file program" language (id 89).
  *
@@ -32,7 +30,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class project_packager {
-
     /** @var string[] languages a project may be authored in (judge-tier only). */
     const LANGUAGES = ['c', 'cpp', 'java', 'python', 'javascript', 'go', 'rust', 'php',
         'typescript', 'csharp', 'kotlin', 'ruby'];
@@ -163,7 +160,7 @@ class project_packager {
                     'run' => "#!/bin/sh\n./a.out\n",
                 ];
             case 'rust':
-                // rustc compiles the modules the entry file declares with `mod`.
+                // The rustc compiler builds the modules the entry file declares with `mod`.
                 return [
                     'compile' => "#!/bin/sh\n" . self::path_prepend('rust-*') . "rustc -O {$entry} -o a.out\n",
                     'run' => "#!/bin/sh\n./a.out\n",

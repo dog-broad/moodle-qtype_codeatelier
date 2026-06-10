@@ -22,8 +22,6 @@ use core_external\external_single_structure;
 use core_external\external_value;
 use qtype_codeatelier\local\integrity\proctor_log;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Record one soft anti-cheat event against the caller's own live judge-tier attempt.
  *
@@ -38,8 +36,9 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class log_proctor_event extends external_api {
-
     /**
+     * Define the parameters this web service accepts.
+     *
      * @return external_function_parameters
      */
     public static function execute_parameters(): external_function_parameters {
@@ -51,6 +50,8 @@ class log_proctor_event extends external_api {
     }
 
     /**
+     * Record one proctor event against the caller's own live attempt.
+     *
      * @param int $qubaid the question usage id
      * @param int $slot the slot within the usage
      * @param string $eventtype the event kind
@@ -60,8 +61,10 @@ class log_proctor_event extends external_api {
         global $CFG, $DB, $USER;
         require_once($CFG->dirroot . '/question/engine/lib.php');
 
-        $params = self::validate_parameters(self::execute_parameters(),
-                ['qubaid' => $qubaid, 'slot' => $slot, 'eventtype' => $eventtype]);
+        $params = self::validate_parameters(
+            self::execute_parameters(),
+            ['qubaid' => $qubaid, 'slot' => $slot, 'eventtype' => $eventtype]
+        );
 
         // Only the owner of a real quiz attempt logs events, and only against their own.
         // A preview (no quiz attempt) or a usage owned by someone else is ignored — we
@@ -79,8 +82,11 @@ class log_proctor_event extends external_api {
         }
 
         // Resolve the question attempt for this slot in the usage.
-        $qaid = $DB->get_field('question_attempts', 'id',
-                ['questionusageid' => $params['qubaid'], 'slot' => $params['slot']]);
+        $qaid = $DB->get_field(
+            'question_attempts',
+            'id',
+            ['questionusageid' => $params['qubaid'], 'slot' => $params['slot']]
+        );
         if (!$qaid) {
             return ['logged' => false];
         }
@@ -90,6 +96,8 @@ class log_proctor_event extends external_api {
     }
 
     /**
+     * Define the shape of this web service's return value.
+     *
      * @return external_single_structure
      */
     public static function execute_returns(): external_single_structure {

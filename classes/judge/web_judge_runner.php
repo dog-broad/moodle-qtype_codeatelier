@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier\judge;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Client for the self-hosted web-judge service (a headless-browser grader).
  *
@@ -36,7 +34,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class web_judge_runner {
-
     /** @var string base URL of the web-judge service. */
     private $baseurl;
 
@@ -44,6 +41,8 @@ class web_judge_runner {
     private $token;
 
     /**
+     * Create a runner targeting the web-judge service.
+     *
      * @param string $baseurl base URL of the web-judge service
      * @param string|null $token optional shared auth token
      */
@@ -109,7 +108,7 @@ class web_judge_runner {
         global $CFG;
         require_once($CFG->libdir . '/filelib.php');
 
-        // ignoresecurity: the base URL is an admin-configured, trusted service,
+        // The ignoresecurity option is deliberate: the base URL is an admin-configured, trusted service,
         // typically on a private network — the same posture as the judge runner.
         $curl = new \curl(['ignoresecurity' => true]);
         $headers = ['Content-Type: application/json'];

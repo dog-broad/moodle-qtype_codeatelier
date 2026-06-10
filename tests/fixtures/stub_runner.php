@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * A judge-tier runner test double that returns scripted per-case results without
  * touching the network, and counts how many times it ran (to assert memoisation).
@@ -25,7 +23,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runner {
-
     /** @var array the per-case result rows to return. */
     private $rows;
 
@@ -45,6 +42,8 @@ class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runn
     private $lastcheckercases = null;
 
     /**
+     * Create the stub with the rows its run() will return.
+     *
      * @param array $rows the per-case result rows run() should return
      */
     public function __construct(array $rows) {
@@ -61,25 +60,50 @@ class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runn
         $this->checkerrows = $rows;
     }
 
+    /**
+     * Return the scripted checker rows and record the cases received.
+     *
+     * @param string $checkerlang
+     * @param string $checkersource
+     * @param array $cases
+     * @return array
+     */
     public function run_checker(string $checkerlang, string $checkersource, array $cases): array {
         $this->calls++;
         $this->lastcheckercases = array_values($cases);
-        return $this->checkerrows ?? array();
+        return $this->checkerrows ?? [];
     }
 
     /**
-     * @return array|null the cases the most recent run_checker() received
+     * The cases the most recent run_checker() received.
+     *
+     * @return array|null
      */
     public function last_checker_cases() {
         return $this->lastcheckercases;
     }
 
+    /**
+     * Return the scripted result rows and record the language received.
+     *
+     * @param string $code
+     * @param string $language
+     * @param array $cases
+     * @return array
+     */
     public function run(string $code, string $language, array $cases): array {
         $this->calls++;
         $this->lastlanguage = $language;
         return $this->rows;
     }
 
+    /**
+     * Return the scripted result rows and record the packaged ZIP received.
+     *
+     * @param string $base64zip
+     * @param array $cases
+     * @return array
+     */
     public function run_multifile(string $base64zip, array $cases): array {
         $this->calls++;
         $this->lastmultifilezip = $base64zip;
@@ -87,21 +111,27 @@ class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runn
     }
 
     /**
-     * @return string|null the package the most recent run_multifile() received
+     * The package the most recent run_multifile() received.
+     *
+     * @return string|null
      */
     public function last_multifile_zip() {
         return $this->lastmultifilezip;
     }
 
     /**
-     * @return int how many times the runner was invoked
+     * How many times the runner was invoked.
+     *
+     * @return int
      */
     public function call_count(): int {
         return $this->calls;
     }
 
     /**
-     * @return string|null the language the most recent run() received
+     * The language the most recent run() received.
+     *
+     * @return string|null
      */
     public function last_language() {
         return $this->lastlanguage;
@@ -115,8 +145,8 @@ class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runn
      * @param array $extra overrides (e.g. compileoutput, statusdesc)
      * @return array
      */
-    public static function row(string $outcome, string $stdout = '', array $extra = array()): array {
-        return array_merge(array(
+    public static function row(string $outcome, string $stdout = '', array $extra = []): array {
+        return array_merge([
             'outcome' => $outcome,
             'stdout' => $stdout,
             'stderr' => '',
@@ -125,6 +155,6 @@ class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runn
             'memory' => 1000,
             'statusid' => 3,
             'statusdesc' => '',
-        ), $extra);
+        ], $extra);
     }
 }

@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier\task;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Grade judge-tier submissions off the web request.
  *
@@ -31,14 +29,21 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class grade_pending extends \core\task\scheduled_task {
-
     /** @var int max question usages to process per run (the rest wait for the next). */
     const MAX_USAGES_PER_RUN = 200;
 
+    /**
+     * The task's display name.
+     *
+     * @return string
+     */
     public function get_name() {
         return get_string('task_grade_pending', 'qtype_codeatelier');
     }
 
+    /**
+     * Grade needs-grading judge attempts in the sandbox and write the results back.
+     */
     public function execute() {
         global $DB, $CFG;
         require_once($CFG->dirroot . '/question/engine/lib.php');

@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Authoritative web (frontend) grading: the grade path adapts the web-judge
  * service's per-assertion results into a weighted fraction + verdict blob, with
@@ -29,7 +27,6 @@ defined('MOODLE_INTERNAL') || die();
  * @covers     \qtype_codeatelier\judge\web_judge_grader
  */
 final class web_judge_grader_test extends \advanced_testcase {
-
     /**
      * A fake web-judge runner returning canned per-assertion results (or an error).
      *
@@ -38,11 +35,19 @@ final class web_judge_grader_test extends \advanced_testcase {
      * @return \qtype_codeatelier\judge\web_judge_runner
      */
     protected function fake_runner(array $results, ?string $error = null) {
-        $fake = new class('http://example.test') extends \qtype_codeatelier\judge\web_judge_runner {
+        $fake = new class ('http://example.test') extends \qtype_codeatelier\judge\web_judge_runner {
             /** @var array */
             public $results = [];
             /** @var string|null */
             public $error = null;
+            /**
+             * Return the scripted results (or error) instead of calling the service.
+             *
+             * @param array $files
+             * @param array $assertions
+             * @param int $timeoutms
+             * @return array
+             */
             public function grade(array $files, array $assertions, int $timeoutms = 5000): array {
                 return $this->error !== null ? ['_error' => $this->error] : ['results' => $this->results];
             }
@@ -141,7 +146,7 @@ final class web_judge_grader_test extends \advanced_testcase {
         // Nothing is memoised yet, so grade_response leaves it awaiting grading
         // (the scheduled task runs the service and writes back) rather than scoring 0.
         $response = ['answer' => $q->projectfiles, 'language' => 'javascript'];
-        list($fraction, $state) = $q->grade_response($response);
+        [$fraction, $state] = $q->grade_response($response);
         $this->assertEquals(\question_state::$needsgrading, $state);
     }
 
@@ -151,8 +156,10 @@ final class web_judge_grader_test extends \advanced_testcase {
             'assertproperty' => 'text', 'assertmatcher' => 'equals', 'actions' => ''];
         $args = ['javascript', 'code', [$base], [], '', false, '', 'web', '', '', ''];
         $key = call_user_func_array(['\qtype_codeatelier\judge\result_cache', 'key'], $args);
-        foreach (['selector' => '#other', 'assertproperty' => 'exists',
-                'assertmatcher' => 'contains', 'actions' => 'click #x'] as $field => $value) {
+        foreach (
+            ['selector' => '#other', 'assertproperty' => 'exists',
+                'assertmatcher' => 'contains', 'actions' => 'click #x'] as $field => $value
+        ) {
             $changed = clone $base;
             $changed->$field = $value;
             $args[2] = [$changed];

@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier\judge;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Builds the judge-tier harness for the FUNCTION scenario.
  *
@@ -37,7 +35,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class function_harness {
-
     /** @var string[] dynamic languages: JSON maps onto native values, no signature needed. */
     const DYNAMIC = ['python', 'javascript', 'ruby', 'php', 'typescript'];
 
@@ -105,7 +102,7 @@ class function_harness {
                     . "console.log(JSON.stringify({$entrypoint}(..._ca_args)));\n";
 
             case 'typescript':
-                // tsc compiles to Node; `declare` avoids needing @types/node, and the
+                // The tsc compiler targets Node; `declare` avoids needing @types/node, and the
                 // `as any` cast bypasses arg-type checking so any signature calls cleanly.
                 return $code . "\n\n"
                     . "declare const require: any;\n"
@@ -241,6 +238,7 @@ class function_harness {
             ],
             'kotlin' => [
                 'preamble' => "import java.io.BufferedReader\nimport java.io.InputStreamReader\n"
+                    // phpcs:ignore moodle.Strings.ForbiddenStrings -- Kotlin requires escaping the in keyword.
                     . "val _br = BufferedReader(InputStreamReader(System.`in`))\nfun _l(): String = _br.readLine()",
                 'open' => "fun main() {",
                 'close' => "}",
@@ -251,20 +249,26 @@ class function_harness {
         return $dialects[$language] ?? null;
     }
 
+    // C is scalar-only (C handles arrays awkwardly; the form validates this), one scalar per line.
+
     /**
-     * C harness. C handles arrays awkwardly, so the function scenario is scalar-only
-     * (validated in the form); the line protocol still applies, one scalar per line.
+     * The C type for a scalar signature type.
      *
-     * @param string $code the student's function
-     * @param string $entrypoint the function name
-     * @param signature $sig the typed signature (scalar params and return)
-     * @return string the full program
+     * @param string $scalar a scalar type
+     * @return string
      */
     private static function c_type(string $scalar): string {
         return ['int' => 'int', 'long' => 'long long', 'double' => 'double',
             'bool' => 'int', 'string' => 'char*'][$scalar];
     }
 
+    /**
+     * C statement reading parameter $i (a scalar) from one input line.
+     *
+     * @param string $type the parameter type
+     * @param int $i the parameter index
+     * @return string
+     */
     private static function c_read(string $type, int $i): string {
         self::require_scalar($type, 'c');
         $read = ['int' => 'atoi(_l())', 'long' => 'atoll(_l())', 'double' => 'atof(_l())',
@@ -272,6 +276,12 @@ class function_harness {
         return self::c_type($type) . " p{$i} = {$read[$type]};";
     }
 
+    /**
+     * C statement(s) printing the scalar return value.
+     *
+     * @param string $type the return type
+     * @return string
+     */
     private static function c_print(string $type): string {
         self::require_scalar($type, 'c');
         return ['int' => 'printf("%d", _r);', 'long' => 'printf("%lld", _r);',
@@ -351,7 +361,7 @@ class function_harness {
                 return "Double.parseDouble(({$expr}).trim())";
             case 'bool':
                 return "({$expr}).trim().equals(\"1\")";
-            default: // string
+            default: // String.
                 return "({$expr})";
         }
     }
@@ -406,13 +416,26 @@ class function_harness {
             . "for (int _k = 0; _k < _r.length; _k++) { System.out.print(\"\\n\"); System.out.print({$elem}); }";
     }
 
-    // ---- C++ ---------------------------------------------------------------
+    // C++ dialect.
 
+    /**
+     * The C++ scalar type for a signature scalar.
+     *
+     * @param string $scalar a scalar type
+     * @return string
+     */
     private static function cpp_scalar(string $scalar): string {
         return ['int' => 'int', 'long' => 'long long', 'double' => 'double',
             'bool' => 'bool', 'string' => 'string'][$scalar];
     }
 
+    /**
+     * A C++ expression converting the line $expr to the given scalar type.
+     *
+     * @param string $scalar the scalar type
+     * @param string $expr the source string expression
+     * @return string
+     */
     private static function cpp_parse(string $scalar, string $expr): string {
         switch ($scalar) {
             case 'int':
@@ -423,11 +446,18 @@ class function_harness {
                 return "stod({$expr})";
             case 'bool':
                 return "(stoi({$expr}) != 0)";
-            default: // string
+            default: // String.
                 return "({$expr})";
         }
     }
 
+    /**
+     * C++ statement(s) reading parameter $i of the given type.
+     *
+     * @param string $type the parameter type
+     * @param int $i the parameter index
+     * @return string
+     */
     private static function cpp_read(string $type, int $i): string {
         $mapv = signature::map_value($type);
         if ($mapv !== null) {
@@ -444,6 +474,12 @@ class function_harness {
             . "for (int _k = 0; _k < _n{$i}; _k++) p{$i}[_k] = " . self::cpp_parse($element, '_l()') . ';';
     }
 
+    /**
+     * C++ statement(s) printing the return value of the given type.
+     *
+     * @param string $type the return type
+     * @return string
+     */
     private static function cpp_print(string $type): string {
         $mapv = signature::map_value($type);
         if ($mapv !== null) {
@@ -459,13 +495,26 @@ class function_harness {
             . "for (size_t _k = 0; _k < _r.size(); _k++) { cout << \"\\n\" << {$elem}; }";
     }
 
-    // ---- Go ----------------------------------------------------------------
+    // Go dialect.
 
+    /**
+     * The Go scalar type for a signature scalar.
+     *
+     * @param string $scalar a scalar type
+     * @return string
+     */
     private static function go_scalar(string $scalar): string {
         return ['int' => 'int', 'long' => 'int64', 'double' => 'float64',
             'bool' => 'bool', 'string' => 'string'][$scalar];
     }
 
+    /**
+     * Go statement(s) reading parameter $i of the given type.
+     *
+     * @param string $type the parameter type
+     * @param int $i the parameter index
+     * @return string
+     */
     private static function go_read(string $type, int $i): string {
         $mapv = signature::map_value($type);
         if ($mapv !== null) {
@@ -498,11 +547,17 @@ class function_harness {
                 return "{$name}, _ {$asgn} strconv.ParseFloat(strings.TrimSpace(_l()), 64);";
             case 'bool':
                 return "{$name} {$asgn} strings.TrimSpace(_l()) == \"1\";";
-            default: // string
+            default: // String.
                 return "{$name} {$asgn} _l();";
         }
     }
 
+    /**
+     * Go statement(s) printing the return value of the given type.
+     *
+     * @param string $type the return type
+     * @return string
+     */
     private static function go_print(string $type): string {
         $mapv = signature::map_value($type);
         if ($mapv !== null) {
@@ -520,13 +575,26 @@ class function_harness {
         return "fmt.Print(len(_r)); for _, _v := range _r { fmt.Print(\"\\n\"); {$body} }";
     }
 
-    // ---- Rust --------------------------------------------------------------
+    // Rust dialect.
 
+    /**
+     * The Rust scalar type for a signature scalar.
+     *
+     * @param string $scalar a scalar type
+     * @return string
+     */
     private static function rust_scalar(string $scalar): string {
         return ['int' => 'i64', 'long' => 'i64', 'double' => 'f64',
             'bool' => 'bool', 'string' => 'String'][$scalar];
     }
 
+    /**
+     * Rust statement(s) reading parameter $i of the given type.
+     *
+     * @param string $type the parameter type
+     * @param int $i the parameter index
+     * @return string
+     */
     private static function rust_read(string $type, int $i): string {
         $mapv = signature::map_value($type);
         if ($mapv !== null) {
@@ -547,22 +615,40 @@ class function_harness {
             . "for _ in 0.._n{$i} { p{$i}.push({$push}); }";
     }
 
+    /**
+     * A Rust statement reading one scalar into a new variable $name.
+     *
+     * @param string $scalar the scalar type
+     * @param string $name the target variable name
+     * @return string
+     */
     private static function rust_read_scalar(string $scalar, string $name): string {
         return "let {$name}: " . self::rust_scalar($scalar) . " = " . self::rust_value($scalar) . ';';
     }
 
-    /** A Rust expression reading and converting the next line to the scalar. */
+    /**
+     * A Rust expression reading and converting the next line to the scalar.
+     *
+     * @param string $scalar the scalar type
+     * @return string
+     */
     private static function rust_value(string $scalar): string {
         switch ($scalar) {
             case 'bool':
                 return '(_it.next().unwrap().trim() == "1")';
             case 'string':
                 return '_it.next().unwrap().to_string()';
-            default: // i64 / f64
+            default: // Numeric (i64 / f64).
                 return '_it.next().unwrap().trim().parse().unwrap()';
         }
     }
 
+    /**
+     * Rust statement(s) printing the return value of the given type.
+     *
+     * @param string $type the return type
+     * @return string
+     */
     private static function rust_print(string $type): string {
         $mapv = signature::map_value($type);
         if ($mapv !== null) {
@@ -579,13 +665,26 @@ class function_harness {
         return "print!(\"{}\", _r.len()); for _e in &_r { print!(\"\\n{}\", {$elem}); }";
     }
 
-    // ---- C# ----------------------------------------------------------------
+    // C# dialect.
 
+    /**
+     * The C# scalar type for a signature scalar.
+     *
+     * @param string $scalar a scalar type
+     * @return string
+     */
     private static function csharp_scalar(string $scalar): string {
         return ['int' => 'int', 'long' => 'long', 'double' => 'double',
             'bool' => 'bool', 'string' => 'string'][$scalar];
     }
 
+    /**
+     * A C# expression converting the line $expr to the given scalar type.
+     *
+     * @param string $scalar the scalar type
+     * @param string $expr the source string expression
+     * @return string
+     */
     private static function csharp_parse(string $scalar, string $expr): string {
         switch ($scalar) {
             case 'int':
@@ -596,11 +695,18 @@ class function_harness {
                 return "double.Parse(({$expr}).Trim(), CultureInfo.InvariantCulture)";
             case 'bool':
                 return "(({$expr}).Trim() == \"1\")";
-            default: // string
+            default: // String.
                 return "({$expr})";
         }
     }
 
+    /**
+     * C# statement(s) reading parameter $i of the given type.
+     *
+     * @param string $type the parameter type
+     * @param int $i the parameter index
+     * @return string
+     */
     private static function csharp_read(string $type, int $i): string {
         $mapv = signature::map_value($type);
         if ($mapv !== null) {
@@ -619,6 +725,12 @@ class function_harness {
             . "for (int _k = 0; _k < _n{$i}; _k++) p{$i}[_k] = " . self::csharp_parse($element, '_l()') . ';';
     }
 
+    /**
+     * C# statement(s) printing the return value of the given type.
+     *
+     * @param string $type the return type
+     * @return string
+     */
     private static function csharp_print(string $type): string {
         $element = signature::list_element($type);
         $fmt = function ($expr, $scalar) {
@@ -643,13 +755,25 @@ class function_harness {
             . $fmt('_r[_k]', $element) . "); }";
     }
 
-    // ---- Kotlin ------------------------------------------------------------
+    // Kotlin dialect.
 
+    /**
+     * The Kotlin primitive-array type for a scalar element.
+     *
+     * @param string $scalar a scalar type
+     * @return string
+     */
     private static function kotlin_arraytype(string $scalar): string {
         return ['int' => 'IntArray', 'long' => 'LongArray', 'double' => 'DoubleArray',
             'bool' => 'BooleanArray', 'string' => 'Array<String>'][$scalar];
     }
 
+    /**
+     * A Kotlin expression reading and converting the next line to the scalar.
+     *
+     * @param string $scalar the scalar type
+     * @return string
+     */
     private static function kotlin_value(string $scalar): string {
         switch ($scalar) {
             case 'int':
@@ -660,16 +784,29 @@ class function_harness {
                 return '_l().trim().toDouble()';
             case 'bool':
                 return '(_l().trim() == "1")';
-            default: // string
+            default: // String.
                 return '_l()';
         }
     }
 
+    /**
+     * The boxed Kotlin type (for map values, which need a reference type).
+     *
+     * @param string $scalar a scalar type
+     * @return string
+     */
     private static function kotlin_boxed(string $scalar): string {
         return ['int' => 'Int', 'long' => 'Long', 'double' => 'Double',
             'bool' => 'Boolean', 'string' => 'String'][$scalar];
     }
 
+    /**
+     * Kotlin statement(s) reading parameter $i of the given type.
+     *
+     * @param string $type the parameter type
+     * @param int $i the parameter index
+     * @return string
+     */
     private static function kotlin_read(string $type, int $i): string {
         $mapv = signature::map_value($type);
         if ($mapv !== null) {
@@ -687,6 +824,12 @@ class function_harness {
         return "val _n{$i} = _l().trim().toInt(); val p{$i} = {$ctor}(_n{$i}) { " . self::kotlin_value($element) . ' }';
     }
 
+    /**
+     * Kotlin statement(s) printing the return value of the given type.
+     *
+     * @param string $type the return type
+     * @return string
+     */
     private static function kotlin_print(string $type): string {
         $mapv = signature::map_value($type);
         if ($mapv !== null) {

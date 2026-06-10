@@ -1,0 +1,10 @@
+# Normalise all text files to LF in the repository and on checkout, so the codebase
+# stays consistent across platforms (Moodle's coding style requires LF line endings).
+* text=auto eol=lf
+
+# Binary assets must never be line-ending normalised.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary

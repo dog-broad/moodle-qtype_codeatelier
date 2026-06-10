@@ -28,8 +28,9 @@ use test_question_maker;
  * @covers     \qtype_codeatelier_question
  */
 final class question_test extends \advanced_testcase {
-
     /**
+     * A sample CodeAtelier question for the tests.
+     *
      * @return \qtype_codeatelier_question
      */
     protected function make_question() {
@@ -39,8 +40,9 @@ final class question_test extends \advanced_testcase {
     public function test_get_expected_data(): void {
         $question = $this->make_question();
         $this->assertEquals(
-                array('answer' => PARAM_RAW, 'score' => PARAM_RAW_TRIMMED, 'language' => PARAM_ALPHANUMEXT),
-                $question->get_expected_data());
+            ['answer' => PARAM_RAW, 'score' => PARAM_RAW_TRIMMED, 'language' => PARAM_ALPHANUMEXT],
+            $question->get_expected_data()
+        );
     }
 
     public function test_get_expected_data_judge_has_language_not_proctorlog(): void {
@@ -55,11 +57,11 @@ final class question_test extends \advanced_testcase {
         $question = $this->make_question();
         // Empty languages column means single-language (the primary).
         $question->languages = null;
-        $this->assertEquals(array('javascript'), $question->get_allowed_languages());
+        $this->assertEquals(['javascript'], $question->get_allowed_languages());
 
         // A populated set always includes the primary, primary first, deduped.
         $question->languages = 'python,javascript,python';
-        $this->assertEquals(array('javascript', 'python'), $question->get_allowed_languages());
+        $this->assertEquals(['javascript', 'python'], $question->get_allowed_languages());
     }
 
     public function test_resolve_language_guards_the_choice(): void {
@@ -77,9 +79,9 @@ final class question_test extends \advanced_testcase {
     public function test_is_same_response_accounts_for_language(): void {
         $question = test_question_maker::make_question('codeatelier', 'multilang');
 
-        $base = array('answer' => 'print(1)', 'score' => '', 'language' => 'python');
-        $samelang = array('answer' => 'print(1)', 'score' => '', 'language' => 'python');
-        $difflang = array('answer' => 'print(1)', 'score' => '', 'language' => 'c');
+        $base = ['answer' => 'print(1)', 'score' => '', 'language' => 'python'];
+        $samelang = ['answer' => 'print(1)', 'score' => '', 'language' => 'python'];
+        $difflang = ['answer' => 'print(1)', 'score' => '', 'language' => 'c'];
 
         $this->assertTrue($question->is_same_response($base, $samelang));
         // Same code, different language is a different gradable response (it regrades).
@@ -88,36 +90,36 @@ final class question_test extends \advanced_testcase {
 
     public function test_is_complete_response(): void {
         $question = $this->make_question();
-        $this->assertFalse($question->is_complete_response(array()));
-        $this->assertFalse($question->is_complete_response(array('answer' => 'x', 'score' => '')));
-        $this->assertFalse($question->is_complete_response(array('answer' => 'x', 'score' => 'abc')));
-        $this->assertTrue($question->is_complete_response(array('answer' => 'x', 'score' => '0.5')));
+        $this->assertFalse($question->is_complete_response([]));
+        $this->assertFalse($question->is_complete_response(['answer' => 'x', 'score' => '']));
+        $this->assertFalse($question->is_complete_response(['answer' => 'x', 'score' => 'abc']));
+        $this->assertTrue($question->is_complete_response(['answer' => 'x', 'score' => '0.5']));
     }
 
     public function test_grade_response_reads_and_clamps_score(): void {
         $question = $this->make_question();
 
-        list($fraction, $state) = $question->grade_response(array('answer' => 'x', 'score' => '1'));
+        [$fraction, $state] = $question->grade_response(['answer' => 'x', 'score' => '1']);
         $this->assertEquals(1.0, $fraction);
         $this->assertEquals(question_state::$gradedright, $state);
 
-        list($fraction) = $question->grade_response(array('answer' => 'x', 'score' => '0.5'));
+        [$fraction] = $question->grade_response(['answer' => 'x', 'score' => '0.5']);
         $this->assertEquals(0.5, $fraction);
 
         // Out-of-range and non-numeric scores are clamped / rejected.
-        list($fraction) = $question->grade_response(array('answer' => 'x', 'score' => '2'));
+        [$fraction] = $question->grade_response(['answer' => 'x', 'score' => '2']);
         $this->assertEquals(1.0, $fraction);
-        list($fraction) = $question->grade_response(array('answer' => 'x', 'score' => '-3'));
+        [$fraction] = $question->grade_response(['answer' => 'x', 'score' => '-3']);
         $this->assertEquals(0.0, $fraction);
-        list($fraction) = $question->grade_response(array('answer' => 'x', 'score' => 'abc'));
+        [$fraction] = $question->grade_response(['answer' => 'x', 'score' => 'abc']);
         $this->assertEquals(0.0, $fraction);
     }
 
     public function test_regrade_is_idempotent(): void {
         $question = $this->make_question();
-        $response = array('answer' => 'whatever', 'score' => '0.75');
-        list($first) = $question->grade_response($response);
-        list($second) = $question->grade_response($response);
+        $response = ['answer' => 'whatever', 'score' => '0.75'];
+        [$first] = $question->grade_response($response);
+        [$second] = $question->grade_response($response);
         $this->assertEquals($first, $second);
         $this->assertEquals(0.75, $second);
     }

@@ -22,8 +22,6 @@ use core_external\external_single_structure;
 use core_external\external_multiple_structure;
 use core_external\external_value;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Run a judge-tier submission against the question's visible example inputs.
  *
@@ -37,16 +35,21 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class run_examples extends external_api {
-
     /**
+     * Define the parameters this web service accepts.
+     *
      * @return external_function_parameters
      */
     public static function execute_parameters(): external_function_parameters {
         return new external_function_parameters([
             'questionid' => new external_value(PARAM_INT, 'The CodeAtelier question id'),
             'code' => new external_value(PARAM_RAW, 'The student submission to run'),
-            'language' => new external_value(PARAM_ALPHANUMEXT, 'The chosen language (re-validated server-side)',
-                    VALUE_DEFAULT, ''),
+            'language' => new external_value(
+                PARAM_ALPHANUMEXT,
+                'The chosen language (re-validated server-side)',
+                VALUE_DEFAULT,
+                ''
+            ),
         ]);
     }
 
@@ -62,8 +65,10 @@ class run_examples extends external_api {
         global $CFG, $USER;
         require_once($CFG->dirroot . '/question/engine/lib.php');
 
-        $params = self::validate_parameters(self::execute_parameters(),
-                ['questionid' => $questionid, 'code' => $code, 'language' => $language]);
+        $params = self::validate_parameters(
+            self::execute_parameters(),
+            ['questionid' => $questionid, 'code' => $code, 'language' => $language]
+        );
 
         $question = \question_bank::load_question($params['questionid']);
         if (!($question instanceof \qtype_codeatelier_question) || !$question->is_judge()) {
@@ -135,6 +140,8 @@ class run_examples extends external_api {
     }
 
     /**
+     * Define the shape of this web service's return value.
+     *
      * @return external_single_structure
      */
     public static function execute_returns(): external_single_structure {

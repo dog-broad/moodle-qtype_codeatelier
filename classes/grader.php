@@ -16,8 +16,6 @@
 
 namespace qtype_codeatelier;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Declarative matching-spec interpreter (server tier).
  *
@@ -44,7 +42,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class grader {
-
     /**
      * Decide whether an actual output matches the expected value under a rule.
      *
@@ -163,8 +160,12 @@ class grader {
                 } else {
                     $actual = self::actual_output($result);
                 }
-                $passed = self::matches($actual, (string) self::field($test, 'expected'),
-                        (string) $mode, self::field($test, 'tolerance'));
+                $passed = self::matches(
+                    $actual,
+                    (string) self::field($test, 'expected'),
+                    (string) $mode,
+                    self::field($test, 'tolerance')
+                );
                 $status = $passed ? 'pass' : 'fail';
             }
 

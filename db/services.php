@@ -42,7 +42,7 @@ $functions = [
     'qtype_codeatelier_run_reference' => [
         'classname' => 'qtype_codeatelier\external\run_reference',
         'methodname' => 'execute',
-        'description' => 'Teacher-only: run a reference solution against all tests and return each produced output (run-to-capture).',
+        'description' => 'Teacher-only: run a reference solution against all tests and return each output (run-to-capture).',
         'type' => 'read',
         'ajax' => true,
         'capabilities' => 'moodle/question:add',
@@ -57,7 +57,7 @@ $functions = [
     'qtype_codeatelier_log_proctor' => [
         'classname' => 'qtype_codeatelier\external\log_proctor_event',
         'methodname' => 'execute',
-        'description' => 'Record a soft anti-cheat event (focus-away, outside-paste) against the caller\'s own live judge-tier attempt.',
+        'description' => 'Record a soft anti-cheat event (focus-away, outside-paste) on the caller\'s own live attempt.',
         'type' => 'write',
         'ajax' => true,
     ],

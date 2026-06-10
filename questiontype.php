@@ -39,10 +39,9 @@ require_once($CFG->libdir . '/questionlib.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_codeatelier extends question_type {
-
     /** @var string[] every language code the question type knows, in picker order. */
-    const ALL_LANGUAGES = array('python', 'sql', 'javascript', 'c', 'cpp', 'java',
-            'go', 'rust', 'php', 'typescript', 'csharp', 'kotlin', 'ruby');
+    const ALL_LANGUAGES = ['python', 'sql', 'javascript', 'c', 'cpp', 'java',
+            'go', 'rust', 'php', 'typescript', 'csharp', 'kotlin', 'ruby'];
 
     /**
      * Filemanager / file-area options for the support-data files area.
@@ -50,7 +49,7 @@ class qtype_codeatelier extends question_type {
      * @return array
      */
     public static function datafiles_options() {
-        return array('subdirs' => 1, 'maxfiles' => 20, 'maxbytes' => 1048576, 'accepted_types' => '*');
+        return ['subdirs' => 1, 'maxfiles' => 20, 'maxbytes' => 1048576, 'accepted_types' => '*'];
     }
 
     /**
@@ -68,21 +67,41 @@ class qtype_codeatelier extends question_type {
         return false;
     }
 
+    /**
+     * The options table and its columns saved with each question.
+     *
+     * @return array the table name followed by its option column names
+     */
     public function extra_question_fields() {
-        return array('qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint',
+        return ['qtype_codeatelier_options', 'language', 'tier', 'scenario', 'entrypoint',
                 'startercode', 'schemasql', 'cputimelimit', 'memorylimit', 'languages', 'starters',
                 'referencesolution', 'allornothing', 'functionsignature', 'projectfiles', 'entryfile',
-                'checkerlang', 'checkersource');
+                'checkerlang', 'checkersource'];
     }
 
+    /**
+     * Load the question's options plus its test cases.
+     *
+     * @param object $question the question being loaded
+     * @return bool
+     */
     public function get_question_options($question) {
         global $DB;
         parent::get_question_options($question);
-        $question->options->tests = $DB->get_records('qtype_codeatelier_tests',
-                array('questionid' => $question->id), 'sortorder ASC, id ASC');
+        $question->options->tests = $DB->get_records(
+            'qtype_codeatelier_tests',
+            ['questionid' => $question->id],
+            'sortorder ASC, id ASC'
+        );
         return true;
     }
 
+    /**
+     * Save the question's options and test cases from the edit form.
+     *
+     * @param object $question the submitted question data
+     * @return bool
+     */
     public function save_question_options($question) {
         global $DB;
 
@@ -96,8 +115,8 @@ class qtype_codeatelier extends question_type {
         // sends an array); the primary language is always a member. Per-language
         // starter code is a JSON map, pruned to the languages actually allowed.
         $primary = isset($question->language) ? $question->language : 'python';
-        $allowed = array();
-        foreach ((array) ($question->languages ?? array()) as $lang) {
+        $allowed = [];
+        foreach ((array) ($question->languages ?? []) as $lang) {
             $lang = trim((string) $lang);
             if ($lang !== '' && in_array($lang, self::ALL_LANGUAGES, true) && !in_array($lang, $allowed, true)) {
                 $allowed[] = $lang;
@@ -110,7 +129,7 @@ class qtype_codeatelier extends question_type {
 
         $decoded = isset($question->starters) && trim((string) $question->starters) !== ''
                 ? json_decode((string) $question->starters, true) : null;
-        $starters = array();
+        $starters = [];
         if (is_array($decoded)) {
             foreach ($allowed as $lang) {
                 // The primary language's starter lives in startercode, not the map.
@@ -156,12 +175,15 @@ class qtype_codeatelier extends question_type {
         // Saves the language/tier/scenario options into qtype_codeatelier_options.
         parent::save_question_options($question);
 
-        $oldtests = $DB->get_records('qtype_codeatelier_tests',
-                array('questionid' => $question->id), 'id ASC');
+        $oldtests = $DB->get_records(
+            'qtype_codeatelier_tests',
+            ['questionid' => $question->id],
+            'id ASC'
+        );
 
         $sortorder = 0;
         $isweb = (($question->scenario ?? '') === 'web');
-        $inputs = isset($question->testinput) ? $question->testinput : array();
+        $inputs = isset($question->testinput) ? $question->testinput : [];
         foreach ($inputs as $key => $input) {
             $expected = isset($question->testexpected[$key]) ? $question->testexpected[$key] : '';
             $selector = isset($question->selector[$key]) ? trim((string) $question->selector[$key]) : '';
@@ -177,8 +199,10 @@ class qtype_codeatelier extends question_type {
 
             $matchmode = isset($question->matchmode[$key]) ? $question->matchmode[$key] : 'trimmed';
             $tolerance = null;
-            if ($matchmode === 'float' && isset($question->tolerance[$key])
-                    && trim($question->tolerance[$key]) !== '') {
+            if (
+                $matchmode === 'float' && isset($question->tolerance[$key])
+                    && trim($question->tolerance[$key]) !== ''
+            ) {
                 $tolerance = $question->tolerance[$key];
             }
 
@@ -218,39 +242,81 @@ class qtype_codeatelier extends question_type {
 
         // Remove any test rows the author deleted from the form.
         foreach ($oldtests as $leftover) {
-            $DB->delete_records('qtype_codeatelier_tests', array('id' => $leftover->id));
+            $DB->delete_records('qtype_codeatelier_tests', ['id' => $leftover->id]);
         }
 
         // Persist the support/data files from the form's draft area.
         if (isset($question->datafiles) && isset($question->context)) {
-            file_save_draft_area_files($question->datafiles, $question->context->id,
-                    'qtype_codeatelier', 'datafiles', (int) $question->id, self::datafiles_options());
+            file_save_draft_area_files(
+                $question->datafiles,
+                $question->context->id,
+                'qtype_codeatelier',
+                'datafiles',
+                (int) $question->id,
+                self::datafiles_options()
+            );
         }
     }
 
+    /**
+     * Move the question's data files when it moves to a new context.
+     *
+     * @param int $questionid
+     * @param int $oldcontextid
+     * @param int $newcontextid
+     */
     public function move_files($questionid, $oldcontextid, $newcontextid) {
         parent::move_files($questionid, $oldcontextid, $newcontextid);
-        get_file_storage()->move_area_files_to_new_context($oldcontextid, $newcontextid,
-                'qtype_codeatelier', 'datafiles', $questionid);
+        get_file_storage()->move_area_files_to_new_context(
+            $oldcontextid,
+            $newcontextid,
+            'qtype_codeatelier',
+            'datafiles',
+            $questionid
+        );
     }
 
+    /**
+     * Delete the question's data files.
+     *
+     * @param int $questionid
+     * @param int $contextid
+     */
     protected function delete_files($questionid, $contextid) {
         parent::delete_files($questionid, $contextid);
         get_file_storage()->delete_area_files($contextid, 'qtype_codeatelier', 'datafiles', $questionid);
     }
 
+    /**
+     * Populate the runtime question instance from its loaded data.
+     *
+     * @param question_definition $question
+     * @param object $questiondata
+     */
     protected function initialise_question_instance(question_definition $question, $questiondata) {
         parent::initialise_question_instance($question, $questiondata);
-        // $question->language is filled by the base class from extra_question_fields().
+        // The base class fills $question->language from extra_question_fields().
         $question->tests = array_values($questiondata->options->tests);
     }
 
+    /**
+     * Delete the question along with its test cases.
+     *
+     * @param int $questionid
+     * @param int $contextid
+     */
     public function delete_question($questionid, $contextid) {
         global $DB;
-        $DB->delete_records('qtype_codeatelier_tests', array('questionid' => $questionid));
+        $DB->delete_records('qtype_codeatelier_tests', ['questionid' => $questionid]);
         parent::delete_question($questionid, $contextid);
     }
 
+    /**
+     * No meaningful random-guess baseline (the result is supplied with the response).
+     *
+     * @param object $questiondata
+     * @return float|null
+     */
     public function get_random_guess_score($questiondata) {
         // The result is supplied with the response, so there is no meaningful
         // random-guess baseline to report.
@@ -279,9 +345,11 @@ class qtype_codeatelier extends question_type {
 
         foreach ($question->options->tests as $test) {
             $output .= "    <testcase>\n";
-            foreach (array('input', 'expected', 'matchmode', 'tolerance', 'weight',
+            foreach (
+                ['input', 'expected', 'matchmode', 'tolerance', 'weight',
                     'visibility', 'checkerquery', 'feedback',
-                    'selector', 'assertproperty', 'assertmatcher', 'actions', 'subtask') as $field) {
+                    'selector', 'assertproperty', 'assertmatcher', 'actions', 'subtask'] as $field
+            ) {
                 $value = isset($test->$field) ? $test->$field : '';
                 $output .= "      <{$field}>" . $format->xml_escape((string) $value) . "</{$field}>\n";
             }
@@ -289,8 +357,14 @@ class qtype_codeatelier extends question_type {
         }
 
         // The support/data files travel as base64 <file> elements.
-        $datafiles = get_file_storage()->get_area_files($question->contextid, 'qtype_codeatelier',
-                'datafiles', $question->id, 'filepath, filename', false);
+        $datafiles = get_file_storage()->get_area_files(
+            $question->contextid,
+            'qtype_codeatelier',
+            'datafiles',
+            $question->id,
+            'filepath, filename',
+            false
+        );
         $output .= $format->write_files($datafiles);
 
         return $output;
@@ -313,47 +387,49 @@ class qtype_codeatelier extends question_type {
         $qo = $format->import_headers($data);
         $qo->qtype = 'codeatelier';
 
-        $defaults = array(
+        $defaults = [
             'language' => 'python', 'tier' => 'practice', 'scenario' => 'stdinstdout',
             'entrypoint' => '', 'startercode' => '', 'schemasql' => '',
             'cputimelimit' => '', 'memorylimit' => '', 'languages' => '',
             'starters' => '', 'referencesolution' => '', 'allornothing' => 0,
             'functionsignature' => '', 'projectfiles' => '', 'entryfile' => '',
             'checkerlang' => '', 'checkersource' => '',
-        );
+        ];
         $fields = $this->extra_question_fields();
         array_shift($fields);
         foreach ($fields as $field) {
             $default = isset($defaults[$field]) ? $defaults[$field] : '';
-            $qo->$field = $format->getpath($data, array('#', $field, 0, '#'), $default);
+            $qo->$field = $format->getpath($data, ['#', $field, 0, '#'], $default);
         }
-        // save_question_options expects the allowed-language SET as an array (the
+        // The save path expects the allowed-language SET as an array (the
         // multi-select value), not the stored comma string — casting a comma string
         // would collapse the whole set to one bad element.
         $qo->languages = ($qo->languages !== '' && $qo->languages !== null)
             ? array_values(array_filter(array_map('trim', explode(',', $qo->languages))))
-            : array();
+            : [];
 
-        foreach (array('testinput', 'testexpected', 'matchmode', 'tolerance',
+        foreach (
+            ['testinput', 'testexpected', 'matchmode', 'tolerance',
                 'testweight', 'testvisibility', 'checkerquery', 'testfeedback',
-                'selector', 'assertproperty', 'assertmatcher', 'actions', 'subtask') as $arr) {
-            $qo->$arr = array();
+                'selector', 'assertproperty', 'assertmatcher', 'actions', 'subtask'] as $arr
+        ) {
+            $qo->$arr = [];
         }
-        $testcases = isset($data['#']['testcase']) ? $data['#']['testcase'] : array();
+        $testcases = isset($data['#']['testcase']) ? $data['#']['testcase'] : [];
         foreach ($testcases as $tc) {
-            $qo->testinput[] = $format->getpath($tc, array('#', 'input', 0, '#'), '');
-            $qo->testexpected[] = $format->getpath($tc, array('#', 'expected', 0, '#'), '');
-            $qo->matchmode[] = $format->getpath($tc, array('#', 'matchmode', 0, '#'), 'trimmed');
-            $qo->tolerance[] = $format->getpath($tc, array('#', 'tolerance', 0, '#'), '');
-            $qo->testweight[] = $format->getpath($tc, array('#', 'weight', 0, '#'), '1');
-            $qo->testvisibility[] = $format->getpath($tc, array('#', 'visibility', 0, '#'), 1);
-            $qo->checkerquery[] = $format->getpath($tc, array('#', 'checkerquery', 0, '#'), '');
-            $qo->testfeedback[] = $format->getpath($tc, array('#', 'feedback', 0, '#'), '');
-            $qo->selector[] = $format->getpath($tc, array('#', 'selector', 0, '#'), '');
-            $qo->assertproperty[] = $format->getpath($tc, array('#', 'assertproperty', 0, '#'), '');
-            $qo->assertmatcher[] = $format->getpath($tc, array('#', 'assertmatcher', 0, '#'), '');
-            $qo->actions[] = $format->getpath($tc, array('#', 'actions', 0, '#'), '');
-            $qo->subtask[] = $format->getpath($tc, array('#', 'subtask', 0, '#'), 0);
+            $qo->testinput[] = $format->getpath($tc, ['#', 'input', 0, '#'], '');
+            $qo->testexpected[] = $format->getpath($tc, ['#', 'expected', 0, '#'], '');
+            $qo->matchmode[] = $format->getpath($tc, ['#', 'matchmode', 0, '#'], 'trimmed');
+            $qo->tolerance[] = $format->getpath($tc, ['#', 'tolerance', 0, '#'], '');
+            $qo->testweight[] = $format->getpath($tc, ['#', 'weight', 0, '#'], '1');
+            $qo->testvisibility[] = $format->getpath($tc, ['#', 'visibility', 0, '#'], 1);
+            $qo->checkerquery[] = $format->getpath($tc, ['#', 'checkerquery', 0, '#'], '');
+            $qo->testfeedback[] = $format->getpath($tc, ['#', 'feedback', 0, '#'], '');
+            $qo->selector[] = $format->getpath($tc, ['#', 'selector', 0, '#'], '');
+            $qo->assertproperty[] = $format->getpath($tc, ['#', 'assertproperty', 0, '#'], '');
+            $qo->assertmatcher[] = $format->getpath($tc, ['#', 'assertmatcher', 0, '#'], '');
+            $qo->actions[] = $format->getpath($tc, ['#', 'actions', 0, '#'], '');
+            $qo->subtask[] = $format->getpath($tc, ['#', 'subtask', 0, '#'], 0);
         }
 
         // Rebuild the support/data files into a draft area so the normal save path
@@ -372,7 +448,7 @@ class qtype_codeatelier extends question_type {
     protected function import_datafiles($data) {
         global $USER;
         $draftid = file_get_unused_draft_itemid();
-        $files = isset($data['#']['file']) ? $data['#']['file'] : array();
+        $files = isset($data['#']['file']) ? $data['#']['file'] : [];
         if (!$files) {
             return $draftid;
         }
@@ -382,14 +458,14 @@ class qtype_codeatelier extends question_type {
             if (empty($filexml['@']['name'])) {
                 continue;
             }
-            $record = (object) array(
+            $record = (object) [
                 'contextid' => $usercontext->id,
                 'component' => 'user',
                 'filearea' => 'draft',
                 'itemid' => $draftid,
                 'filepath' => isset($filexml['@']['path']) ? $filexml['@']['path'] : '/',
                 'filename' => $filexml['@']['name'],
-            );
+            ];
             $fs->create_file_from_string($record, base64_decode(isset($filexml['#']) ? $filexml['#'] : ''));
         }
         return $draftid;
@@ -404,7 +480,7 @@ class qtype_codeatelier extends question_type {
      * @return array string key => localised text
      */
     public static function ui_strings() {
-        $keys = array(
+        $keys = [
             'running' => 'running',
             'loading' => 'preparingruntime',
             'runerror' => 'runerror',
@@ -449,8 +525,8 @@ class qtype_codeatelier extends question_type {
             'addfile' => 'projectaddfile',
             'deletefile' => 'projectdeletefile',
             'badfilename' => 'projectbadfilename',
-        );
-        $strings = array();
+        ];
+        $strings = [];
         foreach ($keys as $jskey => $stringid) {
             $strings[$jskey] = get_string($stringid, 'qtype_codeatelier');
         }
@@ -464,7 +540,7 @@ class qtype_codeatelier extends question_type {
      * @return array template variable => localised text
      */
     public static function ui_labels() {
-        return array(
+        return [
             'answerlabel' => get_string('answerlabel', 'qtype_codeatelier'),
             'loadingeditor' => get_string('loadingeditor', 'qtype_codeatelier'),
             'runlabel' => get_string('runlabel', 'qtype_codeatelier'),
@@ -478,6 +554,6 @@ class qtype_codeatelier extends question_type {
             'findlabel' => get_string('editorfind', 'qtype_codeatelier'),
             'shortcutstitle' => get_string('editorshortcutstitle', 'qtype_codeatelier'),
             'shortcutshtml' => get_string('editorshortcuts', 'qtype_codeatelier'),
-        );
+        ];
     }
 }

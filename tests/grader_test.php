@@ -30,7 +30,6 @@ namespace qtype_codeatelier;
  * @covers     \qtype_codeatelier\grader
  */
 final class grader_test extends \advanced_testcase {
-
     /**
      * Load and decode the shared corpus (objects as objects, mirroring the JS side).
      *
@@ -44,8 +43,11 @@ final class grader_test extends \advanced_testcase {
     public function test_matches_against_shared_corpus(): void {
         foreach ($this->corpus()->matches as $case) {
             $got = grader::matches($case->actual, $case->expected, $case->mode, $case->tolerance);
-            $this->assertSame($case->want, $got,
-                    "matches case '{$case->name}' ({$case->mode}) disagreed with the corpus");
+            $this->assertSame(
+                $case->want,
+                $got,
+                "matches case '{$case->name}' ({$case->mode}) disagreed with the corpus"
+            );
         }
     }
 
@@ -53,25 +55,41 @@ final class grader_test extends \advanced_testcase {
         foreach ($this->corpus()->grade as $case) {
             // The runner result is an array on the server tier; the corpus carries
             // it as an object, so cast each result to an array before grading.
-            $results = array_map(function($r) {
+            $results = array_map(function ($r) {
                 return (array) $r;
             }, $case->results);
 
-            $options = isset($case->options) ? (array) $case->options : array();
+            $options = isset($case->options) ? (array) $case->options : [];
             $graded = grader::grade($results, $case->tests, $options);
 
-            $this->assertEqualsWithDelta($case->wantfraction, $graded['fraction'], 1e-9,
-                    "grade case '{$case->name}' fraction disagreed with the corpus");
-            $this->assertSame($case->wantverdict, $graded['verdict'],
-                    "grade case '{$case->name}' verdict disagreed with the corpus");
+            $this->assertEqualsWithDelta(
+                $case->wantfraction,
+                $graded['fraction'],
+                1e-9,
+                "grade case '{$case->name}' fraction disagreed with the corpus"
+            );
+            $this->assertSame(
+                $case->wantverdict,
+                $graded['verdict'],
+                "grade case '{$case->name}' verdict disagreed with the corpus"
+            );
 
             foreach ($case->wanttestresults as $i => $want) {
-                $this->assertSame($want->status, $graded['testresults'][$i]['status'],
-                        "grade case '{$case->name}' test {$i} status disagreed");
-                $this->assertSame($want->passed, $graded['testresults'][$i]['passed'],
-                        "grade case '{$case->name}' test {$i} passed disagreed");
-                $this->assertSame((int) $want->visibility, $graded['testresults'][$i]['visibility'],
-                        "grade case '{$case->name}' test {$i} visibility disagreed");
+                $this->assertSame(
+                    $want->status,
+                    $graded['testresults'][$i]['status'],
+                    "grade case '{$case->name}' test {$i} status disagreed"
+                );
+                $this->assertSame(
+                    $want->passed,
+                    $graded['testresults'][$i]['passed'],
+                    "grade case '{$case->name}' test {$i} passed disagreed"
+                );
+                $this->assertSame(
+                    (int) $want->visibility,
+                    $graded['testresults'][$i]['visibility'],
+                    "grade case '{$case->name}' test {$i} visibility disagreed"
+                );
             }
         }
     }
