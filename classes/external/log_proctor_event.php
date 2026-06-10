@@ -37,6 +37,8 @@ use qtype_codeatelier\local\integrity\proctor_log;
  */
 class log_proctor_event extends external_api {
     /**
+     * Define the parameters this web service accepts.
+     *
      * @return external_function_parameters
      */
     public static function execute_parameters(): external_function_parameters {
@@ -48,6 +50,8 @@ class log_proctor_event extends external_api {
     }
 
     /**
+     * Record one proctor event against the caller's own live attempt.
+     *
      * @param int $qubaid the question usage id
      * @param int $slot the slot within the usage
      * @param string $eventtype the event kind
@@ -92,6 +96,8 @@ class log_proctor_event extends external_api {
     }
 
     /**
+     * Define the shape of this web service's return value.
+     *
      * @return external_single_structure
      */
     public static function execute_returns(): external_single_structure {

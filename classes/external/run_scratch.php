@@ -33,6 +33,8 @@ use core_external\external_value;
  */
 class run_scratch extends external_api {
     /**
+     * Define the parameters this web service accepts.
+     *
      * @return external_function_parameters
      */
     public static function execute_parameters(): external_function_parameters {
@@ -93,6 +95,8 @@ class run_scratch extends external_api {
     }
 
     /**
+     * Define the shape of this web service's return value.
+     *
      * @return external_single_structure
      */
     public static function execute_returns(): external_single_structure {

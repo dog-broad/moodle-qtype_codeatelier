@@ -50,6 +50,8 @@ class run_reference extends external_api {
     }
 
     /**
+     * Define the parameters this web service accepts.
+     *
      * @return external_function_parameters
      */
     public static function execute_parameters(): external_function_parameters {
@@ -59,7 +61,8 @@ class run_reference extends external_api {
             'language' => new external_value(PARAM_ALPHANUMEXT, 'The reference language (the question primary)'),
             'scenario' => new external_value(PARAM_ALPHANUMEXT, 'The scenario', VALUE_DEFAULT, 'stdinstdout'),
             'entrypoint' => new external_value(PARAM_RAW_TRIMMED, 'The function name (function scenario)', VALUE_DEFAULT, ''),
-            'functionsignature' => new external_value(PARAM_RAW_TRIMMED, 'Typed signature (static-language function)', VALUE_DEFAULT, ''),
+            'functionsignature' => new external_value(PARAM_RAW_TRIMMED,
+                'Typed signature (static-language function)', VALUE_DEFAULT, ''),
             'entryfile' => new external_value(PARAM_RAW_TRIMMED, 'The entry file name (project scenario)', VALUE_DEFAULT, ''),
             'schemasql' => new external_value(PARAM_RAW, 'SQL scenario schema + seed', VALUE_DEFAULT, ''),
             'cputimelimit' => new external_value(PARAM_RAW_TRIMMED, 'Per-question CPU-time limit, or empty', VALUE_DEFAULT, ''),
@@ -165,6 +168,8 @@ class run_reference extends external_api {
     }
 
     /**
+     * Define the shape of this web service's return value.
+     *
      * @return external_single_structure
      */
     public static function execute_returns(): external_single_structure {

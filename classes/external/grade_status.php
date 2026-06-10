@@ -34,6 +34,8 @@ use core_external\external_value;
  */
 class grade_status extends external_api {
     /**
+     * Define the parameters this web service accepts.
+     *
      * @return external_function_parameters
      */
     public static function execute_parameters(): external_function_parameters {
@@ -44,6 +46,8 @@ class grade_status extends external_api {
     }
 
     /**
+     * Report whether a submitted attempt has finished background grading.
+     *
      * @param int $qubaid the question usage id
      * @param int $slot the slot
      * @return array {graded, state}
@@ -82,6 +86,8 @@ class grade_status extends external_api {
     }
 
     /**
+     * Define the shape of this web service's return value.
+     *
      * @return external_single_structure
      */
     public static function execute_returns(): external_single_structure {
