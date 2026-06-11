@@ -21,7 +21,7 @@
 }}
 <div class="qtype_codeatelier-report">
     <p class="text-muted">
-        <span class="badge badge-secondary">{{tierlabel}}</span>
+        <span class="badge bg-secondary text-white">{{tierlabel}}</span>
     </p>
 
     {{#ispractice}}
@@ -84,7 +84,7 @@
     <h4>{{#str}}report_verdicts, qtype_codeatelier{{/str}}</h4>
     <p class="mb-4">
         {{#verdicts}}
-        <span class="badge badge-pill codeatelier-verdict-{{code}} border mr-1">{{label}}: {{count}}</span>
+        <span class="badge rounded-pill codeatelier-verdict-{{code}} border mr-1">{{label}}: {{count}}</span>
         {{/verdicts}}
     </p>
     {{/hasverdicts}}{{/isjudge}}
@@ -105,7 +105,7 @@
             <td>{{num}}</td>
             <td>{{visiblelabel}}</td>
             <td class="text-right">{{#haspassrate}}{{passratepct}}%{{/haspassrate}}{{^haspassrate}}&mdash;{{/haspassrate}}
-                {{#suspect}}<span class="badge badge-danger ml-1">{{#str}}report_suspect, qtype_codeatelier{{/str}}</span>{{/suspect}}</td>
+                {{#suspect}}<span class="badge bg-danger text-white ml-1">{{#str}}report_suspect, qtype_codeatelier{{/str}}</span>{{/suspect}}</td>
             <td class="text-right text-muted">{{passes}} / {{total}}</td>
         </tr>
         {{/pertest}}
@@ -116,7 +116,7 @@
     {{#multilang}}
     <h4>{{#str}}report_languages, qtype_codeatelier{{/str}}</h4>
     <ul class="list-inline mb-4">
-        {{#languages}}<li class="list-inline-item"><span class="badge badge-light border">{{language}}: {{count}}</span></li>{{/languages}}
+        {{#languages}}<li class="list-inline-item"><span class="badge bg-light text-dark border">{{language}}: {{count}}</span></li>{{/languages}}
     </ul>
     {{/multilang}}
 
@@ -175,7 +175,7 @@
             <div class="card-body py-2">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <span class="font-weight-bold">{{clusterlabel}}</span>
-                    <span class="badge badge-warning">{{simlabel}}</span>
+                    <span class="badge bg-warning text-dark">{{simlabel}}</span>
                 </div>
                 <ul class="list-inline mb-1">
                     {{#members}}

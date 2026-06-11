@@ -59,7 +59,7 @@ $rows = [];
 // Endpoint + live health probe.
 if ($endpoint === '') {
     $rows[] = [get_string('status_endpoint', 'qtype_codeatelier'),
-            html_writer::span(get_string('status_endpointnotset', 'qtype_codeatelier'), 'badge badge-secondary')];
+            html_writer::span(get_string('status_endpointnotset', 'qtype_codeatelier'), 'badge bg-secondary text-white')];
 } else {
     $rows[] = [get_string('status_endpoint', 'qtype_codeatelier'), s($endpoint)];
     $ping = $runner->ping();
@@ -69,7 +69,7 @@ if ($endpoint === '') {
                     'status_reachable',
                     'qtype_codeatelier',
                     s($ping['version'])
-                ), 'badge badge-success')];
+                ), 'badge bg-success text-white')];
         if (isset($ping['workers']) && is_array($ping['workers'])) {
             $summary = [];
             foreach ($ping['workers'] as $w) {
@@ -97,7 +97,7 @@ if ($endpoint === '') {
                     'status_unreachable',
                     'qtype_codeatelier',
                     s($ping['error'] ?? '')
-                ), 'badge badge-danger')];
+                ), 'badge bg-danger text-white')];
     }
 }
 
@@ -105,7 +105,7 @@ if ($endpoint === '') {
 $webrunner = \qtype_codeatelier\judge\web_judge_runner::from_config();
 if ($webrunner === null) {
     $rows[] = [get_string('status_webendpoint', 'qtype_codeatelier'),
-            html_writer::span(get_string('status_endpointnotset', 'qtype_codeatelier'), 'badge badge-secondary')];
+            html_writer::span(get_string('status_endpointnotset', 'qtype_codeatelier'), 'badge bg-secondary text-white')];
 } else {
     $rows[] = [get_string('status_webendpoint', 'qtype_codeatelier'),
             s(get_config('qtype_codeatelier', 'webjudgebaseurl'))];
@@ -116,14 +116,14 @@ if ($webrunner === null) {
                     'status_reachable',
                     'qtype_codeatelier',
                     s($webping['version'])
-                ), 'badge badge-success')];
+                ), 'badge bg-success text-white')];
     } else {
         $rows[] = [get_string('status_webhealth', 'qtype_codeatelier'),
                 html_writer::span(get_string(
                     'status_unreachable',
                     'qtype_codeatelier',
                     s($webping['error'] ?? '')
-                ), 'badge badge-danger')];
+                ), 'badge bg-danger text-white')];
     }
 }
 

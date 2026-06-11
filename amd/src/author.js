@@ -327,7 +327,9 @@ export const init = (params) => {
         const paintBadge = () => {
             const isjudge = tierSelForBadge.value === 'judge';
             tierBadge.textContent = isjudge ? (badges.judge || '') : (badges.practice || '');
-            tierBadge.className = 'badge ' + (isjudge ? 'badge-success' : 'badge-warning');
+            // bg-* + text-* (not the BS4 badge-* contextual classes, which BS5
+            // deprecates): these utilities exist identically in Bootstrap 4 and 5.
+            tierBadge.className = 'badge ' + (isjudge ? 'bg-success text-white' : 'bg-warning text-dark');
         };
         paintBadge();
         tierSelForBadge.addEventListener('change', paintBadge);
