@@ -190,6 +190,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'validationerror' => $question->get_validation_error($validationresponse),
         ] + qtype_codeatelier::ui_labels();
 
+        // Let the editor theme picker persist the student's choice through the core
+        // user-preference AJAX endpoint (M.util.set_user_preference).
+        user_preference_allow_ajax_update('qtype_codeatelier_editortheme', PARAM_ALPHA);
+
         // The control config is large (visible tests, every UI string, per-language
         // starters), and Moodle warns when js_call_amd arguments exceed 1024 chars.
         // Ship the config as a data attribute on the wrapper and pass only the
@@ -216,6 +220,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'readonly' => (bool) $options->readonly,
             'isjudge' => $isjudge,
             'allornothing' => (bool) $question->allornothing,
+            'editortheme' => get_user_preference('qtype_codeatelier_editortheme', 'auto'),
             'strings' => qtype_codeatelier::ui_strings(),
         ];
         $context['controlconfig'] = json_encode($controlconfig);

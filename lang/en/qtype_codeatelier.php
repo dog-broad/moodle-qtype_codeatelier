@@ -189,6 +189,7 @@ $string['previewrefresh'] = 'Refresh preview';
 $string['privacy:metadata:judge0'] = 'When a question is graded in Secure mode, the student\'s submission is sent to the site-configured code sandbox (Judge0) to be run and graded.';
 $string['privacy:metadata:judge0:code'] = 'The student\'s submitted code.';
 $string['privacy:metadata:judge0:language'] = 'The programming language the submission is run as.';
+$string['privacy:metadata:preference:editortheme'] = 'The student\'s chosen code-editor theme (auto, light, dark or high contrast).';
 $string['privacy:metadata:proctorlog'] = 'A server-side, append-only record of soft anti-cheat events (leaving the question, outside-paste attempts) on secure-mode attempts.';
 $string['privacy:metadata:proctorlog:eventtype'] = 'The kind of event (leaving the question, an outside-paste attempt).';
 $string['privacy:metadata:proctorlog:questionattemptid'] = 'The question attempt the event was recorded against.';

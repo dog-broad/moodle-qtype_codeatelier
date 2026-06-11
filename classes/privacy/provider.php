@@ -48,6 +48,7 @@ use core_privacy\local\request\writer;
 class provider implements
     \core_privacy\local\metadata\provider,
     \core_privacy\local\request\core_userlist_provider,
+    \core_privacy\local\request\user_preference_provider,
     \core_privacy\local\request\plugin\provider {
     /** @var string the proctor-log table. */
     private const TABLE = 'qtype_codeatelier_proctorlog';
@@ -80,7 +81,30 @@ class provider implements
             'files' => 'privacy:metadata:webjudge:files',
         ], 'privacy:metadata:webjudge');
 
+        // The student's chosen editor theme is stored as a Moodle user preference.
+        $collection->add_user_preference(
+            'qtype_codeatelier_editortheme',
+            'privacy:metadata:preference:editortheme'
+        );
+
         return $collection;
+    }
+
+    /**
+     * Export the user's stored preferences (the chosen editor theme).
+     *
+     * @param int $userid
+     */
+    public static function export_user_preferences(int $userid): void {
+        $theme = get_user_preferences('qtype_codeatelier_editortheme', null, $userid);
+        if ($theme !== null) {
+            writer::export_user_preference(
+                'qtype_codeatelier',
+                'qtype_codeatelier_editortheme',
+                $theme,
+                get_string('privacy:metadata:preference:editortheme', 'qtype_codeatelier')
+            );
+        }
     }
 
     /**
