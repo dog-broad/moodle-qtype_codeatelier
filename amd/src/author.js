@@ -83,9 +83,14 @@ const splitSigParams = (list) => {
  * @param {String} value the selected type
  * @return {HTMLSelectElement}
  */
-const sigTypeSelect = (value) => {
+const sigTypeSelect = (value, labelId) => {
     const sel = document.createElement('select');
     sel.className = 'custom-select custom-select-sm codeatelier-sigtype';
+    // Associate the visible row label so the select has an accessible name
+    // (it carries no <label for>, only an adjacent span).
+    if (labelId) {
+        sel.setAttribute('aria-labelledby', labelId);
+    }
     SIG_TYPES.forEach((t) => {
         const opt = document.createElement('option');
         opt.value = t;
@@ -126,8 +131,9 @@ const initSignatureBuilder = (config) => {
             row.className = 'codeatelier-sigparam';
             const label = document.createElement('span');
             label.className = 'codeatelier-block-label mr-1';
+            label.id = config.signaturebuilderid + '_plabel_' + idx;
             label.textContent = (str.param || 'Parameter') + ' ' + (idx + 1);
-            const sel = sigTypeSelect(p);
+            const sel = sigTypeSelect(p, label.id);
             sel.addEventListener('change', () => {
                 params[idx] = sel.value;
                 writeField();
@@ -168,8 +174,9 @@ const initSignatureBuilder = (config) => {
         retRow.className = 'codeatelier-sigreturn mt-2';
         const retLabel = document.createElement('span');
         retLabel.className = 'codeatelier-block-label mr-1';
+        retLabel.id = config.signaturebuilderid + '_rlabel';
         retLabel.textContent = str.returns || 'Returns';
-        const retSel = sigTypeSelect(ret);
+        const retSel = sigTypeSelect(ret, retLabel.id);
         retSel.addEventListener('change', () => {
             ret = retSel.value;
             writeField();
