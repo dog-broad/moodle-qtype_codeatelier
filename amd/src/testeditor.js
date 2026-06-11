@@ -113,7 +113,9 @@ const parseDelimited = (text, delim) => {
             } else {
                 cell += ch;
             }
-        } else if (ch === '"') {
+        } else if (ch === '"' && cell === '') {
+            // A quote only opens a quoted field at the start of a cell (RFC-4180).
+            // A stray quote mid-cell (e.g. 5' 6" in hand-written data) stays literal.
             inquotes = true;
         } else if (ch === delim) {
             row.push(cell);
@@ -176,7 +178,8 @@ const columnsFor = (scenario) => {
         return ['selector', 'assertproperty', 'assertmatcher', 'actions', 'expected', 'weight', 'visibility', 'feedback'];
     }
     if (scenario === 'sql') {
-        return ['input', 'expected', 'matchmode', 'checkerquery', 'weight', 'visibility', 'feedback'];
+        // SQL has no stdin: the student writes the query, so no input column.
+        return ['expected', 'matchmode', 'checkerquery', 'weight', 'visibility', 'feedback'];
     }
     return ['input', 'expected', 'matchmode', 'tolerance', 'weight', 'visibility', 'subtask', 'feedback'];
 };
@@ -249,29 +252,63 @@ const serialize = (format, rows, scenario) => {
  */
 const exampleRows = (scenario) => {
     if (scenario === 'web') {
+        // Property: text | attr:<name> | style:<css-prop>. Matcher: equals | contains | regex.
+        // Actions DSL (run before the check): `click <selector>` / `type <selector> <value>`,
+        // one per line or separated by ';'.
         return [
-            Object.assign(blankTest(), {selector: '#total', assertproperty: 'text',
-                assertmatcher: 'equals', expected: '42', weight: 1, visibility: 1,
-                feedback: 'The total should read 42.'}),
-            Object.assign(blankTest(), {selector: 'h1', assertproperty: 'text',
-                assertmatcher: 'contains', expected: 'Welcome', weight: 1, visibility: 0}),
+            Object.assign(blankTest(), {selector: '#title', assertproperty: 'text',
+                assertmatcher: 'equals', expected: 'Welcome', weight: 1, visibility: 1,
+                feedback: 'The heading reads "Welcome".'}),
+            Object.assign(blankTest(), {selector: 'a.home', assertproperty: 'attr:href',
+                assertmatcher: 'equals', expected: '/index.html', weight: 1, visibility: 1,
+                feedback: 'The home link points to /index.html.'}),
+            Object.assign(blankTest(), {selector: '#result', assertproperty: 'text',
+                assertmatcher: 'equals', actions: 'type #a 2\ntype #b 3\nclick #add',
+                expected: '5', weight: 1, visibility: 0,
+                feedback: 'Type 2 and 3, click Add — the result reads 5.'}),
         ];
     }
     if (scenario === 'sql') {
+        // expected = the query result as a JSON array of rows; resultset (any order)
+        // or resultset_ordered (exact order). Set checkerquery to grade a mutation:
+        // it runs after the student's statement and its result is compared to expected.
         return [
-            Object.assign(blankTest(), {expected: '[["Alice",30],["Bob",25]]', matchmode: 'exact',
-                weight: 1, visibility: 1, feedback: 'Returns all users ordered by name.'}),
-            Object.assign(blankTest(), {checkerquery: 'SELECT COUNT(*) FROM users', matchmode: 'trimmed',
-                weight: 1, visibility: 0}),
+            Object.assign(blankTest(), {expected: '[["Ada",55000],["Ben",70000]]',
+                matchmode: 'resultset_ordered', weight: 1, visibility: 1,
+                feedback: 'Employees ordered by name; columns name, salary.'}),
+            Object.assign(blankTest(), {expected: '[["Engineering"],["Sales"]]',
+                matchmode: 'resultset', weight: 1, visibility: 1,
+                feedback: 'The distinct departments, in any order.'}),
+            Object.assign(blankTest(), {expected: '[["Zoe"]]', matchmode: 'resultset_ordered',
+                checkerquery: 'SELECT name FROM employees ORDER BY id DESC LIMIT 1;',
+                weight: 1, visibility: 0,
+                feedback: 'After your INSERT, the newest employee should be Zoe.'}),
         ];
     }
-    const input1 = scenario === 'function' ? '[3, 4]' : '3 4';
-    const input2 = scenario === 'function' ? '[10, -2]' : '10 -2';
+    if (scenario === 'function') {
+        // input = the call arguments as a JSON array; expected = the return value as
+        // JSON; structured deep-compares (order-independent for objects).
+        return [
+            Object.assign(blankTest(), {input: '[3, 4]', expected: '7', matchmode: 'structured',
+                weight: 1, visibility: 1, feedback: 'add(3, 4) returns 7.'}),
+            Object.assign(blankTest(), {input: '[[5, 1, 4, 2]]', expected: '[1, 2, 4, 5]',
+                matchmode: 'structured', weight: 1, visibility: 1,
+                feedback: 'Sorts the list ascending.'}),
+            Object.assign(blankTest(), {input: '[[2, 7, 11, 15], 9]', expected: '[0, 1]',
+                matchmode: 'structured', weight: 1, visibility: 0,
+                feedback: 'Indices of the two values that sum to the target.'}),
+        ];
+    }
+    // stdin/stdout (and project): input = stdin, expected = stdout.
     return [
-        Object.assign(blankTest(), {input: input1, expected: '7', matchmode: 'trimmed',
-            weight: 1, visibility: 1, feedback: 'Adds the two numbers.'}),
-        Object.assign(blankTest(), {input: input2, expected: '8', matchmode: 'trimmed',
-            weight: 2, visibility: 0}),
+        Object.assign(blankTest(), {input: '3 4', expected: '7', matchmode: 'trimmed',
+            weight: 1, visibility: 1, feedback: 'Reads two integers and prints their sum.'}),
+        Object.assign(blankTest(), {input: '4\n3 1 4 1', expected: '9', matchmode: 'trimmed',
+            weight: 1, visibility: 1,
+            feedback: 'First line is the count, second line the numbers (multi-line input).'}),
+        Object.assign(blankTest(), {input: '1 2 3 4', expected: '2.5', matchmode: 'float',
+            tolerance: '0.001', weight: 2, visibility: 0,
+            feedback: 'Average of the inputs; float match within tolerance.'}),
     ];
 };
 
