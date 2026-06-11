@@ -181,6 +181,36 @@ class qtype_codeatelier extends question_type {
             'id ASC'
         );
 
+        // Test cases arrive from the editor as one JSON field. Expand it into the
+        // per-field arrays the loop below already consumes, so the record build +
+        // insert/update/delete path is reused unchanged.
+        if (isset($question->testcasesjson)) {
+            $decoded = json_decode((string) $question->testcasesjson, true);
+            foreach (['testinput', 'testexpected', 'matchmode', 'tolerance', 'testweight',
+                    'testvisibility', 'checkerquery', 'testfeedback', 'selector',
+                    'assertproperty', 'assertmatcher', 'actions', 'subtask'] as $arrayfield) {
+                $question->$arrayfield = [];
+            }
+            foreach (is_array($decoded) ? $decoded : [] as $test) {
+                if (!is_array($test)) {
+                    continue;
+                }
+                $question->testinput[] = (string) ($test['input'] ?? '');
+                $question->testexpected[] = (string) ($test['expected'] ?? '');
+                $question->matchmode[] = (string) ($test['matchmode'] ?? 'trimmed');
+                $question->tolerance[] = (string) ($test['tolerance'] ?? '');
+                $question->testweight[] = (string) ($test['weight'] ?? '1');
+                $question->testvisibility[] = (int) ($test['visibility'] ?? 1);
+                $question->checkerquery[] = (string) ($test['checkerquery'] ?? '');
+                $question->testfeedback[] = (string) ($test['feedback'] ?? '');
+                $question->selector[] = (string) ($test['selector'] ?? '');
+                $question->assertproperty[] = (string) ($test['assertproperty'] ?? '');
+                $question->assertmatcher[] = (string) ($test['assertmatcher'] ?? '');
+                $question->actions[] = (string) ($test['actions'] ?? '');
+                $question->subtask[] = (int) ($test['subtask'] ?? 0);
+            }
+        }
+
         $sortorder = 0;
         $isweb = (($question->scenario ?? '') === 'web');
         $inputs = isset($question->testinput) ? $question->testinput : [];
