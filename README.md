@@ -42,6 +42,14 @@ In progress: scaling for large cohorts (asynchronous grading) and a more flexibl
 
 CodeAtelier uses **CodeMirror 6** for the code editor — modern, lightweight, and accessible. It is lazy-loaded so it never stalls Moodle's JavaScript build the way a very large editor bundle can.
 
+## Performance
+
+The front end is pre-bundled with Rollup into `amd/build/`. CodeMirror 6 and the eleven language grammars are compiled into a single **editor** module — about **1.07 MB minified (~370 KB gzipped)**, the plugin's one large asset. It is loaded by Moodle's requirejs only on pages that render a CodeAtelier question (never site-wide), served gzipped, and cached after first load; every other module combined is ~17 KB gzipped. For comparison, this is well under a full Monaco bundle and on par with other rich web editors.
+
+A **performance budget** guards against accidental bloat: `npm run size` (run automatically by `npm run build`) prints each bundle's raw and gzipped size and fails if a bundle exceeds its budget, so a stray dependency can't quietly balloon the editor. See `tools/bundle-budget.mjs`.
+
+A future optimisation is to split the language grammars so a question loads only the one grammar it needs, rather than all eleven; it is deferred because it adds Rollup code-splitting and dynamic-import complexity through Moodle's AMD loader for a one-time, cached download.
+
 ## Authoring
 
 A teacher writes the prompt in Moodle's normal question-text editor, then fills a structured code-data section: the language and scenario (standard input/output, a function to call, or an SQL query), optional starter code and SQL schema, and a table of test cases. Each test case has an input, an expected result, a matching rule (exact, trimmed, regular expression, numeric tolerance, deep-equal structured value, or SQL result set), a weight for partial credit, visibility to students, and an optional feedback note. A **live preview** shows exactly what students will see, and **run-to-capture** fills the expected outputs by running a reference solution. No execution templates to write.
