@@ -69,12 +69,12 @@
     <div class="mb-4">
         {{#scoredist}}
         <div class="d-flex align-items-center mb-1">
-            <div class="mr-2" style="width: 8rem;">{{label}}</div>
+            <div class="me-2" style="width: 8rem;">{{label}}</div>
             <div class="progress flex-grow-1" style="height: 1.1rem;">
                 <div class="progress-bar codeatelier-bar-{{key}}" role="progressbar"
                     style="width: {{pct}}%;" aria-valuenow="{{pct}}" aria-valuemin="0" aria-valuemax="100">{{pct}}%</div>
             </div>
-            <div class="ml-2 text-muted small" style="width: 3rem;">{{count}}</div>
+            <div class="ms-2 text-muted small" style="width: 3rem;">{{count}}</div>
         </div>
         {{/scoredist}}
     </div>
@@ -84,7 +84,7 @@
     <h4>{{#str}}report_verdicts, qtype_codeatelier{{/str}}</h4>
     <p class="mb-4">
         {{#verdicts}}
-        <span class="badge rounded-pill codeatelier-verdict-{{code}} border mr-1">{{label}}: {{count}}</span>
+        <span class="badge rounded-pill codeatelier-verdict-{{code}} border me-1">{{label}}: {{count}}</span>
         {{/verdicts}}
     </p>
     {{/hasverdicts}}{{/isjudge}}
@@ -96,17 +96,17 @@
         <thead><tr>
             <th>{{#str}}report_test, qtype_codeatelier{{/str}}</th>
             <th>{{#str}}visibility, qtype_codeatelier{{/str}}</th>
-            <th class="text-right">{{#str}}report_passrate, qtype_codeatelier{{/str}}</th>
-            <th class="text-right">{{#str}}report_passes, qtype_codeatelier{{/str}}</th>
+            <th class="text-end">{{#str}}report_passrate, qtype_codeatelier{{/str}}</th>
+            <th class="text-end">{{#str}}report_passes, qtype_codeatelier{{/str}}</th>
         </tr></thead>
         <tbody>
         {{#pertest}}
         <tr class="{{#suspect}}table-danger{{/suspect}}">
             <td>{{num}}</td>
             <td>{{visiblelabel}}</td>
-            <td class="text-right">{{#haspassrate}}{{passratepct}}%{{/haspassrate}}{{^haspassrate}}&mdash;{{/haspassrate}}
-                {{#suspect}}<span class="badge bg-danger text-white ml-1">{{#str}}report_suspect, qtype_codeatelier{{/str}}</span>{{/suspect}}</td>
-            <td class="text-right text-muted">{{passes}} / {{total}}</td>
+            <td class="text-end">{{#haspassrate}}{{passratepct}}%{{/haspassrate}}{{^haspassrate}}&mdash;{{/haspassrate}}
+                {{#suspect}}<span class="badge bg-danger text-white ms-1">{{#str}}report_suspect, qtype_codeatelier{{/str}}</span>{{/suspect}}</td>
+            <td class="text-end text-muted">{{passes}} / {{total}}</td>
         </tr>
         {{/pertest}}
         </tbody>
@@ -140,7 +140,7 @@
         <thead><tr>
             <th>{{#str}}report_user, qtype_codeatelier{{/str}}</th>
             <th>{{#str}}language, qtype_codeatelier{{/str}}</th>
-            <th class="text-right">{{#str}}result_score, qtype_codeatelier{{/str}}</th>
+            <th class="text-end">{{#str}}result_score, qtype_codeatelier{{/str}}</th>
             <th>{{#str}}report_verdict, qtype_codeatelier{{/str}}</th>
             <th>{{#str}}report_when, qtype_codeatelier{{/str}}</th>
             <th></th>
@@ -150,7 +150,7 @@
         <tr>
             <td>{{user}}</td>
             <td>{{language}}</td>
-            <td class="text-right">{{#graded}}{{scorepct}}%{{/graded}}{{^graded}}&mdash;{{/graded}}</td>
+            <td class="text-end">{{#graded}}{{scorepct}}%{{/graded}}{{^graded}}&mdash;{{/graded}}</td>
             <td>{{#verdict}}<span class="codeatelier-verdict codeatelier-verdict-{{verdict}}">{{verdictlabel}}</span>{{/verdict}}</td>
             <td class="text-muted small">{{time}}</td>
             <td>{{#reviewurl}}<a href="{{reviewurl}}">{{#str}}report_review, qtype_codeatelier{{/str}}</a>{{/reviewurl}}</td>
@@ -174,7 +174,7 @@
         <div class="card mb-2 border-warning">
             <div class="card-body py-2">
                 <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="font-weight-bold">{{clusterlabel}}</span>
+                    <span class="fw-bold">{{clusterlabel}}</span>
                     <span class="badge bg-warning text-dark">{{simlabel}}</span>
                 </div>
                 <ul class="list-inline mb-1">
@@ -185,7 +185,7 @@
                     </li>
                     {{/members}}
                 </ul>
-                <ul class="small text-muted mb-0 pl-3">
+                <ul class="small text-muted mb-0 ps-3">
                     {{#pairs}}
                     <li>{{a}} &harr; {{b}} &mdash; {{simpct}}%</li>
                     {{/pairs}}

@@ -130,7 +130,7 @@ const initSignatureBuilder = (config) => {
             const row = document.createElement('div');
             row.className = 'codeatelier-sigparam';
             const label = document.createElement('span');
-            label.className = 'codeatelier-block-label mr-1';
+            label.className = 'codeatelier-block-label me-1';
             label.id = config.signaturebuilderid + '_plabel_' + idx;
             label.textContent = (str.param || 'Parameter') + ' ' + (idx + 1);
             const sel = sigTypeSelect(p, label.id);
@@ -173,7 +173,7 @@ const initSignatureBuilder = (config) => {
         const retRow = document.createElement('div');
         retRow.className = 'codeatelier-sigreturn mt-2';
         const retLabel = document.createElement('span');
-        retLabel.className = 'codeatelier-block-label mr-1';
+        retLabel.className = 'codeatelier-block-label me-1';
         retLabel.id = config.signaturebuilderid + '_rlabel';
         retLabel.textContent = str.returns || 'Returns';
         const retSel = sigTypeSelect(ret, retLabel.id);

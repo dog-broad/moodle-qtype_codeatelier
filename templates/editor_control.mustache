@@ -67,7 +67,7 @@
         <p class="codeatelier-language-used small text-muted" data-role="language-used">{{languageusedlabel}}</p>
         {{/showlanguageused}}
         <div class="codeatelier-editor">
-            <label class="sr-only" for="{{answerid}}">{{answerlabel}}</label>
+            <label class="visually-hidden" for="{{answerid}}">{{answerlabel}}</label>
             <div class="codeatelier-skeleton" data-role="skeleton" aria-hidden="true">
                 <span class="codeatelier-skeleton-label">{{loadingeditor}}</span>
             </div>
@@ -78,7 +78,7 @@
             </noscript>
             {{^readonly}}
             <div class="codeatelier-editor-tools" data-role="editor-tools">
-                <label class="sr-only" for="{{wrapperid}}_theme">{{themelabel}}</label>
+                <label class="visually-hidden" for="{{wrapperid}}_theme">{{themelabel}}</label>
                 <select class="custom-select custom-select-sm codeatelier-theme-select" id="{{wrapperid}}_theme" data-role="editor-theme">
                     <option value="auto">{{themeauto}}</option>
                     <option value="light">{{themelight}}</option>

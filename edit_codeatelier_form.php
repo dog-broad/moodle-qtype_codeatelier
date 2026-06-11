@@ -330,9 +330,9 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $capture = html_writer::tag(
             'button',
             get_string('captureexpected', 'qtype_codeatelier'),
-            ['type' => 'button', 'class' => 'btn btn-secondary ml-2', 'id' => $previewid . '_capture']
+            ['type' => 'button', 'class' => 'btn btn-secondary ms-2', 'id' => $previewid . '_capture']
         );
-        $status = html_writer::tag('span', '', ['class' => 'codeatelier-status ml-2',
+        $status = html_writer::tag('span', '', ['class' => 'codeatelier-status ms-2',
                 'id' => $previewid . '_status', 'role' => 'status', 'aria-live' => 'polite']);
         // The author config bundles every UI string and label, exceeding the
         // 1024-char cap Moodle enforces on js_call_amd arguments. Ship it on the
@@ -397,7 +397,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                     get_string('captureexpected_help', 'qtype_codeatelier'),
                     ['class' => 'text-muted']
                 )
-            . $refresh . $capture . $status . $pane
+            . html_writer::div($refresh . $capture . $status, 'codeatelier-preview-controls')
+            . $pane
         );
 
         $PAGE->requires->js_call_amd('qtype_codeatelier/author', 'init', [[

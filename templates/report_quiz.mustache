@@ -28,19 +28,19 @@
         <thead><tr>
             <th>{{#str}}report_question, qtype_codeatelier{{/str}}</th>
             <th>{{#str}}tier, qtype_codeatelier{{/str}}</th>
-            <th class="text-right">{{#str}}report_attempts, qtype_codeatelier{{/str}}</th>
-            <th class="text-right">{{#str}}report_needsgrading, qtype_codeatelier{{/str}}</th>
-            <th class="text-right">{{#str}}report_meanscore, qtype_codeatelier{{/str}}</th>
+            <th class="text-end">{{#str}}report_attempts, qtype_codeatelier{{/str}}</th>
+            <th class="text-end">{{#str}}report_needsgrading, qtype_codeatelier{{/str}}</th>
+            <th class="text-end">{{#str}}report_meanscore, qtype_codeatelier{{/str}}</th>
         </tr></thead>
         <tbody>
         {{#questions}}
         <tr>
             <td><a href="{{reporturl}}">{{name}}</a></td>
             <td><span class="badge bg-secondary text-white">{{tierlabel}}</span></td>
-            <td class="text-right">{{totalattempts}}</td>
-            <td class="text-right {{#hasneedsgrading}}text-warning{{/hasneedsgrading}}">{{needsgrading}}</td>
-            <td class="text-right">{{#hasmean}}{{meanscorepct}}%{{/hasmean}}{{^hasmean}}&mdash;{{/hasmean}}{{#ispractice}}
-                <span class="badge bg-warning text-dark ml-1">{{#str}}report_selfreported, qtype_codeatelier{{/str}}</span>{{/ispractice}}</td>
+            <td class="text-end">{{totalattempts}}</td>
+            <td class="text-end {{#hasneedsgrading}}text-warning{{/hasneedsgrading}}">{{needsgrading}}</td>
+            <td class="text-end">{{#hasmean}}{{meanscorepct}}%{{/hasmean}}{{^hasmean}}&mdash;{{/hasmean}}{{#ispractice}}
+                <span class="badge bg-warning text-dark ms-1">{{#str}}report_selfreported, qtype_codeatelier{{/str}}</span>{{/ispractice}}</td>
         </tr>
         {{/questions}}
         </tbody>
