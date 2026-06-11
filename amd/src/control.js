@@ -29,6 +29,7 @@ import {run, describe, stop} from 'qtype_codeatelier/runner';
 import {grade} from 'qtype_codeatelier/grader';
 import {tokenDiff} from 'qtype_codeatelier/diff';
 import {setup as setupProjectFiles} from 'qtype_codeatelier/projectfiles';
+import {setUserPreference} from 'core_user/repository';
 import {setupPreview, gradeWeb} from 'qtype_codeatelier/webruntime';
 
 /**
@@ -589,9 +590,9 @@ const setupThemeControl = (root, config) => {
         select.value = chosen;
         select.addEventListener('change', () => {
             chosen = select.value;
-            if (window.M && window.M.util && typeof window.M.util.set_user_preference === 'function') {
-                window.M.util.set_user_preference('qtype_codeatelier_editortheme', chosen);
-            }
+            setUserPreference('qtype_codeatelier_editortheme', chosen).catch(() => {
+                // A failed persist is non-fatal — the theme still applies this attempt.
+            });
             apply();
         });
     }
