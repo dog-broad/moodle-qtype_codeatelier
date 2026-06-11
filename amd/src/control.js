@@ -859,6 +859,13 @@ export const init = (params) => {
             scratchlabel.textContent = (config.scenario === 'function')
                 ? (strings.argslabel || 'Arguments (JSON)')
                 : (strings.input || 'Input');
+            if (scratchinput && !scratchinput.value) {
+                scratchinput.placeholder = (config.scenario === 'function')
+                    ? (strings.scratchplaceholderfn
+                        || 'e.g. [[1, 2, 3]] — or click "Use this input" on an example below')
+                    : (strings.scratchplaceholderio
+                        || 'Type the program input here, or click "Use this input" on an example below');
+            }
         }
     }
 

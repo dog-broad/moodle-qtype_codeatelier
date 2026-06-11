@@ -130,6 +130,8 @@
     color: var(--ca-text);
     padding: 0.75rem;
     border-radius: 0.375rem;
+    /* Render native controls (select drop-downs, scrollbars, the caret) dark. */
+    color-scheme: dark;
 }
 
 /*
@@ -144,6 +146,109 @@
 
 .qtype_codeatelier .btn-link {
     color: var(--ca-focus);
+}
+
+/* Link-style buttons (find, focus toggle, "use this input") need a visible
+ * hover/focus in dark/high-contrast — Bootstrap darkens the link colour, which
+ * disappears on a dark surface. Keep the themed colour and underline instead. */
+.qtype_codeatelier .btn-link:hover,
+.qtype_codeatelier .btn-link:focus {
+    color: var(--ca-focus);
+    text-decoration: underline;
+}
+
+/* Native form controls: drop-downs and text inputs default to a white surface,
+ * which becomes a light island in dark mode. Theme the closed control (the open
+ * drop-down list is handled by color-scheme above). */
+.qtype_codeatelier .custom-select {
+    background-color: var(--ca-surface);
+    color: var(--ca-text);
+    border-color: var(--ca-border);
+}
+
+.qtype_codeatelier .codeatelier-scratch-input,
+.qtype_codeatelier .codeatelier-filename {
+    background-color: var(--ca-surface);
+    color: var(--ca-text);
+    border-color: var(--ca-border);
+}
+
+.qtype_codeatelier .codeatelier-scratch-input::placeholder {
+    color: var(--ca-text-faint);
+}
+
+/* Keyboard-shortcuts disclosure: a tidy key-cap look that themes cleanly. */
+.qtype_codeatelier .codeatelier-shortcut-list {
+    margin: 0.35rem 0 0;
+    padding-left: 1.1rem;
+    font-size: 0.85rem;
+    line-height: 1.7;
+}
+
+.qtype_codeatelier .codeatelier-shortcuts kbd {
+    background-color: var(--ca-surface-alt);
+    color: var(--ca-text);
+    border: 1px solid var(--ca-border);
+    border-radius: 0.2rem;
+    padding: 0.05rem 0.35rem;
+    font-size: 0.8em;
+    box-shadow: none;
+}
+
+/*
+ * Find / replace: CodeMirror's default search panel is a bare row of native
+ * widgets. Give it a modern, themed look — a panel surface, rounded inputs and
+ * flat buttons — consistent across light, dark and high-contrast.
+ */
+.qtype_codeatelier .cm-panels {
+    background-color: var(--ca-surface-muted);
+    color: var(--ca-text);
+    border-color: var(--ca-border);
+}
+
+.qtype_codeatelier .cm-search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.55rem;
+}
+
+.qtype_codeatelier .cm-search .cm-textfield {
+    background-color: var(--ca-surface);
+    color: var(--ca-text);
+    border: 1px solid var(--ca-border);
+    border-radius: 0.25rem;
+    padding: 0.2rem 0.45rem;
+    font-size: 0.85rem;
+}
+
+.qtype_codeatelier .cm-search .cm-textfield:focus {
+    outline: 2px solid var(--ca-focus);
+    outline-offset: -1px;
+}
+
+.qtype_codeatelier .cm-search .cm-button {
+    background: var(--ca-surface-alt);
+    background-image: none;
+    color: var(--ca-text);
+    border: 1px solid var(--ca-border);
+    border-radius: 0.25rem;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.82rem;
+}
+
+.qtype_codeatelier .cm-search .cm-button:hover {
+    background: var(--ca-border);
+}
+
+.qtype_codeatelier .cm-search label {
+    font-size: 0.82rem;
+    color: var(--ca-text-muted);
+}
+
+.qtype_codeatelier .cm-panel.cm-search [name="close"] {
+    color: var(--ca-text-muted);
 }
 
 .qtype_codeatelier .codeatelier-editor {
