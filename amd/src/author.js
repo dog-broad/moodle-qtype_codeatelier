@@ -737,8 +737,60 @@ export const init = (params) => {
 
     btn.addEventListener('click', () => {
         const wrapperid = config.previewid + '_wb';
+        const scen = scenSel ? scenSel.value : 'stdinstdout';
+        const entryfileField = byId(config.entryfileid);
+        const langsSel = byId(config.languagesid);
+        const tierSel = byId(config.tierid);
+        const allornothing = byId('id_allornothing');
+
+        const allowedLangs = () => {
+            const set = [langSel ? langSel.value : 'python'];
+            if (langsSel) {
+                Array.prototype.slice.call(langsSel.selectedOptions || []).forEach((o) => {
+                    if (set.indexOf(o.value) === -1) {
+                        set.push(o.value);
+                    }
+                });
+            }
+            return set;
+        };
+        let starterMap = {};
+        const startersHidden = byId(config.startersid);
+        if (startersHidden) {
+            try {
+                starterMap = JSON.parse(startersHidden.value || '{}') || {};
+            } catch (e) {
+                starterMap = {};
+            }
+        }
+
+        // control.js reads its config from the wrapper's data-config attribute (the
+        // student renderer ships it the same way), so build the full control config
+        // and hand it to the template — not as initControl params, which are ignored
+        // beyond the wrapper id.
+        const controlconfig = {
+            wrapperid: wrapperid,
+            language: langSel ? langSel.value : 'python',
+            languages: allowedLangs(),
+            starters: starterMap,
+            scenario: scen,
+            entrypoint: byId(config.entrypointid) ? byId(config.entrypointid).value : '',
+            entryfile: scen === 'web' ? 'index.html' : (entryfileField ? entryfileField.value.trim() : ''),
+            schemasql: (scen === 'sql' && schemaTa) ? schemaTa.value : null,
+            pyodidebaseurl: config.pyodidebaseurl,
+            sqljsbaseurl: config.sqljsbaseurl,
+            tests: gatherTests(),
+            timeoutms: config.timeoutms,
+            readonly: false,
+            isjudge: !!(tierSel && tierSel.value === 'judge'),
+            allornothing: !!(allornothing && allornothing.checked),
+            editortheme: 'auto',
+            strings: config.strings,
+        };
+
         const context = Object.assign({}, config.previewcontext, {
             wrapperid: wrapperid,
+            controlconfig: JSON.stringify(controlconfig),
             questiontext: byId(config.questiontextid) ? byId(config.questiontextid).value : '',
             answername: wrapperid + '_answer',
             answerid: wrapperid + '_answer',
@@ -756,22 +808,11 @@ export const init = (params) => {
             container.querySelectorAll('[data-role="answer"], [data-role="score"]').forEach((el) => {
                 el.removeAttribute('name');
             });
-            initControl({
-                wrapperid: wrapperid,
-                language: langSel ? langSel.value : 'python',
-                scenario: scenSel ? scenSel.value : 'stdinstdout',
-                entrypoint: byId(config.entrypointid) ? byId(config.entrypointid).value : '',
-                schemasql: schemaTa ? schemaTa.value : '',
-                pyodidebaseurl: config.pyodidebaseurl,
-                sqljsbaseurl: config.sqljsbaseurl,
-                tests: gatherTests(),
-                timeoutms: config.timeoutms,
-                readonly: false,
-                strings: config.strings,
-            });
+            initControl({wrapperid: wrapperid});
             return null;
-        }).catch(() => {
-            container.textContent = config.strings.runerror || 'Preview could not be rendered.';
+        }).catch((err) => {
+            container.textContent = (config.strings.runerror || 'Preview could not be rendered.')
+                + ' ' + String(err && err.message ? err.message : err);
         });
     });
 
