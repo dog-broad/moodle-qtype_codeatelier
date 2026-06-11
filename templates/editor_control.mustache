@@ -78,6 +78,13 @@
             </noscript>
             {{^readonly}}
             <div class="codeatelier-editor-tools" data-role="editor-tools">
+                <label class="sr-only" for="{{wrapperid}}_theme">{{themelabel}}</label>
+                <select class="custom-select custom-select-sm codeatelier-theme-select" id="{{wrapperid}}_theme" data-role="editor-theme">
+                    <option value="auto">{{themeauto}}</option>
+                    <option value="light">{{themelight}}</option>
+                    <option value="dark">{{themedark}}</option>
+                    <option value="hc">{{themehighcontrast}}</option>
+                </select>
                 <button type="button" class="btn btn-link btn-sm codeatelier-editor-find" data-role="editor-find">{{findlabel}}</button>
                 <details class="codeatelier-shortcuts">
                     <summary>{{shortcutstitle}}</summary>

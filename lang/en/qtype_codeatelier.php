@@ -85,6 +85,11 @@ $string['editorshortcuts'] = '<ul class="codeatelier-shortcut-list">
 <li><kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> — indent or outdent (press <kbd>Esc</kbd> first to tab out of the editor)</li>
 </ul>';
 $string['editorshortcutstitle'] = 'Editor keyboard shortcuts';
+$string['editortheme'] = 'Editor theme';
+$string['editortheme_auto'] = 'Theme: Auto';
+$string['editortheme_dark'] = 'Theme: Dark';
+$string['editortheme_hc'] = 'Theme: High contrast';
+$string['editortheme_light'] = 'Theme: Light';
 $string['entryfile'] = 'Entry file';
 $string['entryfile_help'] = 'The name of the file the server compiles and runs as the program\'s entry point (for example `main.cpp`, or `Main.java` whose class is run). It must be one of the project files below.';
 $string['entryfilemissing'] = 'The entry file must be one of the project files.';
