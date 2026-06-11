@@ -203,6 +203,85 @@ const initSignatureBuilder = (config) => {
 };
 
 /**
+ * The closest Moodle form-item wrapper for an element.
+ *
+ * @param {HTMLElement} el
+ * @return {HTMLElement|null}
+ */
+const fitemOf = (el) => (el ? (el.closest('.fitem') || el.closest('.form-group') || el.parentNode) : null);
+
+/**
+ * Gate the function signature on the chosen languages, and explain the contract.
+ *
+ * A typed signature only applies to compiled languages, which must declare their
+ * argument types over a bounded grammar (scalars, list<scalar>, map<string,scalar>).
+ * Dynamic languages (Python/JavaScript/…) receive the arguments as JSON of any
+ * shape — including lists of objects — and need no signature. So for a
+ * dynamic-only function question the signature field and builder are hidden and a
+ * note explains the JSON-arguments contract; when a compiled language is allowed
+ * the builder is shown with a note about the type limits. This keeps the teacher
+ * from guessing whether a nested-type question is supportable.
+ *
+ * @param {Object} config the authoring config
+ */
+const initSignatureVisibility = (config) => {
+    const field = byId(config.functionsignatureid);
+    const host = byId(config.signaturebuilderid);
+    const scenSel = byId(config.scenarioid);
+    if (!field || !scenSel) {
+        return;
+    }
+    const langSel = byId(config.languageid);
+    const langsSel = byId(config.languagesid);
+    const str = config.sigbuilderstrings || {};
+    const staticLangs = config.staticfunctionlangs || [];
+
+    const note = document.createElement('div');
+    note.className = 'codeatelier-signote text-muted small';
+    note.setAttribute('data-role', 'signature-note');
+    const anchor = fitemOf(host) || fitemOf(field);
+    if (anchor && anchor.parentNode) {
+        anchor.parentNode.insertBefore(note, anchor.nextSibling);
+    }
+
+    const allowedLangs = () => {
+        const set = [langSel ? langSel.value : ''];
+        if (langsSel) {
+            Array.prototype.slice.call(langsSel.selectedOptions || []).forEach((o) => {
+                if (set.indexOf(o.value) === -1) {
+                    set.push(o.value);
+                }
+            });
+        }
+        return set.filter(Boolean);
+    };
+
+    const update = () => {
+        if (scenSel.value !== 'function') {
+            note.style.display = 'none';
+            return;
+        }
+        const needsSig = allowedLangs().some((l) => staticLangs.indexOf(l) !== -1);
+        [fitemOf(field), fitemOf(host)].forEach((item) => {
+            if (item) {
+                item.style.display = needsSig ? '' : 'none';
+            }
+        });
+        note.style.display = '';
+        note.textContent = needsSig ? (str.staticnote || '') : (str.dynamicnote || '');
+    };
+
+    update();
+    scenSel.addEventListener('change', update);
+    if (langSel) {
+        langSel.addEventListener('change', update);
+    }
+    if (langsSel) {
+        langsSel.addEventListener('change', update);
+    }
+};
+
+/**
  * The test-editor model API, attached to the testcasesjson field by the
  * testeditor module. Read lazily (at click time) since both modules init
  * independently. Null if the editor has not mounted (e.g. JS-off fallback).
@@ -335,6 +414,7 @@ export const init = (params) => {
     // signature string into the functionsignature field (which still accepts typed
     // input — the builder is an enhancement that keeps it in sync).
     initSignatureBuilder(config);
+    initSignatureVisibility(config);
 
     // CodeMirror on the starter-code field, re-mounted when the language changes.
     if (starterTa) {

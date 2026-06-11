@@ -358,12 +358,19 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             ],
             'functionsignatureid' => 'id_functionsignature',
             'signaturebuilderid' => 'id_signaturebuilder',
+            // The compiled languages: their function questions need a typed signature
+            // and so are bounded to the flat type grammar. The JS uses this to gate the
+            // signature UI on the chosen languages (dynamic languages take JSON args of
+            // any shape and need no signature).
+            'staticfunctionlangs' => \qtype_codeatelier\judge\function_harness::STATIC,
             'sigbuilderstrings' => [
                 'returns' => get_string('sigbuilder_returns', 'qtype_codeatelier'),
                 'addparam' => get_string('sigbuilder_addparam', 'qtype_codeatelier'),
                 'removeparam' => get_string('sigbuilder_removeparam', 'qtype_codeatelier'),
                 'noparams' => get_string('sigbuilder_noparams', 'qtype_codeatelier'),
                 'param' => get_string('sigbuilder_param', 'qtype_codeatelier'),
+                'dynamicnote' => get_string('sigbuilder_dynamicnote', 'qtype_codeatelier'),
+                'staticnote' => get_string('sigbuilder_staticnote', 'qtype_codeatelier'),
             ],
             'questiontextid' => 'id_questiontext',
             'previewbtnid' => $previewid . '_btn',
@@ -704,7 +711,11 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                     if ($sig === '') {
                         $errors['functionsignature'] = get_string('signaturerequired', 'qtype_codeatelier');
                     } else if (!\qtype_codeatelier\judge\signature::is_valid($sig)) {
-                        $errors['functionsignature'] = get_string('signatureinvalid', 'qtype_codeatelier');
+                        // A nested type (e.g. list<map<...>>) is the common reason a
+                        // signature is rejected; point at the dynamic-language path.
+                        $errors['functionsignature'] = preg_match('/<[^>]*</', $sig)
+                            ? get_string('signaturenested', 'qtype_codeatelier')
+                            : get_string('signatureinvalid', 'qtype_codeatelier');
                     } else if (array_intersect($allowed, \qtype_codeatelier\judge\function_harness::SCALAR_ONLY)) {
                         // C grades scalar parameters/return only (arrays are awkward in C).
                         $parsed = \qtype_codeatelier\judge\signature::parse($sig);
