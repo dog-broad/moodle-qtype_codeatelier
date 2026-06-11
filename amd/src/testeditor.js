@@ -164,6 +164,133 @@ const parseImport = (format, text) => {
     return parseDelimited(text, format === 'tsv' ? '\t' : ',');
 };
 
+/**
+ * The columns shown when exporting or templating, scoped to the scenario so a
+ * teacher sees only the fields that matter for the question format they author.
+ *
+ * @param {String} scenario
+ * @return {String[]}
+ */
+const columnsFor = (scenario) => {
+    if (scenario === 'web') {
+        return ['selector', 'assertproperty', 'assertmatcher', 'actions', 'expected', 'weight', 'visibility', 'feedback'];
+    }
+    if (scenario === 'sql') {
+        return ['input', 'expected', 'matchmode', 'checkerquery', 'weight', 'visibility', 'feedback'];
+    }
+    return ['input', 'expected', 'matchmode', 'tolerance', 'weight', 'visibility', 'subtask', 'feedback'];
+};
+
+/**
+ * The cell value for one column when serialising. Visibility renders as the
+ * human-friendly visible/hidden the importer also accepts.
+ *
+ * @param {String} key
+ * @param {Object} t a test object
+ * @return {String|Number}
+ */
+const exportValue = (key, t) => {
+    if (key === 'visibility') {
+        return Number(t.visibility) === 0 ? 'hidden' : 'visible';
+    }
+    return (t[key] === undefined || t[key] === null) ? '' : t[key];
+};
+
+/**
+ * Quote a delimited cell per RFC-4180 (wrap in quotes and double internal
+ * quotes when it contains the delimiter, a quote, or a newline).
+ *
+ * @param {String|Number} value
+ * @param {String} delim
+ * @return {String}
+ */
+const csvCell = (value, delim) => {
+    const str = String(value === undefined || value === null ? '' : value);
+    if (str.indexOf(delim) >= 0 || str.indexOf('"') >= 0 || str.indexOf('\n') >= 0) {
+        return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+};
+
+/**
+ * Serialise test objects to the chosen format (header row + one row per test),
+ * scoped to the scenario's columns.
+ *
+ * @param {String} format 'tsv' | 'csv' | 'json'
+ * @param {Object[]} rows
+ * @param {String} scenario
+ * @return {String}
+ */
+const serialize = (format, rows, scenario) => {
+    const cols = columnsFor(scenario);
+    if (format === 'json') {
+        return JSON.stringify(rows.map((t) => {
+            const o = {};
+            cols.forEach((c) => {
+                o[c] = exportValue(c, t);
+            });
+            return o;
+        }), null, 2);
+    }
+    const delim = format === 'tsv' ? '\t' : ',';
+    const lines = [cols.join(delim)];
+    rows.forEach((t) => {
+        lines.push(cols.map((c) => csvCell(exportValue(c, t), delim)).join(delim));
+    });
+    return lines.join('\n');
+};
+
+/**
+ * Two worked example test cases for the scenario, used to build a template a
+ * teacher can download, edit, and re-import.
+ *
+ * @param {String} scenario
+ * @return {Object[]}
+ */
+const exampleRows = (scenario) => {
+    if (scenario === 'web') {
+        return [
+            Object.assign(blankTest(), {selector: '#total', assertproperty: 'text',
+                assertmatcher: 'equals', expected: '42', weight: 1, visibility: 1,
+                feedback: 'The total should read 42.'}),
+            Object.assign(blankTest(), {selector: 'h1', assertproperty: 'text',
+                assertmatcher: 'contains', expected: 'Welcome', weight: 1, visibility: 0}),
+        ];
+    }
+    if (scenario === 'sql') {
+        return [
+            Object.assign(blankTest(), {expected: '[["Alice",30],["Bob",25]]', matchmode: 'exact',
+                weight: 1, visibility: 1, feedback: 'Returns all users ordered by name.'}),
+            Object.assign(blankTest(), {checkerquery: 'SELECT COUNT(*) FROM users', matchmode: 'trimmed',
+                weight: 1, visibility: 0}),
+        ];
+    }
+    const input1 = scenario === 'function' ? '[3, 4]' : '3 4';
+    const input2 = scenario === 'function' ? '[10, -2]' : '10 -2';
+    return [
+        Object.assign(blankTest(), {input: input1, expected: '7', matchmode: 'trimmed',
+            weight: 1, visibility: 1, feedback: 'Adds the two numbers.'}),
+        Object.assign(blankTest(), {input: input2, expected: '8', matchmode: 'trimmed',
+            weight: 2, visibility: 0}),
+    ];
+};
+
+/**
+ * The download file name extension and MIME type for a format.
+ *
+ * @param {String} format
+ * @return {Object} {ext, mime}
+ */
+const formatMeta = (format) => {
+    if (format === 'json') {
+        return {ext: 'json', mime: 'application/json'};
+    }
+    if (format === 'tsv') {
+        return {ext: 'tsv', mime: 'text/tab-separated-values'};
+    }
+    return {ext: 'csv', mime: 'text/csv'};
+};
+
 /** Small DOM builder. */
 const el = (tag, attrs, children) => {
     const node = document.createElement(tag);
@@ -180,6 +307,21 @@ const el = (tag, attrs, children) => {
     });
     (children || []).forEach((c) => node.appendChild(c));
     return node;
+};
+
+/**
+ * Trigger a client-side file download.
+ *
+ * @param {String} filename
+ * @param {String} text
+ * @param {String} mime
+ */
+const download = (filename, text, mime) => {
+    const blob = new Blob([text], {type: mime});
+    const a = el('a', {href: URL.createObjectURL(blob), download: filename}, []);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 };
 
 /**
@@ -454,18 +596,30 @@ export const init = (params) => {
                 status.textContent = (s.editor_importerror || 'Could not parse: {$a}').replace('{$a}', e.message);
             }
         });
+        // Export the current set in the selected format (round-trips through
+        // a spreadsheet); the columns are scoped to the scenario.
         const exportBtn = el('button', {type: 'button', class: 'btn btn-secondary btn-sm',
             text: s.editor_export || 'Export'}, []);
         exportBtn.addEventListener('click', () => {
-            const text = JSON.stringify(tests, null, 2);
-            const blob = new Blob([text], {type: 'application/json'});
-            const a = el('a', {href: URL.createObjectURL(blob), download: 'testcases.json'}, []);
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            const meta = formatMeta(fmt.value);
+            download('testcases.' + meta.ext, serialize(fmt.value, tests, scenario()), meta.mime);
+        });
+        // Download a ready-to-edit template for the selected format: the header
+        // row plus two worked examples, so a teacher sees the exact columns and
+        // shape for this question format without guessing.
+        const templateBtn = el('button', {type: 'button', class: 'btn btn-link btn-sm',
+            text: s.editor_template || 'Download template'}, []);
+        templateBtn.addEventListener('click', () => {
+            const meta = formatMeta(fmt.value);
+            download('testcases-template.' + meta.ext,
+                serialize(fmt.value, exampleRows(scenario()), scenario()), meta.mime);
         });
         det.appendChild(el('div', {class: 'codeatelier-te-importbody'}, [
-            fmt, paste, file,
+            el('p', {class: 'codeatelier-te-importhelp small text-muted',
+                text: s.editor_importhelp || 'The first row names the columns. Download a template '
+                    + 'to see the columns and an example for this question format. Columns you omit use '
+                    + 'their defaults; unrecognised columns are ignored.'}, []),
+            fmt, templateBtn, paste, file,
             el('div', {class: 'codeatelier-te-importactions'}, [appendR, replaceR, importBtn, exportBtn, status]),
         ]));
         return det;

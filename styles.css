@@ -1177,6 +1177,10 @@
     max-width: 16rem;
 }
 
+.codeatelier-te-importhelp {
+    margin-bottom: 0.25rem;
+}
+
 .codeatelier-te-importactions {
     display: flex;
     flex-wrap: wrap;

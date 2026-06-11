@@ -461,10 +461,10 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'assertproperty', 'assertmatcher', 'assertactions',
             'editor_addtest', 'editor_edit', 'editor_delete', 'editor_moveup',
             'editor_movedown', 'editor_search', 'editor_count', 'editor_page',
-            'editor_empty', 'editor_import', 'editor_importformat', 'editor_format_tsv',
-            'editor_format_csv', 'editor_format_json', 'editor_paste', 'editor_upload',
-            'editor_append', 'editor_replace', 'editor_export', 'editor_importok',
-            'editor_importerror', 'editor_done', 'editor_visible', 'editor_hidden',
+            'editor_empty', 'editor_import', 'editor_importformat', 'editor_importhelp',
+            'editor_template', 'editor_format_tsv', 'editor_format_csv', 'editor_format_json',
+            'editor_paste', 'editor_upload', 'editor_append', 'editor_replace', 'editor_export',
+            'editor_importok', 'editor_importerror', 'editor_done', 'editor_visible', 'editor_hidden',
         ];
         $strings = [];
         foreach ($keys as $key) {
