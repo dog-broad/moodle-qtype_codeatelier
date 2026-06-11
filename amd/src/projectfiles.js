@@ -94,9 +94,11 @@ const button = (label, onClick) => {
  * @param {Object} strings localised labels
  * @param {Function} [onChange] called after every edit (the web scenario uses it
  *     to refresh the live preview); receives no arguments.
- * @return {Object} {getValue, destroy} — getValue returns the canonical JSON
+ * @param {Function} [getTheme] returns the current effective editor theme
+ *     ('light'|'dark'|'hc') for each (re)mounted file editor.
+ * @return {Object} {getValue, openSearch, setTheme, destroy} — getValue returns the canonical JSON
  */
-export const setup = (root, answerTa, config, strings, onChange) => {
+export const setup = (root, answerTa, config, strings, onChange, getTheme) => {
     const readonly = !!config.readonly;
     // Secure tier: each file-tab editor uses the same sandboxed clipboard as the
     // single-file editor; external attempts flag through the question wrapper.
@@ -153,6 +155,7 @@ export const setup = (root, answerTa, config, strings, onChange) => {
                 ariaLabel: files[active].name,
                 sandbox: sandbox,
                 onExternal: onExternal,
+                theme: typeof getTheme === 'function' ? getTheme() : 'light',
                 onChange: () => {
                     files[active].content = fileEditor.value;
                     serialise();
@@ -336,6 +339,11 @@ export const setup = (root, answerTa, config, strings, onChange) => {
         openSearch: () => {
             if (cm && typeof cm.openSearch === 'function') {
                 cm.openSearch();
+            }
+        },
+        setTheme: (mode) => {
+            if (cm && typeof cm.setTheme === 'function') {
+                cm.setTheme(mode);
             }
         },
         destroy: () => {

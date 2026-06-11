@@ -24,7 +24,7 @@
  * @module qtype_codeatelier/control
  */
 
-import {create, highlightWithin} from 'qtype_codeatelier/editor';
+import {create, highlightWithin, resolveAutoTheme} from 'qtype_codeatelier/editor';
 import {run, describe, stop} from 'qtype_codeatelier/runner';
 import {grade} from 'qtype_codeatelier/grader';
 import {tokenDiff} from 'qtype_codeatelier/diff';
@@ -562,6 +562,64 @@ const renderWebFeedback = (element, graded, config, strings, highlight) => {
 };
 
 /**
+ * Wire the editor theme controller for a question: resolve the effective theme
+ * (following the page when the choice is "auto"), set data-ca-theme on the
+ * wrapper so the surrounding panels theme too, persist a picker change as a
+ * Moodle user preference, and keep the (possibly re-created) editor in sync.
+ *
+ * @param {HTMLElement} root the question wrapper
+ * @param {Object} config the question config
+ * @return {Object} {currentEffective, setEditor}
+ */
+const setupThemeControl = (root, config) => {
+    let chosen = config.editortheme || 'auto';
+    let editorRef = null;
+    const effectiveOf = (mode) => (mode === 'auto' ? resolveAutoTheme() : mode);
+    const apply = () => {
+        const effective = effectiveOf(chosen);
+        root.dataset.caTheme = effective;
+        if (editorRef && typeof editorRef.setTheme === 'function') {
+            editorRef.setTheme(effective);
+        }
+    };
+    root.dataset.caTheme = effectiveOf(chosen);
+
+    const select = root.querySelector('[data-role="editor-theme"]');
+    if (select) {
+        select.value = chosen;
+        select.addEventListener('change', () => {
+            chosen = select.value;
+            if (window.M && window.M.util && typeof window.M.util.set_user_preference === 'function') {
+                window.M.util.set_user_preference('qtype_codeatelier_editortheme', chosen);
+            }
+            apply();
+        });
+    }
+
+    // "Auto" follows the OS colour scheme too: re-resolve if it flips mid-attempt.
+    if (window.matchMedia) {
+        const mq = window.matchMedia('(prefers-color-scheme: dark)');
+        const onSchemeChange = () => {
+            if (chosen === 'auto') {
+                apply();
+            }
+        };
+        if (mq.addEventListener) {
+            mq.addEventListener('change', onSchemeChange);
+        } else if (mq.addListener) {
+            mq.addListener(onSchemeChange);
+        }
+    }
+
+    return {
+        currentEffective: () => effectiveOf(chosen),
+        setEditor: (ref) => {
+            editorRef = ref;
+        },
+    };
+};
+
+/**
  * Initialise a CodeAtelier question.
  *
  * The bulky config (visible tests, UI strings, per-language starters) is carried
@@ -595,6 +653,10 @@ export const init = (params) => {
     const scratchlabel = root.querySelector('[data-role="scratchlabel"]');
     const strings = config.strings || {};
 
+    // Editor theme: set data-ca-theme on the wrapper (panels) and track the
+    // editor so the picker can swap both. Runs for every scenario, incl. review.
+    const themeCtl = setupThemeControl(root, config);
+
     // The web (frontend) scenario is a file-set editor next to a sandboxed live
     // preview, graded by DOM assertions in the frame. It wires its own panels and
     // returns rather than falling through the code-runner (stdin) controls.
@@ -620,7 +682,8 @@ export const init = (params) => {
                 preview.scheduleRefresh();
             }
             webStale();
-        });
+        }, () => themeCtl.currentEffective());
+        themeCtl.setEditor(webeditor);
         if (skeleton) {
             skeleton.style.display = 'none';
         }
@@ -710,12 +773,13 @@ export const init = (params) => {
         onExternal: sandbox
             ? (type) => root.dispatchEvent(new CustomEvent('codeatelier:clip-external', {detail: {type: type}}))
             : null,
+        theme: themeCtl.currentEffective(),
     };
     let editor;
     if (config.scenario === 'project') {
         // A multi-file project: the editor is a file-tab list over one CodeMirror,
         // keeping the hidden answer field synced to the canonical JSON file set.
-        editor = setupProjectFiles(root, textarea, config, strings);
+        editor = setupProjectFiles(root, textarea, config, strings, null, () => themeCtl.currentEffective());
     } else {
         try {
             editor = create(textarea, currentLanguage, editorOptions);
@@ -724,6 +788,7 @@ export const init = (params) => {
             editor = {getValue: () => textarea.value};
         }
     }
+    themeCtl.setEditor(editor);
     if (skeleton) {
         skeleton.style.display = 'none';
     }
@@ -757,7 +822,9 @@ export const init = (params) => {
                     editor.destroy();
                 }
                 textarea.value = nextValue;
+                editorOptions.theme = themeCtl.currentEffective();
                 editor = create(textarea, next, editorOptions);
+                themeCtl.setEditor(editor);
             } catch (e) {
                 textarea.style.display = 'block';
                 textarea.value = nextValue;
