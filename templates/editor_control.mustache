@@ -43,8 +43,10 @@
     * readonly bool - whether the question is being reviewed (no editing/running)
     * hasvalidationerror bool - whether to show the validation message
     * validationerror string - the validation message
+    * controlconfig string - JSON config for control.js (read from the data attribute
+      rather than passed as AMD init args, which Moodle caps at 1024 chars)
 }}
-<div class="qtype_codeatelier" id="{{wrapperid}}">
+<div class="qtype_codeatelier" id="{{wrapperid}}" data-config="{{controlconfig}}">
     <div class="codeatelier-pane codeatelier-pane-problem" data-role="pane-problem">
         <div class="qtext">{{{questiontext}}}</div>
         <div class="codeatelier-schema" data-role="schema"></div>

@@ -190,7 +190,11 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'validationerror' => $question->get_validation_error($validationresponse),
         ] + qtype_codeatelier::ui_labels();
 
-        $this->page->requires->js_call_amd('qtype_codeatelier/control', 'init', [[
+        // The control config is large (visible tests, every UI string, per-language
+        // starters), and Moodle warns when js_call_amd arguments exceed 1024 chars.
+        // Ship the config as a data attribute on the wrapper and pass only the
+        // wrapper id through the AMD init call; control.js reads the rest from the DOM.
+        $controlconfig = [
             'wrapperid' => $wrapperid,
             'language' => $chosen,
             'languages' => array_values($allowed),
@@ -213,6 +217,11 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'isjudge' => $isjudge,
             'allornothing' => (bool) $question->allornothing,
             'strings' => qtype_codeatelier::ui_strings(),
+        ];
+        $context['controlconfig'] = json_encode($controlconfig);
+
+        $this->page->requires->js_call_amd('qtype_codeatelier/control', 'init', [[
+            'wrapperid' => $wrapperid,
         ]]);
 
         // Soft anti-cheat runs on a live judge-tier attempt only (never on review,

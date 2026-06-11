@@ -564,13 +564,18 @@ const renderWebFeedback = (element, graded, config, strings, highlight) => {
 /**
  * Initialise a CodeAtelier question.
  *
- * @param {Object} config
+ * The bulky config (visible tests, UI strings, per-language starters) is carried
+ * on the wrapper's data-config attribute rather than the AMD init args, which
+ * Moodle caps at 1024 chars. Only the wrapper id arrives through params.
+ *
+ * @param {Object} params - {wrapperid}
  */
-export const init = (config) => {
-    const root = document.getElementById(config.wrapperid);
-    if (!root) {
+export const init = (params) => {
+    const root = document.getElementById(params.wrapperid);
+    if (!root || !root.dataset.config) {
         return;
     }
+    const config = JSON.parse(root.dataset.config);
 
     // Syntax-highlight any code blocks the author put in the question prompt.
     highlightWithin(root.querySelector('.qtext') || root);
