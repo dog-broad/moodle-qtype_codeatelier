@@ -117,6 +117,35 @@
     --ca-tok-punctuation: #d6d6d6;
 }
 
+/*
+ * Dark and high-contrast paint their own surface and text colour on the wrapper,
+ * so the themed (light) text never sits on Moodle's own light question
+ * formulation background, and descendant text inherits the themed colour rather
+ * than the page's dark body colour. Light/auto-light leave the wrapper
+ * transparent so Moodle's question-state tint shows through unchanged.
+ */
+.qtype_codeatelier[data-ca-theme="dark"],
+.qtype_codeatelier[data-ca-theme="hc"] {
+    background: var(--ca-surface);
+    color: var(--ca-text);
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+}
+
+/*
+ * Bootstrap colours <pre> and link-style buttons with element/class rules that
+ * out-specify the wrapper's inherited colour, so they keep the page's dark text
+ * on a themed dark surface. Pin them to the themed tokens (identical to the
+ * Bootstrap values in light mode, so light is unchanged).
+ */
+.qtype_codeatelier pre {
+    color: var(--ca-text);
+}
+
+.qtype_codeatelier .btn-link {
+    color: var(--ca-focus);
+}
+
 .qtype_codeatelier .codeatelier-editor {
     margin: 0.5rem 0;
 }
