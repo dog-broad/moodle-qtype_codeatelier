@@ -203,63 +203,59 @@ const initSignatureBuilder = (config) => {
 };
 
 /**
- * Read the test-case rows out of the repeated form elements, skipping blank
- * rows exactly as the server-side save does.
+ * The test-editor model API, attached to the testcasesjson field by the
+ * testeditor module. Read lazily (at click time) since both modules init
+ * independently. Null if the editor has not mounted (e.g. JS-off fallback).
+ *
+ * @return {Object|null} {getTests, setExpected, fillAssertion}
+ */
+const testEditor = () => {
+    const field = byId('id_testcasesjson');
+    return field && field.codeatelierTestEditor ? field.codeatelierTestEditor : null;
+};
+
+/**
+ * Read the test cases from the editor model, skipping blank rows exactly as the
+ * server-side save does.
  *
  * @return {Array} test-case objects shaped like the renderer ships to the grader
  */
 const gatherTests = () => {
-    const tests = [];
-    document.querySelectorAll('textarea[name^="testinput["]').forEach((ta) => {
-        const match = ta.name.match(/\[(\d+)\]/);
-        if (!match) {
-            return;
-        }
-        const i = match[1];
-        const field = (base) => {
-            const el = document.querySelector('[name="' + base + '[' + i + ']"]');
-            return el ? el.value : '';
-        };
-        const input = ta.value;
-        const expected = field('testexpected');
-        if (input.trim() === '' && expected.trim() === '') {
-            return;
-        }
-        const visibility = parseInt(field('testvisibility'), 10);
-        tests.push({
-            input: input,
-            expected: expected,
-            matchmode: field('matchmode'),
-            tolerance: field('tolerance'),
-            weight: field('testweight'),
+    const api = testEditor();
+    if (!api) {
+        return [];
+    }
+    return api.getTests().map((t) => {
+        const visibility = parseInt(t.visibility, 10);
+        return {
+            input: t.input || '',
+            expected: t.expected || '',
+            matchmode: t.matchmode,
+            tolerance: t.tolerance,
+            weight: t.weight,
             visibility: visibility,
-            checkerquery: field('checkerquery'),
+            checkerquery: t.checkerquery || '',
             // Mirror the renderer: hidden tests reveal nothing client-side, feedback included.
-            feedback: visibility === 1 ? field('testfeedback') : null,
-        });
-    });
-    return tests;
+            feedback: visibility === 1 ? (t.feedback || '') : null,
+        };
+    }).filter((t) => !(t.input.trim() === '' && t.expected.trim() === ''));
 };
 
 /**
- * The non-blank test rows with their form elements, for run-to-capture.
+ * The non-blank test cases with their model index, for run-to-capture.
  *
- * @return {Array} {input, expected, matchmode, checkerquery, expectedEl}
+ * @return {Array} {input, expected, matchmode, checkerquery, index}
  */
 const activeRows = () => {
+    const api = testEditor();
+    if (!api) {
+        return [];
+    }
     const rows = [];
-    document.querySelectorAll('textarea[name^="testinput["]').forEach((ta) => {
-        const match = ta.name.match(/\[(\d+)\]/);
-        if (!match) {
-            return;
-        }
-        const i = match[1];
-        const expectedEl = document.querySelector('[name="testexpected[' + i + ']"]');
-        const matchEl = document.querySelector('[name="matchmode[' + i + ']"]');
-        const checkerEl = document.querySelector('[name="checkerquery[' + i + ']"]');
-        const input = ta.value;
-        const expected = expectedEl ? expectedEl.value : '';
-        const checkerquery = checkerEl ? checkerEl.value : '';
+    api.getTests().forEach((t, index) => {
+        const input = t.input || '';
+        const expected = t.expected || '';
+        const checkerquery = t.checkerquery || '';
         // A row is active if any of its inputs is set (SQL SELECT rows have no
         // stdin, so a checker query or an expected value also counts).
         if (input.trim() === '' && expected.trim() === '' && checkerquery.trim() === '') {
@@ -268,9 +264,9 @@ const activeRows = () => {
         rows.push({
             input: input,
             expected: expected,
-            matchmode: matchEl ? matchEl.value : 'trimmed',
+            matchmode: t.matchmode || 'trimmed',
             checkerquery: checkerquery,
-            expectedEl: expectedEl,
+            index: index,
         });
     });
     return rows;
@@ -373,32 +369,17 @@ export const init = (params) => {
         let projectEditor = null;
         let webPicker = null;
 
-        // Fill the first empty assertion row from a picked element: its selector,
-        // and sensible defaults (check the text equals the element's text).
+        // Fill an assertion from a picked element via the editor model: its
+        // selector, plus sensible defaults (check the text equals the element's).
         const fillAssertionRow = (selector, text, message) => {
-            const fields = Array.prototype.slice.call(document.querySelectorAll('[name^="selector["]'));
-            const target = fields.find((f) => !f.value.trim());
-            if (!target) {
-                if (message) {
-                    message.textContent = strings.pickaddrow || 'Add another check row, then pick again.';
-                }
+            const api = testEditor();
+            if (!api) {
                 return;
             }
-            const idx = target.name.replace(/^selector\[(\d+)\]$/, '$1');
-            const setIfEmpty = (name, value) => {
-                const el = document.querySelector('[name="' + name + '[' + idx + ']"]');
-                if (el && !String(el.value).trim()) {
-                    el.value = value;
-                }
-            };
-            target.value = selector;
-            setIfEmpty('assertproperty', 'text');
-            setIfEmpty('testexpected', text);
+            api.fillAssertion(selector, text);
             if (message) {
                 message.textContent = (strings.pickfilled || 'Added a check for') + ' ' + selector;
             }
-            target.scrollIntoView({block: 'center'});
-            target.focus();
         };
 
         // Build the "pick an element" preview + button for a web question.
@@ -792,17 +773,17 @@ export const init = (params) => {
             }
             setStatus(cstr.running || 'Running…');
             captureBtn.disabled = true;
+            const api = testEditor();
             (isJudge() ? captureJudge(code, rows) : capturePractice(code, rows)).then((outputs) => {
                 let ok = 0;
                 let failed = 0;
                 rows.forEach((row, k) => {
                     const out = outputs[k];
-                    if (out === null || out === undefined || !row.expectedEl) {
+                    if (out === null || out === undefined || !api) {
                         failed++;
                         return;
                     }
-                    row.expectedEl.value = out;
-                    row.expectedEl.dispatchEvent(new Event('change', {bubbles: true}));
+                    api.setExpected(row.index, out);
                     ok++;
                 });
                 reportCapture(ok, failed, rows.length);
