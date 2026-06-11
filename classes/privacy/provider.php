@@ -65,6 +65,21 @@ class provider implements
             'eventtype' => 'privacy:metadata:proctorlog:eventtype',
             'timecreated' => 'privacy:metadata:proctorlog:timecreated',
         ], 'privacy:metadata:proctorlog');
+
+        // Judge-tier grading sends the student's submission to a configured sandbox
+        // (Judge0) to run and grade it. The site administrator chooses and operates the
+        // endpoint; only the code and the chosen language leave Moodle.
+        $collection->add_external_location_link('judge0', [
+            'code' => 'privacy:metadata:judge0:code',
+            'language' => 'privacy:metadata:judge0:language',
+        ], 'privacy:metadata:judge0');
+
+        // Secure frontend questions send the student's file set to a configured headless
+        // browser service (the web judge) to render and assess.
+        $collection->add_external_location_link('webjudge', [
+            'files' => 'privacy:metadata:webjudge:files',
+        ], 'privacy:metadata:webjudge');
+
         return $collection;
     }
 
