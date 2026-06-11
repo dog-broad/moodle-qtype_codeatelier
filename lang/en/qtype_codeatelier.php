@@ -125,6 +125,7 @@ $string['entrypoint'] = 'Function name';
 $string['entrypoint_help'] = 'The name of the function the student must define. Each test\'s Input is a **JSON array of the arguments** passed to the call: `[2, 3]` calls `f(2, 3)`, while a function taking a single list needs it wrapped, `[[1, 2, 3]]`, to call `f([1, 2, 3])`. The function\'s return value is compared with Expected.';
 $string['entrypointrequired'] = 'Enter the function name for a function question.';
 $string['examples'] = 'Examples';
+$string['examplesregion'] = 'Worked examples (scrollable)';
 $string['exitfocus'] = 'Exit focus';
 $string['expected'] = 'Expected output';
 $string['focus'] = 'Focus';

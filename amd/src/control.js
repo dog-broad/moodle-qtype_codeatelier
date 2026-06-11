@@ -218,7 +218,125 @@ const addBlock = (parent, label, body) => {
 };
 
 /**
- * Render the worked examples from the visible test cases.
+ * A value cell for the examples table. Short values render inline; long or
+ * multi-line values are clamped to a few lines inside a native <details> so the
+ * row stays compact but the full value is one click (and keyboard/SR) away.
+ *
+ * @param {String} text
+ * @return {HTMLElement}
+ */
+const exampleValue = (text) => {
+    const s = String(text === null || text === undefined ? '' : text);
+    const pre = document.createElement('pre');
+    pre.className = 'codeatelier-cell';
+    pre.textContent = s;
+    if (s.length <= 80 && s.indexOf('\n') < 0) {
+        return pre;
+    }
+    pre.classList.add('codeatelier-clamp');
+    const details = document.createElement('details');
+    details.className = 'codeatelier-cell-expand';
+    const summary = document.createElement('summary');
+    summary.appendChild(pre);
+    details.appendChild(summary);
+    return details;
+};
+
+/**
+ * Build the examples heading + a height-capped, scrollable, focusable region
+ * wrapping a semantic table, and return its tbody to fill.
+ *
+ * @param {HTMLElement} element the examples container
+ * @param {String} headingText e.g. "Examples (8)"
+ * @param {String} ariaLabel the scroll-region label
+ * @param {String[]|null} headers column headers, or null for a single-column table
+ * @return {HTMLElement} the tbody
+ */
+const examplesScaffold = (element, headingText, ariaLabel, headers) => {
+    const heading = document.createElement('p');
+    heading.className = 'codeatelier-examples-heading';
+    heading.textContent = headingText;
+    element.appendChild(heading);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'codeatelier-examples-wrap';
+    wrap.setAttribute('role', 'region');
+    wrap.setAttribute('aria-label', ariaLabel);
+    wrap.tabIndex = 0;
+
+    const table = document.createElement('table');
+    table.className = 'codeatelier-examples-table';
+    const caption = document.createElement('caption');
+    caption.className = 'visually-hidden';
+    caption.textContent = headingText;
+    table.appendChild(caption);
+    if (headers && headers.length) {
+        const thead = document.createElement('thead');
+        const tr = document.createElement('tr');
+        headers.forEach((h) => {
+            const th = document.createElement('th');
+            th.scope = 'col';
+            th.textContent = h;
+            tr.appendChild(th);
+        });
+        thead.appendChild(tr);
+        table.appendChild(thead);
+    }
+    const tbody = document.createElement('tbody');
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    element.appendChild(wrap);
+    return tbody;
+};
+
+/**
+ * A value <td>, with an optional "Use this input" button (input/call cell only).
+ *
+ * @param {String} value
+ * @param {HTMLElement|null} scratch the scratch input to load on click, or null
+ * @param {Object|null} test the test whose input loads into the scratch box
+ * @param {Object} strings
+ * @return {HTMLElement}
+ */
+const exampleCell = (value, scratch, test, strings) => {
+    const td = document.createElement('td');
+    td.appendChild(exampleValue(value));
+    if (scratch && test) {
+        const use = document.createElement('button');
+        use.type = 'button';
+        use.className = 'btn btn-link btn-sm codeatelier-use-input';
+        use.textContent = strings.useinput || 'Use this input';
+        use.addEventListener('click', () => {
+            scratch.value = String(test.input);
+            scratch.dispatchEvent(new Event('input', {bubbles: true}));
+            scratch.focus();
+        });
+        td.appendChild(use);
+    }
+    return td;
+};
+
+/**
+ * Append the "N hidden" note (below the scroll region so it is always visible).
+ *
+ * @param {HTMLElement} element
+ * @param {Number} hidden
+ * @param {Object} strings
+ */
+const hiddenNote = (element, hidden, strings) => {
+    if (!hidden) {
+        return;
+    }
+    const note = document.createElement('p');
+    note.className = 'codeatelier-hidden-note';
+    note.textContent = hidden + ' ' + (strings.hidden || 'hidden') + (hidden === 1 ? '' : 's');
+    element.appendChild(note);
+};
+
+/**
+ * Render the worked examples from the visible test cases as a compact,
+ * scenario-aware, scrollable table (function: Call|Expected; stdin: Input|
+ * Expected; sql: a result-set card per row).
  *
  * @param {HTMLElement} element
  * @param {Object} config
@@ -233,13 +351,6 @@ const renderExamples = (element, config, strings) => {
         return;
     }
 
-    if (visible.length) {
-        const heading = document.createElement('p');
-        heading.className = 'codeatelier-examples-heading';
-        heading.textContent = strings.examples || 'Examples';
-        element.appendChild(heading);
-    }
-
     // The scratch input to load an example into ("Use this input"): the judge-tier
     // run-with-my-own-input box, or the practice-tier Run box. Absent on review and
     // for SQL (no per-input scratch), so the affordance simply does not appear.
@@ -248,50 +359,36 @@ const renderExamples = (element, config, strings) => {
         ? wrapper.querySelector('[data-role="scratchinput"], [data-role="scratch"]')
         : null;
 
-    visible.forEach((test, i) => {
-        const block = document.createElement('div');
-        block.className = 'codeatelier-example';
-        const title = document.createElement('span');
-        title.className = 'codeatelier-block-label';
-        title.textContent = (strings.test || 'Test') + ' ' + (i + 1);
-        block.appendChild(title);
+    if (visible.length) {
+        const heading = (strings.examples || 'Examples') + ' (' + visible.length + ')';
+        const region = strings.examplesregion || 'Worked examples';
+        const isfn = config.scenario === 'function';
+        const issql = config.scenario === 'sql';
+        const headers = issql
+            ? null
+            : [isfn ? (strings.call || 'Call') : (strings.input || 'Input'), strings.expected || 'Expected'];
+        const tbody = examplesScaffold(element, heading, region, headers);
 
-        if (config.scenario === 'function') {
-            addBlock(block, strings.call || 'Call', formatCall(config.entrypoint, test.input));
-            addBlock(block, strings.expected || 'Expected', String(test.expected));
-        } else if (config.scenario === 'sql') {
-            const rows = parseJson(test.expected) || [];
-            addBlock(block, strings.expected || 'Expected', resultSetTable(null, rows, null));
-        } else {
-            if (test.input) {
-                addBlock(block, strings.input || 'Input', String(test.input));
+        visible.forEach((test, i) => {
+            const tr = document.createElement('tr');
+            if (issql) {
+                const td = document.createElement('td');
+                const label = document.createElement('span');
+                label.className = 'codeatelier-block-label';
+                label.textContent = (strings.test || 'Test') + ' ' + (i + 1);
+                td.appendChild(label);
+                td.appendChild(resultSetTable(null, parseJson(test.expected) || [], null));
+                tr.appendChild(td);
+            } else {
+                const left = isfn ? formatCall(config.entrypoint, test.input) : String(test.input || '');
+                tr.appendChild(exampleCell(left, scratch, test, strings));
+                tr.appendChild(exampleCell(String(test.expected), null, null, strings));
             }
-            addBlock(block, strings.expected || 'Expected', String(test.expected));
-        }
-
-        // Let the student load this example's input into the scratch box with one
-        // click, so they have a correct, runnable starting point to tweak.
-        if (scratch) {
-            const use = document.createElement('button');
-            use.type = 'button';
-            use.className = 'btn btn-link btn-sm codeatelier-use-input';
-            use.textContent = strings.useinput || 'Use this input';
-            use.addEventListener('click', () => {
-                scratch.value = String(test.input);
-                scratch.dispatchEvent(new Event('input', {bubbles: true}));
-                scratch.focus();
-            });
-            block.appendChild(use);
-        }
-        element.appendChild(block);
-    });
-
-    if (hidden) {
-        const note = document.createElement('p');
-        note.className = 'codeatelier-hidden-note';
-        note.textContent = hidden + ' ' + (strings.hidden || 'hidden') + (hidden === 1 ? '' : 's');
-        element.appendChild(note);
+            tbody.appendChild(tr);
+        });
     }
+
+    hiddenNote(element, hidden, strings);
 };
 
 /**
@@ -464,31 +561,31 @@ const renderWebExamples = (element, config, strings) => {
     const tests = config.tests || [];
     const visible = tests.filter((t) => Number(t.visibility) === 1);
     const hidden = tests.length - visible.length;
+    if (!visible.length && !hidden) {
+        return;
+    }
     if (visible.length) {
-        const heading = document.createElement('p');
-        heading.className = 'codeatelier-examples-heading';
-        heading.textContent = strings.checks || 'What is checked';
-        element.appendChild(heading);
+        const heading = (strings.checks || 'What is checked') + ' (' + visible.length + ')';
+        const tbody = examplesScaffold(element, heading, strings.checks || 'What is checked', null);
+        visible.forEach((test) => {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.appendChild(exampleValue(describeAssertion(test, strings)));
+            if (test.actions && String(test.actions).trim()) {
+                const after = document.createElement('div');
+                after.className = 'codeatelier-example-after';
+                const label = document.createElement('span');
+                label.className = 'codeatelier-block-label';
+                label.textContent = strings.assertafter || 'After doing';
+                after.appendChild(label);
+                after.appendChild(exampleValue(String(test.actions)));
+                td.appendChild(after);
+            }
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        });
     }
-    visible.forEach((test, i) => {
-        const block = document.createElement('div');
-        block.className = 'codeatelier-example';
-        const title = document.createElement('span');
-        title.className = 'codeatelier-block-label';
-        title.textContent = (strings.check || 'Check') + ' ' + (i + 1);
-        block.appendChild(title);
-        addBlock(block, strings.assertexpect || 'Expect', describeAssertion(test, strings));
-        if (test.actions && String(test.actions).trim()) {
-            addBlock(block, strings.assertafter || 'After doing', String(test.actions));
-        }
-        element.appendChild(block);
-    });
-    if (hidden) {
-        const note = document.createElement('p');
-        note.className = 'codeatelier-hidden-note';
-        note.textContent = hidden + ' ' + (strings.hidden || 'hidden') + (hidden === 1 ? '' : 's');
-        element.appendChild(note);
-    }
+    hiddenNote(element, hidden, strings);
 };
 
 /**

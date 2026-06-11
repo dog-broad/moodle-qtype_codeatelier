@@ -521,6 +521,7 @@ class qtype_codeatelier extends question_type {
             'score' => 'result_score',
             'schematables' => 'schematables',
             'examples' => 'examples',
+            'examplesregion' => 'examplesregion',
             'input' => 'input',
             'expected' => 'expected',
             'call' => 'result_call',
