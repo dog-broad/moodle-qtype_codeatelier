@@ -24,8 +24,9 @@
  */
 
 import {EditorView, basicSetup} from 'codemirror';
-import {EditorState} from '@codemirror/state';
+import {EditorState, Prec, Compartment} from '@codemirror/state';
 import {keymap} from '@codemirror/view';
+import {HighlightStyle, syntaxHighlighting} from '@codemirror/language';
 import {indentWithTab} from '@codemirror/commands';
 import {lintGutter, setDiagnostics} from '@codemirror/lint';
 import {openSearchPanel} from '@codemirror/search';
@@ -40,7 +41,58 @@ import {php} from '@codemirror/lang-php';
 import {csharp} from '@replit/codemirror-lang-csharp';
 import {html} from '@codemirror/lang-html';
 import {css} from '@codemirror/lang-css';
-import {highlightTree, classHighlighter} from '@lezer/highlight';
+import {highlightTree, classHighlighter, tags as t} from '@lezer/highlight';
+
+/**
+ * Accessible default syntax theme.
+ *
+ * CodeMirror's bundled defaultHighlightStyle (and its active-line highlight)
+ * ship token colours that fall below the WCAG AA 4.5:1 text-contrast threshold
+ * — the orange (regexp/number) and green (literal/type) tokens fail even on
+ * white. This style re-colours every standard Lezer tag to clear 4.5:1 on the
+ * editor background, and softens the active-line tint to a near-neutral grey so
+ * it never lowers token contrast. The author-facing palette stays close to a
+ * conventional light editor theme; only the luminance is pinned for contrast.
+ */
+const accessibleHighlightStyle = HighlightStyle.define([
+    {tag: t.keyword, color: '#7c2d91'},
+    {tag: [t.atom, t.bool, t.url, t.contentSeparator, t.labelName], color: '#0a3fa8'},
+    {tag: [t.literal, t.inserted], color: '#0f6e2d'},
+    {tag: [t.number, t.integer, t.float], color: '#9a4a00'},
+    {tag: [t.string, t.deleted], color: '#a4112b'},
+    {tag: [t.regexp, t.escape, t.special(t.string)], color: '#9a4a00'},
+    {tag: t.definition(t.variableName), color: '#0a3fa8'},
+    {tag: t.local(t.variableName), color: '#5a2ca0'},
+    {tag: [t.typeName, t.namespace], color: '#0b6e6e'},
+    {tag: t.className, color: '#0b6e75'},
+    {tag: [t.special(t.variableName), t.macroName], color: '#1d5a8a'},
+    {tag: t.definition(t.propertyName), color: '#0a3fa8'},
+    {tag: t.propertyName, color: '#5a2ca0'},
+    {tag: [t.comment, t.meta], color: '#5b6770'},
+    {tag: t.invalid, color: '#b02a37'},
+    {tag: t.link, textDecoration: 'underline'},
+    {tag: t.heading, fontWeight: 'bold'},
+    {tag: t.emphasis, fontStyle: 'italic'},
+    {tag: t.strong, fontWeight: 'bold'},
+    {tag: t.strikethrough, textDecoration: 'line-through'},
+]);
+
+const accessibleEditorTheme = EditorView.theme({
+    '.cm-activeLine': {backgroundColor: 'rgba(0, 0, 0, 0.035)'},
+    // Darken the active gutter's line number too: the faint tint alone leaves
+    // CodeMirror's default #6c6c6c gutter text at 4.44:1 on the tinted gutter.
+    '.cm-activeLineGutter': {backgroundColor: 'rgba(0, 0, 0, 0.035)', color: '#3f3f3f'},
+});
+
+// High precedence so it overrides basicSetup's defaultHighlightStyle and
+// active-line theme. Held in a Compartment so a future theme picker can swap
+// the whole syntax theme live (the seed for selectable light/dark/high-contrast
+// themes).
+const defaultSyntaxTheme = Prec.high([
+    syntaxHighlighting(accessibleHighlightStyle),
+    accessibleEditorTheme,
+]);
+const themeCompartment = new Compartment();
 
 /**
  * Resolve the CodeMirror language extension for a CodeAtelier language code.
@@ -269,7 +321,7 @@ export const sandboxClipboard = (onExternal) => EditorView.domEventHandlers({
  */
 export const create = (textarea, language, options) => {
     const opts = options || {};
-    const extensions = [basicSetup, lintGutter()];
+    const extensions = [basicSetup, themeCompartment.of(defaultSyntaxTheme), lintGutter()];
 
     // Secure tier: a sandboxed in-editor clipboard (internal copy/paste only).
     if (opts.sandbox && !opts.readonly) {
