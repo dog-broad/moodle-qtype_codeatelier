@@ -431,6 +431,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // textarea is still editable.
         $config = [
             'scenarioid' => 'id_scenario',
+            'entrypointid' => 'id_entrypoint',
             'matchmodes' => $this->matchmode_options(),
             'visibilities' => $this->visibility_options(),
             'assertmatchers' => $this->assertmatcher_options(),
@@ -465,6 +466,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
     protected function testeditor_strings() {
         $keys = [
             'input', 'expected', 'matchmode', 'tolerance', 'weight', 'visibility',
+            'callpreview', 'callpreviewhint',
             'subtask', 'checkerquery', 'testfeedback', 'assertselector',
             'assertproperty', 'assertmatcher', 'assertactions',
             'editor_addtest', 'editor_edit', 'editor_delete', 'editor_moveup',

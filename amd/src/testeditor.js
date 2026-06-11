@@ -328,6 +328,30 @@ const formatMeta = (format) => {
     return {ext: 'csv', mime: 'text/csv'};
 };
 
+/**
+ * Format a function call for the authoring preview: entrypoint(arg1, arg2) from
+ * the test's Input (a JSON array of arguments). Returns null when the input is
+ * not a JSON array, so the editor can prompt for the right shape — this is what
+ * makes a single-bracket mistake ([3,4] vs [[3,4]]) visible before saving. Kept
+ * in sync with the attempt-page formatCall in control.js.
+ *
+ * @param {String} entrypoint
+ * @param {String} input
+ * @return {String|null}
+ */
+const formatCall = (entrypoint, input) => {
+    let args;
+    try {
+        args = JSON.parse(input);
+    } catch (e) {
+        return null;
+    }
+    if (!Array.isArray(args)) {
+        return null;
+    }
+    return (entrypoint || 'solve') + '(' + args.map((a) => JSON.stringify(a)).join(', ') + ')';
+};
+
 /** Small DOM builder. */
 const el = (tag, attrs, children) => {
     const node = document.createElement(tag);
@@ -375,6 +399,8 @@ export const init = (params) => {
     const s = config.strings || {};
     const scenarioEl = document.getElementById(config.scenarioid);
     const scenario = () => (scenarioEl ? scenarioEl.value : 'stdinstdout');
+    const entrypointEl = config.entrypointid ? document.getElementById(config.entrypointid) : null;
+    const entrypoint = () => (entrypointEl ? entrypointEl.value : '');
 
     let tests;
     try {
@@ -458,7 +484,26 @@ export const init = (params) => {
             body.appendChild(fieldRow(s.assertactions || 'Actions', textarea('actions', 2)));
             body.appendChild(fieldRow(s.expected || 'Expected', textarea('expected', 2)));
         } else {
-            body.appendChild(fieldRow(s.input || 'Input', textarea('input', 3)));
+            const inputTa = textarea('input', 3);
+            body.appendChild(fieldRow(s.input || 'Input', inputTa));
+            // Function scenario: show the literal call the Input produces, so a
+            // wrong argument-array nesting ([3,4] vs [[3,4]]) is caught before save.
+            if (scenario() === 'function') {
+                const preview = el('code', {class: 'codeatelier-te-callpreview', 'data-role': 'callpreview'}, []);
+                const refreshPreview = () => {
+                    const call = formatCall(entrypoint(), t.input);
+                    preview.textContent = (call === null)
+                        ? (s.callpreviewhint || 'Enter arguments as a JSON array, e.g. [3, 4]')
+                        : call;
+                    preview.classList.toggle('codeatelier-te-callpreview-hint', call === null);
+                };
+                inputTa.addEventListener('input', refreshPreview);
+                refreshPreview();
+                body.appendChild(el('div', {class: 'codeatelier-te-field'}, [
+                    el('span', {class: 'codeatelier-te-callpreview-label', text: s.callpreview || 'Call preview'}),
+                    preview,
+                ]));
+            }
             body.appendChild(fieldRow(s.expected || 'Expected', textarea('expected', 3)));
             body.appendChild(fieldRow(s.matchmode || 'Match mode', select('matchmode', config.matchmodes || {})));
             body.appendChild(fieldRow(s.tolerance || 'Tolerance', textInput('tolerance')));
@@ -665,6 +710,14 @@ export const init = (params) => {
     // Re-render when the scenario picker changes (fields shown differ by scenario).
     if (scenarioEl) {
         scenarioEl.addEventListener('change', () => renderList());
+    }
+    // Re-render on entrypoint change so the function call previews track the name.
+    if (entrypointEl) {
+        entrypointEl.addEventListener('change', () => {
+            if (scenario() === 'function') {
+                renderList();
+            }
+        });
     }
 
     // Public API for author.js (preview/capture/web-picker), which can no longer

@@ -1298,6 +1298,28 @@
     margin-bottom: 0.25rem;
 }
 
+/* The live "Call preview" under a function test's Input: shows the literal call
+ * the JSON-array Input produces, so a wrong nesting is visible before saving. */
+.codeatelier-te-callpreview-label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.8125rem;
+}
+
+.codeatelier-te-callpreview {
+    display: block;
+    padding: 0.3rem 0.5rem;
+    border-radius: 0.25rem;
+    background: #f1f3f5;
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+
+.codeatelier-te-callpreview-hint {
+    color: #6c757d;
+    font-style: italic;
+}
+
 /* The function-signature contract note on the edit form (explains JSON args vs
  * a typed signature, gated on the chosen languages). */
 .codeatelier-signote {
