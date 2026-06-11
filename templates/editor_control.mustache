@@ -97,12 +97,12 @@
             <button type="button" class="btn btn-primary" data-role="check">{{checklabel}}</button>
             <span class="codeatelier-status" data-role="status" role="status" aria-live="polite"></span>
         </div>
-        <p class="codeatelier-practicenote small text-muted">{{practicenote}}</p>
+        <p class="codeatelier-practicenote small">{{practicenote}}</p>
         <div class="codeatelier-results" data-role="results" aria-live="polite"></div>
         {{/isjudge}}
         {{#isjudge}}
-        <p class="codeatelier-judgenote small text-muted">{{judgenote}}</p>
-        {{#proctornote}}<p class="codeatelier-proctornote small text-muted">{{proctornote}}</p>{{/proctornote}}
+        <p class="codeatelier-judgenote small">{{judgenote}}</p>
+        {{#proctornote}}<p class="codeatelier-proctornote small">{{proctornote}}</p>{{/proctornote}}
         {{/isjudge}}
         {{/readonly}}
         {{/isweb}}
@@ -122,7 +122,7 @@
             <button type="button" class="btn btn-link codeatelier-focus-toggle" data-role="focus"
                 aria-pressed="false">{{focuslabel}}</button>
         </div>
-        <p class="codeatelier-practicenote small text-muted">{{practicenote}}</p>
+        <p class="codeatelier-practicenote small">{{practicenote}}</p>
         <div class="codeatelier-tabs" role="tablist" aria-label="{{outputtabslabel}}">
             <button type="button" class="codeatelier-tab" role="tab" id="{{wrapperid}}_tab_console"
                 aria-controls="{{wrapperid}}_panel_console" aria-selected="false" tabindex="-1"
@@ -133,7 +133,7 @@
         </div>
         {{/isjudge}}
         {{#isjudge}}
-        <p class="codeatelier-judgenote small text-muted">{{judgenote}}</p>
+        <p class="codeatelier-judgenote small">{{judgenote}}</p>
         {{#canrunexamples}}
         <div class="codeatelier-actions">
             <button type="button" class="btn btn-secondary" data-role="runexamples">{{runexampleslabel}}</button>
@@ -151,7 +151,7 @@
             <div class="codeatelier-scratchoutput" data-role="scratchoutput" aria-live="polite"></div>
         </div>
         {{/canrunscratch}}
-        {{#proctornote}}<p class="codeatelier-proctornote small text-muted">{{proctornote}}</p>{{/proctornote}}
+        {{#proctornote}}<p class="codeatelier-proctornote small">{{proctornote}}</p>{{/proctornote}}
         {{/isjudge}}
         {{/isweb}}
         {{/readonly}}

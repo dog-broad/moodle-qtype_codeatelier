@@ -530,6 +530,17 @@
     min-width: 0;
 }
 
+/*
+ * The tier notes sit on a tinted pane background where Bootstrap's .text-muted
+ * (#6a737b) drops to 4.22:1 contrast — under WCAG AA. Pin an explicit darker
+ * slate so the note clears 4.5:1 on the tint (and on white). The template drops
+ * the .text-muted class so this wins without an !important war.
+ */
+.qtype_codeatelier .codeatelier-practicenote,
+.qtype_codeatelier .codeatelier-judgenote {
+    color: #5b626a;
+}
+
 .qtype_codeatelier .codeatelier-focus-toggle {
     margin-left: auto;
 }
