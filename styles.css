@@ -1,5 +1,122 @@
 /* CodeAtelier question type styles. */
 
+/*
+ * Theme tokens. Every colour in the workbench is a --ca-* custom property so the
+ * whole question UI can be re-themed by setting data-ca-theme on the wrapper
+ * (driven by the editor theme picker). Light is the default; the surface/text
+ * anchors inherit Moodle's Bootstrap 5 variables where present (Moodle 5.x) and
+ * fall back to our own light values on Bootstrap 4 (Moodle 4.x). Dark and
+ * high-contrast override the tokens below. Standalone authoring widgets render
+ * outside .qtype_codeatelier (the teacher edit form), so their rules pass a light
+ * fallback to var() and stay light regardless of the student's chosen theme.
+ */
+.qtype_codeatelier {
+    --ca-surface: var(--bs-body-bg, #fff);
+    --ca-surface-muted: #f8f9fa;
+    --ca-surface-alt: #f1f3f5;
+    --ca-surface-raised: #fcfcfd;
+    --ca-text: var(--bs-body-color, #1f2933);
+    --ca-text-muted: #5c6770;
+    --ca-text-faint: #8a929b;
+    --ca-note-text: #5b626a;
+    --ca-border: #ced4da;
+    --ca-border-soft: #e0e3e7;
+    --ca-border-faint: #eef0f2;
+    --ca-focus: #0f6cbf;
+    --ca-shimmer: rgba(0, 0, 0, 0.05);
+    --ca-success: #1f7a3d;
+    --ca-danger: #b02a37;
+    --ca-warn: #8a5a00;
+    --ca-purple: #6f42c1;
+    --ca-success-bg: #cde6d3;
+    --ca-success-soft-bg: #eef7f0;
+    --ca-success-border: #cfe6d6;
+    --ca-danger-bg: #fbeaec;
+    --ca-danger-strong-bg: #fbdcdc;
+    --ca-danger-border: #f1c5cb;
+    --ca-warn-bg: #fff8e1;
+    --ca-warn-border: #f0e0a8;
+    --ca-tok-keyword: #0b66c3;
+    --ca-tok-comment: #6a737d;
+    --ca-tok-string: #0a7d33;
+    --ca-tok-number: #a4258f;
+    --ca-tok-type: #b5690c;
+    --ca-tok-function: #6f42c1;
+    --ca-tok-punctuation: #5c6770;
+}
+
+/* Dark: light text/tokens tuned to clear WCAG AA on the dark surfaces. */
+.qtype_codeatelier[data-ca-theme="dark"] {
+    --ca-surface: #1e2227;
+    --ca-surface-muted: #252a30;
+    --ca-surface-alt: #2a2f36;
+    --ca-surface-raised: #21262c;
+    --ca-text: #d4d4d4;
+    --ca-text-muted: #9aa3ad;
+    --ca-text-faint: #828b95;
+    --ca-note-text: #aab3bd;
+    --ca-border: #3a4048;
+    --ca-border-soft: #343a42;
+    --ca-border-faint: #2c3138;
+    --ca-focus: #4ea3f0;
+    --ca-shimmer: rgba(255, 255, 255, 0.06);
+    --ca-success: #5fcf80;
+    --ca-danger: #ff8a8a;
+    --ca-warn: #e0b057;
+    --ca-purple: #c9a3f0;
+    --ca-success-bg: #16301f;
+    --ca-success-soft-bg: #14271b;
+    --ca-success-border: #2f5a3c;
+    --ca-danger-bg: #3a1f23;
+    --ca-danger-strong-bg: #45222a;
+    --ca-danger-border: #6e3a42;
+    --ca-warn-bg: #332b16;
+    --ca-warn-border: #5a4d28;
+    --ca-tok-keyword: #6cb6ff;
+    --ca-tok-comment: #8aa882;
+    --ca-tok-string: #8fd98f;
+    --ca-tok-number: #e08fd0;
+    --ca-tok-type: #e0a96c;
+    --ca-tok-function: #c9a3f0;
+    --ca-tok-punctuation: #9aa3ad;
+}
+
+/* High-contrast: black surfaces, bright distinct tokens (well past AA). */
+.qtype_codeatelier[data-ca-theme="hc"] {
+    --ca-surface: #000;
+    --ca-surface-muted: #0a0a0a;
+    --ca-surface-alt: #141414;
+    --ca-surface-raised: #0a0a0a;
+    --ca-text: #fff;
+    --ca-text-muted: #d6d6d6;
+    --ca-text-faint: #c0c0c0;
+    --ca-note-text: #e6e6e6;
+    --ca-border: #6f6f6f;
+    --ca-border-soft: #5a5a5a;
+    --ca-border-faint: #4a4a4a;
+    --ca-focus: #5fb5ff;
+    --ca-shimmer: rgba(255, 255, 255, 0.12);
+    --ca-success: #6bff6b;
+    --ca-danger: #ff8080;
+    --ca-warn: #ffd24d;
+    --ca-purple: #d59cff;
+    --ca-success-bg: #002a10;
+    --ca-success-soft-bg: #002a10;
+    --ca-success-border: #1f7a3d;
+    --ca-danger-bg: #2a0000;
+    --ca-danger-strong-bg: #2a0000;
+    --ca-danger-border: #b02a37;
+    --ca-warn-bg: #2a2200;
+    --ca-warn-border: #8a6d00;
+    --ca-tok-keyword: #5fb5ff;
+    --ca-tok-comment: #c6c6c6;
+    --ca-tok-string: #7bff7b;
+    --ca-tok-number: #ffb86c;
+    --ca-tok-type: #5ff0d6;
+    --ca-tok-function: #d59cff;
+    --ca-tok-punctuation: #d6d6d6;
+}
+
 .qtype_codeatelier .codeatelier-editor {
     margin: 0.5rem 0;
 }
@@ -17,7 +134,7 @@
     min-height: 14rem;
     box-sizing: border-box;
     padding: 0.5rem 0.75rem;
-    border: 1px solid #ced4da;
+    border: 1px solid var(--ca-border);
     border-radius: 0.375rem;
     font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 0.9rem;
@@ -25,17 +142,17 @@
     tab-size: 4;
     white-space: pre;
     overflow: auto;
-    background: #fff;
-    color: #1f2933;
+    background: var(--ca-surface);
+    color: var(--ca-text);
 }
 
 /* Skeleton loader shown while CodeMirror downloads and mounts. */
 .qtype_codeatelier .codeatelier-skeleton {
     position: relative;
     min-height: 14rem;
-    border: 1px solid #ced4da;
+    border: 1px solid var(--ca-border);
     border-radius: 0.375rem;
-    background: #f8f9fa;
+    background: var(--ca-surface-muted);
     overflow: hidden;
 }
 
@@ -43,7 +160,7 @@
     position: absolute;
     top: 0.6rem;
     left: 0.75rem;
-    color: #8a929b;
+    color: var(--ca-text-faint);
     font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 0.9rem;
 }
@@ -53,7 +170,7 @@
     position: absolute;
     inset: 0;
     transform: translateX(-100%);
-    background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.05), transparent);
+    background: linear-gradient(90deg, transparent, var(--ca-shimmer), transparent);
     animation: codeatelier-shimmer 1.4s infinite;
 }
 
@@ -71,14 +188,14 @@
 
 /* CodeMirror editor frame. */
 .qtype_codeatelier .cm-editor {
-    border: 1px solid #ced4da;
+    border: 1px solid var(--ca-border);
     border-radius: 0.375rem;
     font-size: 0.9rem;
     max-height: 30rem;
 }
 
 .qtype_codeatelier .cm-editor.cm-focused {
-    outline: 2px solid #0f6cbf;
+    outline: 2px solid var(--ca-focus);
     outline-offset: -1px;
 }
 
@@ -91,7 +208,8 @@
  * (starter code, reference solution, SQL schema, per-language starter) mount
  * outside the .qtype_codeatelier workbench, so the frame rules above never reach
  * them. Without an explicit width the flex editor shrinks to its content — a
- * sliver showing only line 1. Give them the same full-width frame here.
+ * sliver showing only line 1. Give them the same full-width frame here. They
+ * follow the teacher's page theme, so the border falls back to the light value.
  */
 #fitem_id_startercode .cm-editor,
 #fitem_id_starteredit .cm-editor,
@@ -99,7 +217,7 @@
 #fitem_id_schemasql .cm-editor,
 #fitem_id_projectfiles .cm-editor {
     width: 100%;
-    border: 1px solid #ced4da;
+    border: 1px solid var(--ca-border, #ced4da);
     border-radius: 0.375rem;
     font-size: 0.9rem;
     max-height: 30rem;
@@ -117,13 +235,14 @@
  * Multi-file project: the file-tab list and its actions. The class names are
  * CodeAtelier-specific, so they are left unscoped — the same widget renders both
  * in the student attempt (inside .qtype_codeatelier) and on the edit form's
- * projectfiles field (outside it).
+ * projectfiles field (outside it). The light fallbacks keep the edit-form copy
+ * light; inside the wrapper the tokens theme it.
  */
 .codeatelier-filetabs {
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem;
-    border-bottom: 1px solid #dee2e6;
+    border-bottom: 1px solid var(--ca-border-soft, #dee2e6);
     margin-bottom: 0.5rem;
 }
 
@@ -131,8 +250,8 @@
     border: 1px solid transparent;
     border-bottom: none;
     border-radius: 0.375rem 0.375rem 0 0;
-    background: #f1f3f5;
-    color: #495057;
+    background: var(--ca-surface-alt, #f1f3f5);
+    color: var(--ca-text-muted, #495057);
     padding: 0.25rem 0.75rem;
     font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 0.85rem;
@@ -140,9 +259,9 @@
 }
 
 .codeatelier-filetab-active {
-    background: #fff;
-    border-color: #dee2e6;
-    color: #1f2933;
+    background: var(--ca-surface, #fff);
+    border-color: var(--ca-border-soft, #dee2e6);
+    color: var(--ca-text, #1f2933);
     font-weight: 600;
 }
 
@@ -196,7 +315,7 @@
 }
 
 .qtype_codeatelier .codeatelier-status {
-    color: #5c6770;
+    color: var(--ca-text-muted);
     font-style: italic;
 }
 
@@ -221,12 +340,12 @@
 
 .qtype_codeatelier .codeatelier-pass::before {
     content: "\2713\00a0";
-    color: #1f7a3d;
+    color: var(--ca-success);
 }
 
 .qtype_codeatelier .codeatelier-fail::before {
     content: "\2717\00a0";
-    color: #b02a37;
+    color: var(--ca-danger);
 }
 
 /* SQL schema and sample-data viewer. */
@@ -257,13 +376,13 @@
 
 .qtype_codeatelier .codeatelier-schema-data th,
 .qtype_codeatelier .codeatelier-schema-data td {
-    border: 1px solid #ced4da;
+    border: 1px solid var(--ca-border);
     padding: 0.2rem 0.5rem;
     text-align: left;
 }
 
 .qtype_codeatelier .codeatelier-schema-data th {
-    background: #f1f3f5;
+    background: var(--ca-surface-alt);
 }
 
 /* Worked examples + diagnostic feedback. */
@@ -274,7 +393,7 @@
 }
 
 .qtype_codeatelier .codeatelier-example {
-    border-left: 3px solid #ced4da;
+    border-left: 3px solid var(--ca-border);
     padding: 0.25rem 0 0.25rem 0.75rem;
     margin: 0.4rem 0;
 }
@@ -287,13 +406,13 @@
     display: block;
     font-size: 0.8rem;
     font-weight: 600;
-    color: #5c6770;
+    color: var(--ca-text-muted);
 }
 
 .qtype_codeatelier .codeatelier-diff {
     margin: 0.15rem 0;
     padding: 0.35rem 0.5rem;
-    background: #f8f9fa;
+    background: var(--ca-surface-muted);
     border-radius: 0.25rem;
     font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 0.85rem;
@@ -302,17 +421,17 @@
 }
 
 .qtype_codeatelier .codeatelier-diff-del {
-    background: #fbdcdc;
+    background: var(--ca-danger-strong-bg);
     text-decoration: line-through;
 }
 
 .qtype_codeatelier .codeatelier-diff-ins {
-    background: #cde6d3;
+    background: var(--ca-success-bg);
 }
 
 .qtype_codeatelier .codeatelier-feedback {
     margin: 0.25rem 0;
-    border: 1px solid #e0e3e7;
+    border: 1px solid var(--ca-border-soft);
     border-radius: 0.375rem;
     padding: 0.25rem 0.5rem;
 }
@@ -323,11 +442,11 @@
 }
 
 .qtype_codeatelier .codeatelier-feedback.codeatelier-pass > summary {
-    color: #1f7a3d;
+    color: var(--ca-success);
 }
 
 .qtype_codeatelier .codeatelier-feedback.codeatelier-fail > summary {
-    color: #b02a37;
+    color: var(--ca-danger);
 }
 
 .qtype_codeatelier .codeatelier-feedback-body {
@@ -345,42 +464,42 @@
 
 .qtype_codeatelier .codeatelier-resultset th,
 .qtype_codeatelier .codeatelier-resultset td {
-    border: 1px solid #ced4da;
+    border: 1px solid var(--ca-border);
     padding: 0.2rem 0.5rem;
     text-align: left;
 }
 
 .qtype_codeatelier .codeatelier-resultset th {
-    background: #f1f3f5;
+    background: var(--ca-surface-alt);
 }
 
 .qtype_codeatelier .codeatelier-resultset .codeatelier-diff-row td {
-    background: #fbdcdc;
+    background: var(--ca-danger-strong-bg);
 }
 
 .qtype_codeatelier .codeatelier-hidden-note {
-    color: #5c6770;
+    color: var(--ca-text-muted);
     font-style: italic;
     margin: 0.25rem 0;
 }
 
 .qtype_codeatelier .codeatelier-verdict-AC {
-    color: #1f7a3d;
+    color: var(--ca-success);
 }
 
 .qtype_codeatelier .codeatelier-verdict-WA,
 .qtype_codeatelier .codeatelier-verdict-RE,
 .qtype_codeatelier .codeatelier-verdict-TIMEOUT {
-    color: #b02a37;
+    color: var(--ca-danger);
 }
 
 .qtype_codeatelier .codeatelier-verdict-TLE,
 .qtype_codeatelier .codeatelier-verdict-MLE {
-    color: #8a5a00;
+    color: var(--ca-warn);
 }
 
 .qtype_codeatelier .codeatelier-verdict-CE {
-    color: #6f42c1;
+    color: var(--ca-purple);
 }
 
 /* Three-verb action bar: scratch input, tabs, console. */
@@ -392,7 +511,7 @@
     width: 100%;
     box-sizing: border-box;
     padding: 0.4rem 0.6rem;
-    border: 1px solid #ced4da;
+    border: 1px solid var(--ca-border);
     border-radius: 0.375rem;
     font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 0.85rem;
@@ -401,7 +520,7 @@
 .qtype_codeatelier .codeatelier-tabs {
     display: flex;
     gap: 0.25rem;
-    border-bottom: 1px solid #ced4da;
+    border-bottom: 1px solid var(--ca-border);
     margin-top: 0.5rem;
 }
 
@@ -410,13 +529,13 @@
     background: none;
     padding: 0.35rem 0.75rem;
     cursor: pointer;
-    color: #5c6770;
+    color: var(--ca-text-muted);
     border-bottom: 2px solid transparent;
 }
 
 .qtype_codeatelier .codeatelier-tab-active {
-    color: #1f2933;
-    border-bottom-color: #0f6cbf;
+    color: var(--ca-text);
+    border-bottom-color: var(--ca-focus);
     font-weight: 600;
 }
 
@@ -425,15 +544,15 @@
 }
 
 .qtype_codeatelier .codeatelier-stale {
-    color: #8a6d00;
-    background: #fff8e1;
+    color: var(--ca-warn);
+    background: var(--ca-warn-bg);
     padding: 0.4rem 0.6rem;
     border-radius: 0.375rem;
 }
 
 .qtype_codeatelier .codeatelier-degraded {
-    color: #b02a37;
-    background: #fbeaec;
+    color: var(--ca-danger);
+    background: var(--ca-danger-bg);
     padding: 0.4rem 0.6rem;
     border-radius: 0.375rem;
 }
@@ -442,15 +561,15 @@
 .qtype_codeatelier .qtext code {
     font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 0.9em;
-    background: #f1f3f5;
-    color: #1f2933;
+    background: var(--ca-surface-alt);
+    color: var(--ca-text);
     padding: 0.1em 0.3em;
     border-radius: 0.2rem;
 }
 
 .qtype_codeatelier .qtext pre {
-    background: #f8f9fa;
-    border: 1px solid #e0e3e7;
+    background: var(--ca-surface-muted);
+    border: 1px solid var(--ca-border-soft);
     border-radius: 0.375rem;
     padding: 0.6rem 0.8rem;
     overflow: auto;
@@ -470,49 +589,49 @@
 .qtype_codeatelier .codeatelier-hl .tok-modifier,
 .qtype_codeatelier .codeatelier-hl .tok-controlKeyword,
 .qtype_codeatelier .codeatelier-hl .tok-operatorKeyword {
-    color: #0b66c3;
+    color: var(--ca-tok-keyword);
 }
 
 .qtype_codeatelier .codeatelier-hl .tok-comment {
-    color: #6a737d;
+    color: var(--ca-tok-comment);
     font-style: italic;
 }
 
 .qtype_codeatelier .codeatelier-hl .tok-string,
 .qtype_codeatelier .codeatelier-hl .tok-string2 {
-    color: #0a7d33;
+    color: var(--ca-tok-string);
 }
 
 .qtype_codeatelier .codeatelier-hl .tok-number,
 .qtype_codeatelier .codeatelier-hl .tok-bool,
 .qtype_codeatelier .codeatelier-hl .tok-null,
 .qtype_codeatelier .codeatelier-hl .tok-atom {
-    color: #a4258f;
+    color: var(--ca-tok-number);
 }
 
 .qtype_codeatelier .codeatelier-hl .tok-typeName,
 .qtype_codeatelier .codeatelier-hl .tok-className,
 .qtype_codeatelier .codeatelier-hl .tok-namespace {
-    color: #b5690c;
+    color: var(--ca-tok-type);
 }
 
 .qtype_codeatelier .codeatelier-hl .tok-function,
 .qtype_codeatelier .codeatelier-hl .tok-propertyName {
-    color: #6f42c1;
+    color: var(--ca-tok-function);
 }
 
 .qtype_codeatelier .codeatelier-hl .tok-operator,
 .qtype_codeatelier .codeatelier-hl .tok-punctuation {
-    color: #5c6770;
+    color: var(--ca-tok-punctuation);
 }
 
 /* Authoring: the live-preview pane (the real student workbench, rendered in the edit form). */
 .codeatelier-preview {
     margin-top: 0.75rem;
     padding: 0.75rem 1rem;
-    border: 1px dashed #ced4da;
+    border: 1px dashed var(--ca-border, #ced4da);
     border-radius: 0.375rem;
-    background: #fcfcfd;
+    background: var(--ca-surface-raised, #fcfcfd);
 }
 
 .codeatelier-preview:empty {
@@ -538,7 +657,7 @@
  */
 .qtype_codeatelier .codeatelier-practicenote,
 .qtype_codeatelier .codeatelier-judgenote {
-    color: #5b626a;
+    color: var(--ca-note-text);
 }
 
 .qtype_codeatelier .codeatelier-focus-toggle {
@@ -551,7 +670,7 @@
     z-index: 1050;
     margin: 0;
     padding: 1.25rem clamp(1rem, 4vw, 3rem);
-    background: #fff;
+    background: var(--ca-surface);
     overflow: auto;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
@@ -593,13 +712,13 @@
 }
 
 .qtype_codeatelier .codeatelier-judge-verdict-label {
-    color: #5c6770;
+    color: var(--ca-text-muted);
 }
 
 .qtype_codeatelier .codeatelier-judge-pending {
-    color: #8a5a00;
-    background: #fff8e1;
-    border: 1px solid #f0e0a8;
+    color: var(--ca-warn);
+    background: var(--ca-warn-bg);
+    border: 1px solid var(--ca-warn-border);
     border-radius: 0.375rem;
     padding: 0.5rem 0.7rem;
 }
@@ -610,8 +729,8 @@
 
 .qtype_codeatelier .codeatelier-compileoutput,
 .qtype_codeatelier .codeatelier-test-error {
-    background: #fbeaec;
-    border: 1px solid #f1c5cb;
+    background: var(--ca-danger-bg);
+    border: 1px solid var(--ca-danger-border);
     border-radius: 0.375rem;
     padding: 0.5rem 0.7rem;
     margin: 0.4rem 0;
@@ -629,7 +748,7 @@
 
 .qtype_codeatelier .codeatelier-judge-test {
     padding: 0.4rem 0;
-    border-top: 1px solid #eef0f2;
+    border-top: 1px solid var(--ca-border-faint);
 }
 
 .qtype_codeatelier .codeatelier-test-status {
@@ -637,21 +756,21 @@
 }
 
 .qtype_codeatelier .codeatelier-status-pass {
-    color: #1f7a3d;
+    color: var(--ca-success);
 }
 
 .qtype_codeatelier .codeatelier-status-fail,
 .qtype_codeatelier .codeatelier-status-re {
-    color: #b02a37;
+    color: var(--ca-danger);
 }
 
 .qtype_codeatelier .codeatelier-status-tle,
 .qtype_codeatelier .codeatelier-status-mle {
-    color: #8a5a00;
+    color: var(--ca-warn);
 }
 
 .qtype_codeatelier .codeatelier-test-meta {
-    color: #8a939b;
+    color: var(--ca-text-faint);
     font-size: 0.8rem;
     margin-left: 0.5rem;
 }
@@ -669,7 +788,7 @@
 
 .qtype_codeatelier .codeatelier-diff-label {
     flex: 0 0 5.5rem;
-    color: #5c6770;
+    color: var(--ca-text-muted);
     font-size: 0.8rem;
     text-align: right;
 }
@@ -678,8 +797,8 @@
     flex: 1 1 auto;
     margin: 0;
     padding: 0.3rem 0.5rem;
-    background: #f8f9fa;
-    border: 1px solid #e0e3e7;
+    background: var(--ca-surface-muted);
+    border: 1px solid var(--ca-border-soft);
     border-radius: 0.3rem;
     font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 0.82rem;
@@ -688,13 +807,13 @@
 }
 
 .qtype_codeatelier .codeatelier-diff-expected .codeatelier-diff-value {
-    background: #eef7f0;
-    border-color: #cfe6d6;
+    background: var(--ca-success-soft-bg);
+    border-color: var(--ca-success-border);
 }
 
 .qtype_codeatelier .codeatelier-diff-got .codeatelier-diff-value {
-    background: #fbeaec;
-    border-color: #f1c5cb;
+    background: var(--ca-danger-bg);
+    border-color: var(--ca-danger-border);
 }
 
 /* Judge-tier formative run-against-examples output. */
@@ -708,21 +827,21 @@
 
 /* Soft anti-cheat: the in-attempt note and the review activity summary. */
 .qtype_codeatelier .codeatelier-proctornote {
-    color: #8a5a00;
+    color: var(--ca-warn);
 }
 
 .qtype_codeatelier .codeatelier-proctor-summary {
     margin-top: 0.75rem;
     padding: 0.5rem 0.7rem;
-    background: #fff8e1;
-    border: 1px solid #f0e0a8;
+    background: var(--ca-warn-bg);
+    border: 1px solid var(--ca-warn-border);
     border-radius: 0.375rem;
 }
 
 .qtype_codeatelier .codeatelier-proctor-summary h6 {
     margin: 0 0 0.3rem;
     font-size: 0.85rem;
-    color: #8a5a00;
+    color: var(--ca-warn);
 }
 
 .qtype_codeatelier .codeatelier-proctor-list {
@@ -731,7 +850,7 @@
     font-size: 0.85rem;
 }
 
-/* Insight report: score-distribution bars. */
+/* Insight report: score-distribution bars (teacher report, follows the page theme). */
 .qtype_codeatelier-report .codeatelier-bar-full {
     background-color: #1f7a3d;
 }
@@ -750,9 +869,9 @@
 }
 
 .qtype_codeatelier .codeatelier-preview-host {
-    border: 1px solid #ccc;
+    border: 1px solid var(--ca-border);
     border-radius: 4px;
-    background-color: #fff;
+    background-color: var(--ca-surface);
     overflow: hidden;
 }
 
@@ -769,48 +888,9 @@
 }
 
 .codeatelier-webpicker .codeatelier-preview-host {
-    border: 1px solid #ccc;
+    border: 1px solid var(--ca-border, #ccc);
     border-radius: 4px;
-    background-color: #fff;
+    background-color: var(--ca-surface, #fff);
     overflow: hidden;
     margin-top: 0.5rem;
-}
-
-.codeatelier-webpicker .codeatelier-preview-frame {
-    display: block;
-    width: 100%;
-    height: 280px;
-    border: 0;
-}
-
-.codeatelier-webpicker .codeatelier-pickmsg {
-    margin-left: 0.5rem;
-}
-
-/* Editor tools: the visible find/replace control and the shortcuts disclosure. */
-.qtype_codeatelier .codeatelier-editor-tools {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    margin-top: 0.25rem;
-    font-size: 0.875rem;
-}
-
-.qtype_codeatelier .codeatelier-editor-find {
-    padding-left: 0;
-    padding-right: 0;
-}
-
-.qtype_codeatelier .codeatelier-shortcuts summary {
-    cursor: pointer;
-}
-
-.qtype_codeatelier .codeatelier-shortcut-list {
-    margin: 0.5rem 0 0;
-    padding-left: 1.2rem;
-}
-
-.qtype_codeatelier .codeatelier-shortcut-list li {
-    margin-bottom: 0.2rem;
 }
