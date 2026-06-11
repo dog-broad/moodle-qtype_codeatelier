@@ -194,6 +194,7 @@ $string['notcodeatelierquestion'] = 'That is not a CodeAtelier question.';
 $string['notenoughtests'] = 'You must provide at least one test case.';
 $string['notjudgequestion'] = 'This is not a Secure-mode CodeAtelier question.';
 $string['output'] = 'Output';
+$string['outputempty'] = 'Run your code to see output and test results.';
 $string['outputtabs'] = 'Output and test results';
 $string['pickaddrow'] = 'Add another check row below, then pick again.';
 $string['pickcancel'] = 'Click an element in the preview…';

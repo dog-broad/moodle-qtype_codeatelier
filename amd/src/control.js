@@ -903,7 +903,31 @@ export const init = (params) => {
             }
         });
     });
-    setTab('tests');
+    // Output starts empty: hide the tabs + panels behind a single call-to-action
+    // until the first Run/Check populates a panel, so there's no empty chrome up
+    // front. revealOutput() unhides them on first use.
+    const tablistEl = root.querySelector('.codeatelier-tabs');
+    const outputEmptyEl = root.querySelector('[data-role="output-empty"]');
+    let outputRevealed = false;
+    const revealOutput = (name) => {
+        if (!outputRevealed) {
+            outputRevealed = true;
+            if (tablistEl) {
+                tablistEl.hidden = false;
+            }
+            if (outputEmptyEl) {
+                outputEmptyEl.hidden = true;
+            }
+        }
+        setTab(name);
+    };
+    if (tablistEl) {
+        tablistEl.hidden = true;
+    }
+    if (consoleel) {
+        consoleel.style.display = 'none';
+    }
+    resultsel.style.display = 'none';
 
     // Focus mode: an opt-in split-pane that fills the viewport. Implemented as a
     // class on the question root so the editor, results and form fields keep
@@ -1044,7 +1068,7 @@ export const init = (params) => {
         if (editor.clearErrors) {
             editor.clearErrors();
         }
-        setTab('tests');
+        revealOutput('tests');
         run(editor.getValue(), currentLanguage, config.tests, runOptions())
             .then((result) => {
                 if (result.aborted) {
@@ -1079,7 +1103,7 @@ export const init = (params) => {
         if (editor.clearErrors) {
             editor.clearErrors();
         }
-        setTab('console');
+        revealOutput('console');
         const scratch = scratchinput ? scratchinput.value : '';
         run(editor.getValue(), currentLanguage, [{input: scratch}], runOptions())
             .then((result) => {
