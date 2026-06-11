@@ -413,11 +413,13 @@ class qtype_codeatelier_edit_form extends question_edit_form {
      */
     protected function add_test_case_fields($mform) {
         $repeated = [];
+        // The repeat engine substitutes {no} only in an element's label (or a
+        // header's text), never in static body text — so the label carries it.
         $repeated[] = $mform->createElement(
             'static',
             'testcaselabel',
-            '',
-            get_string('testcaseno', 'qtype_codeatelier', '{no}')
+            get_string('testcaseno', 'qtype_codeatelier', '{no}'),
+            ''
         );
         $repeated[] = $mform->createElement(
             'textarea',
