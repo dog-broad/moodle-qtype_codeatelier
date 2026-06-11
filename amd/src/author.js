@@ -294,9 +294,18 @@ const capturedExpected = (result, scenario) => {
 /**
  * Initialise the authoring enhancements.
  *
- * @param {Object} config field ids, preview targets, strings and runtime URLs
+ * The config (field ids, preview targets, every UI string, runtime URLs) is
+ * carried on the preview pane's data-config attribute rather than the AMD init
+ * args, which Moodle caps at 1024 chars. Only the pane id arrives through params.
+ *
+ * @param {Object} params - {previewid}
  */
-export const init = (config) => {
+export const init = (params) => {
+    const pane = document.getElementById(params.previewid);
+    if (!pane || !pane.dataset.config) {
+        return;
+    }
+    const config = JSON.parse(pane.dataset.config);
     const langSel = byId(config.languageid);
     const scenSel = byId(config.scenarioid);
     const starterTa = byId(config.startercodeid);

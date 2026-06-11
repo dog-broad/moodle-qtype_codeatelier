@@ -334,21 +334,10 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         );
         $status = html_writer::tag('span', '', ['class' => 'codeatelier-status ml-2',
                 'id' => $previewid . '_status', 'role' => 'status', 'aria-live' => 'polite']);
-        $pane = html_writer::div('', 'codeatelier-preview', ['id' => $previewid]);
-        $mform->addElement(
-            'static',
-            'codeatelier_previewarea',
-            '',
-            html_writer::tag('p', get_string('previewintro', 'qtype_codeatelier'), ['class' => 'text-muted'])
-                . html_writer::tag(
-                    'p',
-                    get_string('captureexpected_help', 'qtype_codeatelier'),
-                    ['class' => 'text-muted']
-                )
-            . $refresh . $capture . $status . $pane
-        );
-
-        $PAGE->requires->js_call_amd('qtype_codeatelier/author', 'init', [[
+        // The author config bundles every UI string and label, exceeding the
+        // 1024-char cap Moodle enforces on js_call_amd arguments. Ship it on the
+        // preview pane's data-config attribute; author.js reads it from the DOM.
+        $authorconfig = [
             'languageid' => 'id_language',
             'languagesid' => 'id_languages',
             'starterlangid' => 'id_starterlang',
@@ -396,6 +385,23 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'pyodidebaseurl' => get_config('qtype_codeatelier', 'pyodidebaseurl'),
             'sqljsbaseurl' => get_config('qtype_codeatelier', 'sqljsbaseurl'),
             'timeoutms' => 5000,
+        ];
+        $pane = html_writer::div('', 'codeatelier-preview', ['id' => $previewid, 'data-config' => json_encode($authorconfig)]);
+        $mform->addElement(
+            'static',
+            'codeatelier_previewarea',
+            '',
+            html_writer::tag('p', get_string('previewintro', 'qtype_codeatelier'), ['class' => 'text-muted'])
+                . html_writer::tag(
+                    'p',
+                    get_string('captureexpected_help', 'qtype_codeatelier'),
+                    ['class' => 'text-muted']
+                )
+            . $refresh . $capture . $status . $pane
+        );
+
+        $PAGE->requires->js_call_amd('qtype_codeatelier/author', 'init', [[
+            'previewid' => $previewid,
         ]]);
     }
 
