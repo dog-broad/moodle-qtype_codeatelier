@@ -49,6 +49,19 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             );
         }
 
+        // How to put syntax-highlighted code in the question text. The attempt page
+        // highlights any language-tagged <pre><code> block; this points authors at
+        // the editor's HTML view, which works regardless of the editor's toolbar.
+        $codeblocklangs = 'python, sql, javascript, typescript, c, cpp, java, go, rust, php, csharp, html, css';
+        $codeblocksnippet = "<pre><code class=\"language-python\">\n"
+            . "def add(a, b):\n    return a + b\n</code></pre>";
+        $codeblockhelp = html_writer::start_tag('details', ['class' => 'codeatelier-codeblockhelp'])
+            . html_writer::tag('summary', get_string('codeblockhelp', 'qtype_codeatelier'))
+            . html_writer::tag('p', get_string('codeblockhelp_body', 'qtype_codeatelier', $codeblocklangs))
+            . html_writer::tag('pre', s($codeblocksnippet))
+            . html_writer::end_tag('details');
+        $mform->addElement('static', 'codeblockhelp', '', $codeblockhelp);
+
         $mform->addElement(
             'select',
             'tier',

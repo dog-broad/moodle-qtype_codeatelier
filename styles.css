@@ -1320,6 +1320,20 @@
     font-style: italic;
 }
 
+/* Authoring help: how to add a highlighted code block to the question text. */
+.codeatelier-codeblockhelp > summary {
+    cursor: pointer;
+}
+
+.codeatelier-codeblockhelp pre {
+    margin: 0.5rem 0 0;
+    padding: 0.5rem 0.75rem;
+    background: #f1f3f5;
+    border-radius: 0.25rem;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+}
+
 /* The function-signature contract note on the edit form (explains JSON args vs
  * a typed signature, gated on the chosen languages). */
 .codeatelier-signote {
