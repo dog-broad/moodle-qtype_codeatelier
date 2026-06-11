@@ -554,6 +554,11 @@ class qtype_codeatelier extends question_type {
             'findlabel' => get_string('editorfind', 'qtype_codeatelier'),
             'shortcutstitle' => get_string('editorshortcutstitle', 'qtype_codeatelier'),
             'shortcutshtml' => get_string('editorshortcuts', 'qtype_codeatelier'),
+            'themelabel' => get_string('editortheme', 'qtype_codeatelier'),
+            'themeauto' => get_string('editortheme_auto', 'qtype_codeatelier'),
+            'themelight' => get_string('editortheme_light', 'qtype_codeatelier'),
+            'themedark' => get_string('editortheme_dark', 'qtype_codeatelier'),
+            'themehighcontrast' => get_string('editortheme_hc', 'qtype_codeatelier'),
         ];
     }
 }

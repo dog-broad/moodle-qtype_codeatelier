@@ -216,6 +216,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'readonly' => (bool) $options->readonly,
             'isjudge' => $isjudge,
             'allornothing' => (bool) $question->allornothing,
+            'editortheme' => get_user_preferences('qtype_codeatelier_editortheme', 'auto'),
             'strings' => qtype_codeatelier::ui_strings(),
         ];
         $context['controlconfig'] = json_encode($controlconfig);

@@ -85,6 +85,11 @@ $string['editorshortcuts'] = '<ul class="codeatelier-shortcut-list">
 <li><kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> — indent or outdent (press <kbd>Esc</kbd> first to tab out of the editor)</li>
 </ul>';
 $string['editorshortcutstitle'] = 'Editor keyboard shortcuts';
+$string['editortheme'] = 'Editor theme';
+$string['editortheme_auto'] = 'Theme: Auto';
+$string['editortheme_dark'] = 'Theme: Dark';
+$string['editortheme_hc'] = 'Theme: High contrast';
+$string['editortheme_light'] = 'Theme: Light';
 $string['entryfile'] = 'Entry file';
 $string['entryfile_help'] = 'The name of the file the server compiles and runs as the program\'s entry point (for example `main.cpp`, or `Main.java` whose class is run). It must be one of the project files below.';
 $string['entryfilemissing'] = 'The entry file must be one of the project files.';
@@ -184,6 +189,7 @@ $string['previewrefresh'] = 'Refresh preview';
 $string['privacy:metadata:judge0'] = 'When a question is graded in Secure mode, the student\'s submission is sent to the site-configured code sandbox (Judge0) to be run and graded.';
 $string['privacy:metadata:judge0:code'] = 'The student\'s submitted code.';
 $string['privacy:metadata:judge0:language'] = 'The programming language the submission is run as.';
+$string['privacy:metadata:preference:editortheme'] = 'The student\'s chosen code-editor theme (auto, light, dark or high contrast).';
 $string['privacy:metadata:proctorlog'] = 'A server-side, append-only record of soft anti-cheat events (leaving the question, outside-paste attempts) on secure-mode attempts.';
 $string['privacy:metadata:proctorlog:eventtype'] = 'The kind of event (leaving the question, an outside-paste attempt).';
 $string['privacy:metadata:proctorlog:questionattemptid'] = 'The question attempt the event was recorded against.';

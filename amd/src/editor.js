@@ -43,18 +43,17 @@ import {html} from '@codemirror/lang-html';
 import {css} from '@codemirror/lang-css';
 import {highlightTree, classHighlighter, tags as t} from '@lezer/highlight';
 
-/**
- * Accessible default syntax theme.
- *
- * CodeMirror's bundled defaultHighlightStyle (and its active-line highlight)
- * ship token colours that fall below the WCAG AA 4.5:1 text-contrast threshold
- * — the orange (regexp/number) and green (literal/type) tokens fail even on
- * white. This style re-colours every standard Lezer tag to clear 4.5:1 on the
- * editor background, and softens the active-line tint to a near-neutral grey so
- * it never lowers token contrast. The author-facing palette stays close to a
- * conventional light editor theme; only the luminance is pinned for contrast.
+/*
+ * Selectable editor themes. CodeMirror's bundled defaultHighlightStyle and
+ * active-line highlight ship token colours below the WCAG AA 4.5:1 threshold,
+ * so each theme below re-colours every standard Lezer tag to clear 4.5:1 on its
+ * own background. Three curated themes — light, dark, high-contrast — each a
+ * {HighlightStyle + chrome} pair, swapped live through a Compartment. "Auto"
+ * (resolved by the caller via resolveAutoTheme) maps to light or dark.
  */
-const accessibleHighlightStyle = HighlightStyle.define([
+
+// Light: a conventional light editor palette with luminance pinned for contrast.
+const lightHighlight = HighlightStyle.define([
     {tag: t.keyword, color: '#7c2d91'},
     {tag: [t.atom, t.bool, t.url, t.contentSeparator, t.labelName], color: '#0a3fa8'},
     {tag: [t.literal, t.inserted], color: '#0f6e2d'},
@@ -77,22 +76,157 @@ const accessibleHighlightStyle = HighlightStyle.define([
     {tag: t.strikethrough, textDecoration: 'line-through'},
 ]);
 
-const accessibleEditorTheme = EditorView.theme({
+const lightChrome = EditorView.theme({
     '.cm-activeLine': {backgroundColor: 'rgba(0, 0, 0, 0.035)'},
     // Darken the active gutter's line number too: the faint tint alone leaves
     // CodeMirror's default #6c6c6c gutter text at 4.44:1 on the tinted gutter.
     '.cm-activeLineGutter': {backgroundColor: 'rgba(0, 0, 0, 0.035)', color: '#3f3f3f'},
 });
 
-// High precedence so it overrides basicSetup's defaultHighlightStyle and
-// active-line theme. Held in a Compartment so a future theme picker can swap
-// the whole syntax theme live (the seed for selectable light/dark/high-contrast
-// themes).
-const defaultSyntaxTheme = Prec.high([
-    syntaxHighlighting(accessibleHighlightStyle),
-    accessibleEditorTheme,
+// Dark: light token colours clearing 4.5:1 on a dark editor background.
+const darkHighlight = HighlightStyle.define([
+    {tag: t.keyword, color: '#c586c0'},
+    {tag: [t.atom, t.bool, t.url, t.contentSeparator, t.labelName], color: '#9cdcfe'},
+    {tag: [t.literal, t.inserted], color: '#b5cea8'},
+    {tag: [t.number, t.integer, t.float], color: '#d2a679'},
+    {tag: [t.string, t.deleted], color: '#ce9178'},
+    {tag: [t.regexp, t.escape, t.special(t.string)], color: '#d7ba7d'},
+    {tag: t.definition(t.variableName), color: '#9cdcfe'},
+    {tag: t.local(t.variableName), color: '#9cdcfe'},
+    {tag: [t.typeName, t.namespace], color: '#4ec9b0'},
+    {tag: t.className, color: '#4ec9b0'},
+    {tag: [t.special(t.variableName), t.macroName], color: '#dcdcaa'},
+    {tag: t.definition(t.propertyName), color: '#9cdcfe'},
+    {tag: t.propertyName, color: '#9cdcfe'},
+    {tag: [t.comment, t.meta], color: '#8aa882'},
+    {tag: t.invalid, color: '#f48771'},
+    {tag: t.link, textDecoration: 'underline'},
+    {tag: t.heading, fontWeight: 'bold'},
+    {tag: t.emphasis, fontStyle: 'italic'},
+    {tag: t.strong, fontWeight: 'bold'},
+    {tag: t.strikethrough, textDecoration: 'line-through'},
 ]);
+
+const darkChrome = EditorView.theme({
+    '&': {color: '#d4d4d4', backgroundColor: '#1e2227'},
+    '.cm-content': {caretColor: '#d4d4d4'},
+    '.cm-cursor, .cm-dropCursor': {borderLeftColor: '#d4d4d4'},
+    '.cm-gutters': {backgroundColor: '#1e2227', color: '#9aa3ad', border: 'none'},
+    '.cm-activeLine': {backgroundColor: 'rgba(255, 255, 255, 0.06)'},
+    '.cm-activeLineGutter': {backgroundColor: 'rgba(255, 255, 255, 0.06)', color: '#d4d4d4'},
+    '.cm-selectionBackground, .cm-content ::selection': {backgroundColor: '#264f78'},
+    '&.cm-focused .cm-selectionBackground': {backgroundColor: '#264f78'},
+    '.cm-searchMatch': {backgroundColor: '#3a3d41', outline: '1px solid #5a5d61'},
+}, {dark: true});
+
+// High-contrast: black background, bright distinct tokens (each well past AA),
+// bold caret — a low-vision / Windows-high-contrast style affordance.
+const highContrastHighlight = HighlightStyle.define([
+    {tag: t.keyword, color: '#5fb5ff'},
+    {tag: [t.atom, t.bool, t.url, t.contentSeparator, t.labelName], color: '#9cdcfe'},
+    {tag: [t.literal, t.inserted], color: '#7bff7b'},
+    {tag: [t.number, t.integer, t.float], color: '#ffb86c'},
+    {tag: [t.string, t.deleted], color: '#7bff7b'},
+    {tag: [t.regexp, t.escape, t.special(t.string)], color: '#ffd866'},
+    {tag: t.definition(t.variableName), color: '#9cdcfe'},
+    {tag: t.local(t.variableName), color: '#9cdcfe'},
+    {tag: [t.typeName, t.namespace], color: '#5ff0d6'},
+    {tag: t.className, color: '#5ff0d6'},
+    {tag: [t.special(t.variableName), t.macroName], color: '#ffe680'},
+    {tag: t.definition(t.propertyName), color: '#9cdcfe'},
+    {tag: t.propertyName, color: '#9cdcfe'},
+    {tag: [t.comment, t.meta], color: '#c6c6c6'},
+    {tag: t.invalid, color: '#ff6e6e'},
+    {tag: t.link, textDecoration: 'underline'},
+    {tag: t.heading, fontWeight: 'bold'},
+    {tag: t.emphasis, fontStyle: 'italic'},
+    {tag: t.strong, fontWeight: 'bold'},
+    {tag: t.strikethrough, textDecoration: 'line-through'},
+]);
+
+const highContrastChrome = EditorView.theme({
+    '&': {color: '#ffffff', backgroundColor: '#000000'},
+    '.cm-content': {caretColor: '#ffffff'},
+    '.cm-cursor, .cm-dropCursor': {borderLeftColor: '#ffffff', borderLeftWidth: '2px'},
+    '.cm-gutters': {backgroundColor: '#000000', color: '#c6c6c6', borderRight: '1px solid #6f6f6f'},
+    '.cm-activeLine': {backgroundColor: 'rgba(255, 255, 255, 0.12)'},
+    '.cm-activeLineGutter': {backgroundColor: 'rgba(255, 255, 255, 0.12)', color: '#ffffff'},
+    '.cm-selectionBackground, .cm-content ::selection': {backgroundColor: '#1d6fb8'},
+    '&.cm-focused .cm-selectionBackground': {backgroundColor: '#1d6fb8'},
+}, {dark: true});
+
+// Each theme is high precedence so it overrides basicSetup's defaultHighlightStyle
+// and active-line theme. Swapped live through the Compartment.
+const themeExtension = (highlight, chrome) => Prec.high([syntaxHighlighting(highlight), chrome]);
+const THEMES = {
+    light: themeExtension(lightHighlight, lightChrome),
+    dark: themeExtension(darkHighlight, darkChrome),
+    hc: themeExtension(highContrastHighlight, highContrastChrome),
+};
 const themeCompartment = new Compartment();
+
+/**
+ * Relative luminance (WCAG) of an sRGB colour.
+ *
+ * @param {Number} r 0-255
+ * @param {Number} g 0-255
+ * @param {Number} b 0-255
+ * @return {Number} 0 (black) to 1 (white)
+ */
+const relativeLuminance = (r, g, b) => {
+    const lin = (c) => {
+        const s = c / 255;
+        return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+};
+
+/**
+ * Luminance of the first opaque background colour found walking up from an
+ * element, or null if none is resolvable.
+ *
+ * @param {HTMLElement} el
+ * @return {Number|null}
+ */
+const backgroundLuminance = (el) => {
+    let node = el;
+    while (node) {
+        const bg = window.getComputedStyle(node).backgroundColor;
+        const m = bg && bg.match(/rgba?\(([0-9.]+),\s*([0-9.]+),\s*([0-9.]+)(?:,\s*([0-9.]+))?\)/);
+        if (m) {
+            const alpha = m[4] === undefined ? 1 : parseFloat(m[4]);
+            if (alpha > 0) {
+                return relativeLuminance(Number(m[1]), Number(m[2]), Number(m[3]));
+            }
+        }
+        node = node.parentElement;
+    }
+    return null;
+};
+
+/**
+ * Resolve the effective light/dark theme for "Auto" mode by following the
+ * surrounding Moodle page. Cascade: an explicit Bootstrap 5 / Moodle 5.x
+ * `data-bs-theme`, then the page background luminance (the portable signal that
+ * works on Bootstrap 4, Bootstrap 5, and third-party dark themes alike), then
+ * the OS `prefers-color-scheme`, then light.
+ *
+ * @return {String} 'light' or 'dark'
+ */
+export const resolveAutoTheme = () => {
+    const bs = document.documentElement.getAttribute('data-bs-theme');
+    if (bs === 'dark' || bs === 'light') {
+        return bs;
+    }
+    const lum = backgroundLuminance(document.body);
+    if (lum !== null) {
+        return lum < 0.4 ? 'dark' : 'light';
+    }
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        return 'dark';
+    }
+    return 'light';
+};
 
 /**
  * Resolve the CodeMirror language extension for a CodeAtelier language code.
@@ -316,12 +450,12 @@ export const sandboxClipboard = (onExternal) => EditorView.domEventHandlers({
  * @param {HTMLTextAreaElement} textarea the backing form field
  * @param {String} language the syntax-highlighting language
  * @param {Object} options optional {readonly: bool, onChange: function,
- *   sandbox: bool, onExternal: function}
- * @return {Object} {getValue} accessor for the current source
+ *   sandbox: bool, onExternal: function, theme: 'light'|'dark'|'hc'}
+ * @return {Object} {getValue, openSearch, destroy, clearErrors, setTheme, showError}
  */
 export const create = (textarea, language, options) => {
     const opts = options || {};
-    const extensions = [basicSetup, themeCompartment.of(defaultSyntaxTheme), lintGutter()];
+    const extensions = [basicSetup, themeCompartment.of(THEMES[opts.theme] || THEMES.light), lintGutter()];
 
     // Secure tier: a sandboxed in-editor clipboard (internal copy/paste only).
     if (opts.sandbox && !opts.readonly) {
@@ -387,6 +521,15 @@ export const create = (textarea, language, options) => {
             textarea.style.display = '';
         },
         clearErrors: clearErrors,
+        /**
+         * Swap the editor's theme live, without recreating the view (preserves
+         * cursor and scroll). Mode is the effective theme: 'light', 'dark' or 'hc'.
+         *
+         * @param {String} mode
+         */
+        setTheme: (mode) => {
+            view.dispatch({effects: themeCompartment.reconfigure(THEMES[mode] || THEMES.light)});
+        },
         /**
          * Mark a runtime error on a 1-based line (gutter + inline + hover).
          *
