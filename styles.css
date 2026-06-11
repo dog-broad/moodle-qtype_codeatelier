@@ -884,6 +884,23 @@
 }
 
 /*
+ * Default reference-rail layout: on a wide enough page, place the problem pane
+ * (question + examples) beside the work pane (editor + run + output) so the
+ * examples stay visible while the student codes. Narrow pages keep the stacked
+ * flow (no change). Gated conservatively on viewport width; the quiz attempt
+ * page is typically full-width so the column is wide here. Focus mode is
+ * excluded — it has its own fixed-overlay grid. Breakpoint is tunable.
+ */
+@media (min-width: 75rem) {
+    .qtype_codeatelier:not(.codeatelier-focus) {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+        gap: 0 1.75rem;
+        align-items: start;
+    }
+}
+
+/*
  * The tier notes sit on a tinted pane background where Bootstrap's .text-muted
  * (#6a737b) drops to 4.22:1 contrast — under WCAG AA. Pin an explicit darker
  * slate so the note clears 4.5:1 on the tint (and on white). The template drops
