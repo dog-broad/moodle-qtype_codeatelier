@@ -1188,6 +1188,12 @@
     max-width: 60rem;
 }
 
+/* Hide the signature field + builder for a dynamic-only function question.
+ * !important so it survives Moodle's hideIf re-showing the field inline. */
+.codeatelier-sighide {
+    display: none !important;
+}
+
 .codeatelier-te-importactions {
     display: flex;
     flex-wrap: wrap;

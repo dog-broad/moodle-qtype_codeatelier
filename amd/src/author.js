@@ -257,18 +257,21 @@ const initSignatureVisibility = (config) => {
     };
 
     const update = () => {
-        if (scenSel.value !== 'function') {
-            note.style.display = 'none';
-            return;
-        }
-        const needsSig = allowedLangs().some((l) => staticLangs.indexOf(l) !== -1);
+        const isfunc = scenSel.value === 'function';
+        const needsSig = isfunc && allowedLangs().some((l) => staticLangs.indexOf(l) !== -1);
+        // Hide the signature field + builder for a dynamic-only function question.
+        // A class (not inline style) so it survives Moodle's hideIf re-showing the
+        // field on scenario changes — the rule carries !important.
+        const hide = isfunc && !needsSig;
         [fitemOf(field), fitemOf(host)].forEach((item) => {
             if (item) {
-                item.style.display = needsSig ? '' : 'none';
+                item.classList.toggle('codeatelier-sighide', hide);
             }
         });
-        note.style.display = '';
-        note.textContent = needsSig ? (str.staticnote || '') : (str.dynamicnote || '');
+        note.style.display = isfunc ? '' : 'none';
+        if (isfunc) {
+            note.textContent = needsSig ? (str.staticnote || '') : (str.dynamicnote || '');
+        }
     };
 
     update();
@@ -799,7 +802,13 @@ export const init = (params) => {
             timeoutMs: config.timeoutms,
         }).then((res) => {
             const results = res.results || [];
-            return rows.map((row, k) => capturedExpected(results[k], scenario));
+            return rows.map((row, k) => {
+                const r = results[k];
+                return {
+                    output: capturedExpected(r, scenario),
+                    error: (r && r.error) ? String(r.error) : null,
+                };
+            });
         });
     };
 
@@ -825,18 +834,28 @@ export const init = (params) => {
                     checkerquery: row.checkerquery,
                 })),
             },
-        }])[0].then((res) => (res.results || []).map((r) => (r.ok ? r.output : null)));
+        }])[0].then((res) => (res.results || []).map((r) => ({
+            output: r.ok ? r.output : null,
+            error: r.ok ? null : (r.error || r.message || null),
+        })));
     };
 
-    const reportCapture = (ok, failed, total) => {
+    const reportCapture = (ok, failed, total, firsterror) => {
         if (failed === 0) {
             setStatus((cstr.capturedone || 'Captured {$a} test(s).').replace('{$a}', String(ok)));
-        } else {
-            const tmpl = cstr.captureerrors || 'Captured {$a->ok} of {$a->total}; {$a->failed} errored.';
-            setStatus(tmpl.replace('{$a->ok}', String(ok))
-                .replace('{$a->total}', String(total))
-                .replace('{$a->failed}', String(failed)));
+            return;
         }
+        const tmpl = cstr.captureerrors || 'Captured {$a->ok} of {$a->total}; {$a->failed} errored.';
+        let msg = tmpl.replace('{$a->ok}', String(ok))
+            .replace('{$a->total}', String(total))
+            .replace('{$a->failed}', String(failed));
+        // Surface the first underlying error so the teacher can fix the cause (a
+        // common one for function questions: the Input must be the JSON argument
+        // list, so a single list argument is wrapped — [[...]], not [...]).
+        if (firsterror) {
+            msg += ' ' + (cstr.capturefirsterror || 'First error: {$a}').replace('{$a}', firsterror);
+        }
+        setStatus(msg);
     };
 
     if (captureBtn) {
@@ -854,19 +873,23 @@ export const init = (params) => {
             setStatus(cstr.running || 'Running…');
             captureBtn.disabled = true;
             const api = testEditor();
-            (isJudge() ? captureJudge(code, rows) : capturePractice(code, rows)).then((outputs) => {
+            (isJudge() ? captureJudge(code, rows) : capturePractice(code, rows)).then((items) => {
                 let ok = 0;
                 let failed = 0;
+                let firsterror = null;
                 rows.forEach((row, k) => {
-                    const out = outputs[k];
-                    if (out === null || out === undefined || !api) {
+                    const item = items[k] || {};
+                    if (item.output === null || item.output === undefined || !api) {
                         failed++;
+                        if (!firsterror && item.error) {
+                            firsterror = item.error;
+                        }
                         return;
                     }
-                    api.setExpected(row.index, out);
+                    api.setExpected(row.index, item.output);
                     ok++;
                 });
-                reportCapture(ok, failed, rows.length);
+                reportCapture(ok, failed, rows.length, firsterror);
                 return null;
             }).catch((err) => {
                 setStatus(String(err && err.message ? err.message : err));

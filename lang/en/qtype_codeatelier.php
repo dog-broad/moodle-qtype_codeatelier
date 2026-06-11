@@ -46,6 +46,7 @@ $string['assertpropertyinvalid'] = 'Use text, exists, count, attr:NAME or style:
 $string['assertselector'] = 'CSS selector';
 $string['capturedone'] = 'Captured expected output for {$a} test case(s) — review them before saving.';
 $string['captureerrors'] = 'Captured {$a->ok} of {$a->total} — {$a->failed} case(s) errored and were left unchanged.';
+$string['capturefirsterror'] = 'First error: {$a}';
 $string['captureexpected'] = 'Capture expected outputs';
 $string['captureexpected_help'] = 'Write a Reference solution above, then capture its output for every test case into the Expected fields (Secure mode runs it on the server; Practice mode runs it in your browser). Review the captured values before saving.';
 $string['capturenoreference'] = 'Write a reference solution first.';

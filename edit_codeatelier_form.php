@@ -388,6 +388,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 'capturenoreference' => get_string('capturenoreference', 'qtype_codeatelier'),
                 'referencewarning' => get_string('referencewarning', 'qtype_codeatelier'),
                 'referenceverifyfail' => get_string('referenceverifyfail', 'qtype_codeatelier'),
+                'capturefirsterror' => get_string('capturefirsterror', 'qtype_codeatelier'),
             ],
             'pyodidebaseurl' => get_config('qtype_codeatelier', 'pyodidebaseurl'),
             'sqljsbaseurl' => get_config('qtype_codeatelier', 'sqljsbaseurl'),
