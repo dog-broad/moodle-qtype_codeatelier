@@ -56,7 +56,7 @@
         {{#languagechoice}}
         <div class="codeatelier-langpicker" data-role="langpicker">
             <label class="codeatelier-block-label" for="{{wrapperid}}_language">{{languagechooselabel}}</label>
-            <select class="custom-select" id="{{wrapperid}}_language" data-role="language-select">
+            <select class="form-select" id="{{wrapperid}}_language" data-role="language-select">
                 {{#languageoptions}}
                 <option value="{{code}}" {{#selected}}selected="selected"{{/selected}}>{{label}}</option>
                 {{/languageoptions}}
@@ -79,7 +79,7 @@
             {{^readonly}}
             <div class="codeatelier-editor-tools" data-role="editor-tools">
                 <label class="visually-hidden" for="{{wrapperid}}_theme">{{themelabel}}</label>
-                <select class="custom-select custom-select-sm codeatelier-theme-select" id="{{wrapperid}}_theme" data-role="editor-theme">
+                <select class="form-select form-select-sm codeatelier-theme-select" id="{{wrapperid}}_theme" data-role="editor-theme">
                     <option value="auto">{{themeauto}}</option>
                     <option value="light">{{themelight}}</option>
                     <option value="dark">{{themedark}}</option>

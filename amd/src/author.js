@@ -85,7 +85,7 @@ const splitSigParams = (list) => {
  */
 const sigTypeSelect = (value, labelId) => {
     const sel = document.createElement('select');
-    sel.className = 'custom-select custom-select-sm codeatelier-sigtype';
+    sel.className = 'form-select form-select-sm codeatelier-sigtype';
     // Associate the visible row label so the select has an accessible name
     // (it carries no <label for>, only an adjacent span).
     if (labelId) {
