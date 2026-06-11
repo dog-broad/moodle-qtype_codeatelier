@@ -74,6 +74,13 @@ export default [
         plugins: [nodeResolve(), terser()],
     },
     {
+        // The scalable test-case editor: a self-contained vanilla module that
+        // enhances the testcasesjson field into a paginated, searchable list.
+        input: 'amd/src/testeditor.js',
+        output: {file: 'amd/build/testeditor.min.js', format: 'amd', sourcemap: true, sourcemapExcludeSources: true},
+        plugins: [nodeResolve(), terser()],
+    },
+    {
         // The authoring helper reuses the editor and the workbench controller as
         // AMD modules and renders the student template via core/templates.
         input: 'amd/src/author.js',

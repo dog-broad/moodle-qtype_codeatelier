@@ -1100,7 +1100,8 @@
  */
 :where(.qtype_codeatelier .form-select),
 :where(.codeatelier-sigparam .form-select),
-:where(.codeatelier-sigreturn .form-select) {
+:where(.codeatelier-sigreturn .form-select),
+:where(.codeatelier-testeditor .form-select) {
     display: block;
     width: 100%;
     padding: 0.375rem 2.25rem 0.375rem 0.75rem;
@@ -1118,8 +1119,169 @@
 
 :where(.qtype_codeatelier .form-select-sm),
 :where(.codeatelier-sigparam .form-select-sm),
-:where(.codeatelier-sigreturn .form-select-sm) {
+:where(.codeatelier-sigreturn .form-select-sm),
+:where(.codeatelier-testeditor .form-select-sm) {
     padding: 0.25rem 2rem 0.25rem 0.5rem;
     font-size: 0.875rem;
     border-radius: 0.25rem;
+}
+
+/*
+ * Scalable test-case editor (the question edit form). Test cases live in one
+ * JSON field enhanced into this paginated, searchable list — so a question can
+ * carry hundreds of cases without crossing PHP's max_input_vars cap. Styled with
+ * form-theme-neutral colours (this is the teacher edit form, not the student
+ * attempt, so the --ca-* attempt tokens do not apply here).
+ */
+.codeatelier-testeditor {
+    margin-top: 0.5rem;
+}
+
+.codeatelier-te-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.codeatelier-te-toolbar .codeatelier-te-count {
+    font-weight: 600;
+    margin-right: auto;
+}
+
+.codeatelier-te-toolbar input[type="search"] {
+    max-width: 16rem;
+}
+
+.codeatelier-te-import {
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.codeatelier-te-import > summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.codeatelier-te-importbody {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.codeatelier-te-importbody > .form-select {
+    max-width: 16rem;
+}
+
+.codeatelier-te-importactions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.codeatelier-te-mode {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.codeatelier-te-mode label {
+    margin: 0;
+}
+
+.codeatelier-te-status {
+    color: #495057;
+}
+
+.codeatelier-te-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+}
+
+.codeatelier-te-row {
+    border-bottom: 1px solid #dee2e6;
+}
+
+.codeatelier-te-row:last-child {
+    border-bottom: 0;
+}
+
+.codeatelier-te-empty {
+    padding: 1rem;
+    color: #6c757d;
+    text-align: center;
+}
+
+.codeatelier-te-head {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    padding: 0.5rem 0.75rem;
+    font-family: var(--ca-mono, monospace);
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.codeatelier-te-head:hover,
+.codeatelier-te-head:focus {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+.codeatelier-te-head[aria-expanded="true"] {
+    background-color: rgba(0, 0, 0, 0.06);
+    font-weight: 600;
+}
+
+.codeatelier-te-body {
+    padding: 0.5rem 0.75rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.codeatelier-te-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.codeatelier-te-field > label {
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.8125rem;
+}
+
+.codeatelier-te-field textarea {
+    font-family: var(--ca-mono, monospace);
+    font-size: 0.875rem;
+}
+
+.codeatelier-te-rowtools {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.codeatelier-te-pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .codeatelier-te-head {
+        transition: none;
+    }
 }
