@@ -134,6 +134,7 @@ const renderScratch = (out, result, strings) => {
  */
 const render = (out, result, strings) => {
     out.textContent = '';
+    out.appendChild(clearBar(out, strings));
     if (result.verdict === 'CE' && result.compileoutput) {
         compileBlock(out, result.compileoutput, strings);
         return;
@@ -144,6 +145,28 @@ const render = (out, result, strings) => {
         list.appendChild(renderExample(ex, strings));
     });
     out.appendChild(list);
+};
+
+/**
+ * A small bar with a Clear button that empties the results, so they don't stay
+ * on screen and push the "run your own input" section out of view.
+ *
+ * @param {HTMLElement} out the results container to clear
+ * @param {Object} strings
+ * @return {HTMLElement}
+ */
+const clearBar = (out, strings) => {
+    const bar = document.createElement('div');
+    bar.className = 'codeatelier-runresults-bar';
+    const clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'btn btn-link btn-sm codeatelier-runresults-clear';
+    clear.textContent = strings.clear || 'Clear';
+    clear.addEventListener('click', () => {
+        out.textContent = '';
+    });
+    bar.appendChild(clear);
+    return bar;
 };
 
 /**

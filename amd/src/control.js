@@ -921,18 +921,21 @@ export const init = (params) => {
     }
 
     // Language picker: re-mount the editor in the chosen language and record the
-    // choice for submit / run / run-examples. The starter is only swapped when the
-    // student has not typed over it, so a language switch never discards real work.
+    // choice for submit / run / run-examples. Each language keeps its OWN code in a
+    // per-language buffer (like a multi-language CP editor), so switching language
+    // never carries code across or discards it — switching back restores that
+    // language's work, and the first visit to a language shows its starter.
     if (langselect && config.scenario !== 'project') {
+        const codeByLang = {};
+        codeByLang[currentLanguage] = editor.getValue();
         langselect.addEventListener('change', () => {
             const next = langselect.value;
             if (next === currentLanguage) {
                 return;
             }
             const starters = config.starters || {};
-            const current = editor.getValue();
-            const untouched = current.trim() === '' || current === (starters[currentLanguage] || '');
-            const nextValue = untouched ? (starters[next] || '') : current;
+            codeByLang[currentLanguage] = editor.getValue();
+            const nextValue = (next in codeByLang) ? codeByLang[next] : (starters[next] || '');
             try {
                 if (editor.destroy) {
                     editor.destroy();

@@ -74,6 +74,7 @@ The checker is given three files in its working directory, named on its command 
 A reference solution is required so the checker is verified on save (its output for every test must be accepted).';
 $string['checklabel'] = 'Check';
 $string['chooselanguage'] = 'Language';
+$string['clear'] = 'Clear';
 $string['compileoutputlabel'] = 'What the compiler reported:';
 $string['consolelabel'] = 'Output';
 $string['cputimelimit'] = 'CPU-time limit (seconds)';

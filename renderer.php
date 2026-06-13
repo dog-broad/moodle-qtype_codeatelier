@@ -269,6 +269,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                     'tle' => get_string('verdict_TLE', 'qtype_codeatelier'),
                     'mle' => get_string('verdict_MLE', 'qtype_codeatelier'),
                     'nooutput' => get_string('scratchnooutput', 'qtype_codeatelier'),
+                    'clear' => get_string('clear', 'qtype_codeatelier'),
                 ],
             ]]);
         }

@@ -61,6 +61,11 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             . html_writer::tag('pre', s($codeblocksnippet))
             . html_writer::end_tag('details');
         $mform->addElement('static', 'codeblockhelp', '', $codeblockhelp);
+        // The guidance is about the question text, so sit it right above that field
+        // (which the parent form added before definition_inner ran).
+        if ($mform->elementExists('questiontext')) {
+            $mform->insertElementBefore($mform->removeElement('codeblockhelp', false), 'questiontext');
+        }
 
         $mform->addElement(
             'select',

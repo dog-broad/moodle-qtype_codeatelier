@@ -1125,10 +1125,27 @@
 /* Judge-tier formative run-against-examples output. */
 .qtype_codeatelier .codeatelier-runresults {
     margin-top: 0.5rem;
+    /* Bounded so a long set of example results scrolls in place rather than
+     * pushing the "run your own input" section below the fold. */
+    max-height: 24rem;
+    overflow: auto;
 }
 
 .qtype_codeatelier .codeatelier-runresults:empty {
     display: none;
+}
+
+.qtype_codeatelier .codeatelier-runresults-bar {
+    display: flex;
+    justify-content: flex-end;
+    position: sticky;
+    top: 0;
+    background: var(--ca-surface);
+}
+
+.qtype_codeatelier .codeatelier-scratchoutput {
+    max-height: 24rem;
+    overflow: auto;
 }
 
 /* Soft anti-cheat: the in-attempt note and the review activity summary. */
