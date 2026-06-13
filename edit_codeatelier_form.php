@@ -196,6 +196,16 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->addHelpButton('schemasql', 'schemasql', 'qtype_codeatelier');
         $mform->hideIf('schemasql', 'scenario', 'neq', 'sql');
 
+        // A soft reminder (not a hard requirement — a query may legitimately need
+        // no tables, e.g. SELECT without FROM). Shown only for the SQL format.
+        $mform->addElement(
+            'static',
+            'schemanote',
+            '',
+            html_writer::div(get_string('schemanote', 'qtype_codeatelier'), 'small text-muted')
+        );
+        $mform->hideIf('schemanote', 'scenario', 'neq', 'sql');
+
         // Project scenario (multi-file, judge tier only): the entry/main file name
         // and the starter file set. The file set is a JS-managed file-tab editor
         // (the same one the student attempt uses) that keeps this textarea synced
@@ -231,6 +241,9 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // language set and single-field reference solution do not apply.
         $mform->hideIf('languages', 'scenario', 'eq', 'project');
         $mform->hideIf('languages', 'scenario', 'eq', 'web');
+        // SQL is single-language (schema + one query), so additional languages
+        // never apply — hide the picker rather than only rejecting it on save.
+        $mform->hideIf('languages', 'scenario', 'eq', 'sql');
 
         // A reference solution (in the primary language). The authoring JS can run
         // it to capture the Expected outputs and to validate the question; on the
