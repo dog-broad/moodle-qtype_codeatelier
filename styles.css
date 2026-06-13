@@ -689,8 +689,13 @@
  * expandable accordion), aligned with the feedback accordions above. */
 .qtype_codeatelier .codeatelier-feedback-line {
     margin: 0.25rem 0;
-    padding: 0.25rem 0.5rem;
-    font-weight: 600;
+    padding: 0.3rem 0.5rem;
+    font-weight: 700;
+    border-top: 1px solid var(--ca-border-soft);
+}
+
+.qtype_codeatelier .codeatelier-feedback-line:first-child {
+    border-top: 0;
 }
 
 .qtype_codeatelier .codeatelier-feedback-line.codeatelier-pass {
@@ -1061,12 +1066,16 @@
 }
 
 .qtype_codeatelier .codeatelier-judge-test {
-    padding: 0.4rem 0;
-    border-top: 1px solid var(--ca-border-faint);
+    padding: 0.45rem 0;
+    border-top: 1px solid var(--ca-border-soft);
+}
+
+.qtype_codeatelier .codeatelier-judge-test:first-child {
+    border-top: 0;
 }
 
 .qtype_codeatelier .codeatelier-test-status {
-    font-weight: 600;
+    font-weight: 700;
 }
 
 .qtype_codeatelier .codeatelier-status-pass {
@@ -1142,14 +1151,6 @@
 
 .qtype_codeatelier .codeatelier-runresults:empty {
     display: none;
-}
-
-.qtype_codeatelier .codeatelier-runresults-bar {
-    display: flex;
-    justify-content: flex-end;
-    position: sticky;
-    top: 0;
-    background: var(--ca-surface);
 }
 
 .qtype_codeatelier .codeatelier-scratchoutput {

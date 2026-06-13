@@ -48,6 +48,17 @@ export const init = (config) => {
 
     const language = () => (langField && langField.value) ? langField.value : config.language;
 
+    // A compact Clear sits next to the Run button (shown only when there are
+    // results) so dismissing them costs no vertical space.
+    const clearBtn = root.querySelector('[data-role="runexamples-clear"]');
+    if (clearBtn) {
+        clearBtn.textContent = strings.clear || 'Clear';
+        clearBtn.addEventListener('click', () => {
+            out.textContent = '';
+            clearBtn.hidden = true;
+        });
+    }
+
     button.addEventListener('click', () => {
         button.disabled = true;
         out.textContent = strings.running || 'Running…';
@@ -56,10 +67,16 @@ export const init = (config) => {
             args: {questionid: config.questionid, code: answer.value, language: language()},
         }])[0].then((result) => {
             render(out, result, strings);
+            if (clearBtn) {
+                clearBtn.hidden = false;
+            }
             button.disabled = false;
             return result;
         }).catch((error) => {
             out.textContent = (error && error.message) ? error.message : String(error);
+            if (clearBtn) {
+                clearBtn.hidden = false;
+            }
             button.disabled = false;
         });
     });
@@ -134,7 +151,6 @@ const renderScratch = (out, result, strings) => {
  */
 const render = (out, result, strings) => {
     out.textContent = '';
-    out.appendChild(clearBar(out, strings));
     if (result.verdict === 'CE' && result.compileoutput) {
         compileBlock(out, result.compileoutput, strings);
         return;
@@ -145,28 +161,6 @@ const render = (out, result, strings) => {
         list.appendChild(renderExample(ex, strings));
     });
     out.appendChild(list);
-};
-
-/**
- * A small bar with a Clear button that empties the results, so they don't stay
- * on screen and push the "run your own input" section out of view.
- *
- * @param {HTMLElement} out the results container to clear
- * @param {Object} strings
- * @return {HTMLElement}
- */
-const clearBar = (out, strings) => {
-    const bar = document.createElement('div');
-    bar.className = 'codeatelier-runresults-bar';
-    const clear = document.createElement('button');
-    clear.type = 'button';
-    clear.className = 'btn btn-link btn-sm codeatelier-runresults-clear';
-    clear.textContent = strings.clear || 'Clear';
-    clear.addEventListener('click', () => {
-        out.textContent = '';
-    });
-    bar.appendChild(clear);
-    return bar;
 };
 
 /**
