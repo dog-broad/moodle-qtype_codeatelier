@@ -536,12 +536,16 @@ const renderFeedback = (element, graded, results, config, strings) => {
  */
 const renderMismatch = (body, config, test, result, strings) => {
     if (config.scenario === 'sql') {
+        // resultset grading compares rows only (column names are not graded), and
+        // the stored Expected has no column names — so render Got headerless too,
+        // so the two tables line up instead of Got carrying a header row Expected
+        // can't match.
         const expectedrows = parseJson(test.expected) || [];
         const actualrows = result.rows || [];
         addBlock(body, strings.expected || 'Expected',
             resultSetTable(null, expectedrows, extraRowKeys(expectedrows, actualrows)));
         addBlock(body, strings.got || 'Got',
-            resultSetTable(result.columns, actualrows, extraRowKeys(actualrows, expectedrows)));
+            resultSetTable(null, actualrows, extraRowKeys(actualrows, expectedrows)));
         return;
     }
 
