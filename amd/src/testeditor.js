@@ -39,6 +39,7 @@ const FIELD_ALIASES = {
     visibility: 'visibility', visible: 'visibility', hidden: 'visibility',
     feedback: 'feedback',
     checkerquery: 'checkerquery', checker: 'checkerquery',
+    datasetsql: 'datasetsql', dataset: 'datasetsql', data: 'datasetsql',
     selector: 'selector', assertproperty: 'assertproperty', property: 'assertproperty',
     assertmatcher: 'assertmatcher', matcher: 'assertmatcher',
     actions: 'actions', subtask: 'subtask',
@@ -51,7 +52,7 @@ const FIELD_ALIASES = {
  */
 const blankTest = () => ({
     input: '', expected: '', matchmode: 'trimmed', tolerance: '', weight: 1,
-    visibility: 1, feedback: '', checkerquery: '', selector: '',
+    visibility: 1, feedback: '', checkerquery: '', datasetsql: '', selector: '',
     assertproperty: '', assertmatcher: 'equals', actions: '', subtask: 0,
 });
 
@@ -179,7 +180,8 @@ const columnsFor = (scenario) => {
     }
     if (scenario === 'sql') {
         // SQL has no stdin: the student writes the query, so no input column.
-        return ['expected', 'matchmode', 'checkerquery', 'weight', 'visibility', 'feedback'];
+        // datasetsql is the per-test schema + seed (empty = use the question schema).
+        return ['datasetsql', 'expected', 'matchmode', 'checkerquery', 'weight', 'visibility', 'feedback'];
     }
     return ['input', 'expected', 'matchmode', 'tolerance', 'weight', 'visibility', 'subtask', 'feedback'];
 };
@@ -279,10 +281,13 @@ const exampleRows = (scenario) => {
             Object.assign(blankTest(), {expected: '[["Engineering"],["Sales"]]',
                 matchmode: 'resultset', weight: 1, visibility: 1,
                 feedback: 'The distinct departments, in any order.'}),
-            Object.assign(blankTest(), {expected: '[["Zoe"]]', matchmode: 'resultset_ordered',
-                checkerquery: 'SELECT name FROM employees ORDER BY id DESC LIMIT 1;',
+            Object.assign(blankTest(), {
+                datasetsql: 'CREATE TABLE employees (id INTEGER, name TEXT, salary INTEGER);\n'
+                    + "INSERT INTO employees VALUES (1, 'Mara', 90000), (2, 'Nils', 60000);",
+                expected: '[["Mara",90000],["Nils",60000]]', matchmode: 'resultset_ordered',
                 weight: 1, visibility: 0,
-                feedback: 'After your INSERT, the newest employee should be Zoe.'}),
+                feedback: 'Hidden test with its OWN dataset (replaces the question schema), so a '
+                    + 'hardcoded answer that matches the visible example fails here.'}),
         ];
     }
     if (scenario === 'function') {
@@ -509,6 +514,8 @@ export const init = (params) => {
             body.appendChild(fieldRow(s.tolerance || 'Tolerance', textInput('tolerance')));
             body.appendChild(fieldRow(s.subtask || 'Subtask', textInput('subtask')));
             if (isSql()) {
+                body.appendChild(fieldRow(s.testdataset || 'Dataset (schema + seed) — overrides the question schema',
+                    textarea('datasetsql', 4)));
                 body.appendChild(fieldRow(s.checkerquery || 'Checker query', textarea('checkerquery', 2)));
             }
         }

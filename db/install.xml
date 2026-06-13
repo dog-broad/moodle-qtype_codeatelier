@@ -43,6 +43,7 @@
         <FIELD NAME="weight" TYPE="number" LENGTH="12" DECIMALS="7" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Relative weight of this test case for partial credit."/>
         <FIELD NAME="visibility" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="1 shown to students, 0 hidden (polite-hidden in the practice tier)."/>
         <FIELD NAME="checkerquery" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="SQL scenario: query run after the student's statements to verify a mutation; empty means compare the student query's own result set."/>
+        <FIELD NAME="datasetsql" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="SQL scenario: optional per-test schema + seed. When set it replaces the question schemasql for this test (so hidden tests can run against different data); empty falls back to schemasql."/>
         <FIELD NAME="feedback" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Optional teacher feedback shown for this test case (visible tests only)."/>
         <FIELD NAME="selector" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: the CSS selector this DOM assertion targets."/>
         <FIELD NAME="assertproperty" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: the property checked - text, exists, count, attr:NAME or style:PROP."/>

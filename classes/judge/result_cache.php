@@ -80,6 +80,8 @@ class result_cache {
                 (string) $test->visibility,
                 // The checker query is part of what runs for a SQL mutation test.
                 isset($test->checkerquery) ? (string) $test->checkerquery : '',
+                // The per-test SQL dataset changes what the query runs against.
+                isset($test->datasetsql) ? (string) $test->datasetsql : '',
                 // The web (DOM-assertion) fields: changing any of them changes the result.
                 isset($test->selector) ? (string) $test->selector : '',
                 isset($test->assertproperty) ? (string) $test->assertproperty : '',

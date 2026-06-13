@@ -579,8 +579,12 @@ class judge_grader {
         // fragment is statement-terminated so a non-terminated student query does
         // not merge with the checker into one malformed statement.
         $parts = ['.mode csv', '.headers off'];
-        if (trim($schemasql) !== '') {
-            $parts[] = self::terminate($schemasql);
+        // A per-test dataset replaces the question schema for that test (so hidden
+        // tests can run against different data); empty falls back to the schema.
+        $dataset = isset($test->datasetsql) ? (string) $test->datasetsql : '';
+        $setup = trim($dataset) !== '' ? $dataset : $schemasql;
+        if (trim($setup) !== '') {
+            $parts[] = self::terminate($setup);
         }
         $parts[] = self::terminate($answer);
         $checker = isset($test->checkerquery) ? (string) $test->checkerquery : '';

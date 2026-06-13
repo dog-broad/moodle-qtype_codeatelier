@@ -187,7 +187,7 @@ class qtype_codeatelier extends question_type {
         if (isset($question->testcasesjson)) {
             $decoded = json_decode((string) $question->testcasesjson, true);
             foreach (['testinput', 'testexpected', 'matchmode', 'tolerance', 'testweight',
-                    'testvisibility', 'checkerquery', 'testfeedback', 'selector',
+                    'testvisibility', 'checkerquery', 'testdatasetsql', 'testfeedback', 'selector',
                     'assertproperty', 'assertmatcher', 'actions', 'subtask'] as $arrayfield) {
                 $question->$arrayfield = [];
             }
@@ -202,6 +202,7 @@ class qtype_codeatelier extends question_type {
                 $question->testweight[] = (string) ($test['weight'] ?? '1');
                 $question->testvisibility[] = (int) ($test['visibility'] ?? 1);
                 $question->checkerquery[] = (string) ($test['checkerquery'] ?? '');
+                $question->testdatasetsql[] = (string) ($test['datasetsql'] ?? '');
                 $question->testfeedback[] = (string) ($test['feedback'] ?? '');
                 $question->selector[] = (string) ($test['selector'] ?? '');
                 $question->assertproperty[] = (string) ($test['assertproperty'] ?? '');
@@ -246,6 +247,11 @@ class qtype_codeatelier extends question_type {
             $record->weight = $question->testweight[$key];
             $record->visibility = $question->testvisibility[$key];
             $record->checkerquery = isset($question->checkerquery[$key]) ? $question->checkerquery[$key] : null;
+            // SQL scenario: an optional per-test dataset (replaces the question schema
+            // for this test). Stored null when empty so grading falls back cleanly.
+            $record->datasetsql = (isset($question->testdatasetsql[$key])
+                    && trim((string) $question->testdatasetsql[$key]) !== '')
+                ? $question->testdatasetsql[$key] : null;
             $record->feedback = isset($question->testfeedback[$key]) ? $question->testfeedback[$key] : null;
             // Web scenario: the DOM assertion (selector + property + matcher) and
             // optional interaction actions. Null for every other scenario.

@@ -413,7 +413,11 @@ self.onmessage = async(event) => {
         }
         self.postMessage({type: 'status', state: 'running'});
         const results = message.cases.map((testcase) => {
-            return runSql(sql, message.schemasql, message.code, testcase.checkerquery);
+            // A per-test dataset replaces the question schema for that test (so hidden
+            // tests can run against different data); empty falls back to the schema.
+            const schema = (testcase.datasetsql && String(testcase.datasetsql).trim() !== '')
+                ? testcase.datasetsql : message.schemasql;
+            return runSql(sql, schema, message.code, testcase.checkerquery);
         });
         self.postMessage({type: 'result', results: results});
         return;

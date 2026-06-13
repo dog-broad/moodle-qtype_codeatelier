@@ -91,6 +91,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'weight' => $test->weight,
                 'visibility' => (int) $test->visibility,
                 'checkerquery' => $test->checkerquery,
+                // SQL per-test dataset. Hidden tests are already dropped above for the
+                // judge tier, so a hidden dataset never ships there; on the practice
+                // tier the client grades, so every shipped test carries its dataset.
+                'datasetsql' => isset($test->datasetsql) ? $test->datasetsql : null,
                 // Ship teacher feedback only for visible tests (hidden reveals nothing client-side).
                 'feedback' => ((int) $test->visibility === 1) ? $test->feedback : null,
                 // Web scenario: the DOM assertion (selector + property + matcher) and
