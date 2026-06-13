@@ -423,6 +423,20 @@ const renderFeedback = (element, graded, results, config, strings) => {
         }
 
         const result = results[index] || {};
+        const test = config.tests[index];
+        const status = (strings.test || 'Test') + ' ' + (index + 1) + ': '
+            + (tr.passed ? (strings.pass || 'passed') : (strings.fail || 'failed'));
+        // A passed test with no error and no teacher feedback has nothing to show
+        // on expand, so render it as a plain checklist line, not an empty accordion.
+        const hasbody = !!result.error || !tr.passed || !!(test && test.feedback);
+        if (!hasbody) {
+            const line = document.createElement('p');
+            line.className = 'codeatelier-feedback-line codeatelier-pass';
+            line.textContent = status;
+            element.appendChild(line);
+            return;
+        }
+
         const details = document.createElement('details');
         details.className = 'codeatelier-feedback ' + (tr.passed ? 'codeatelier-pass' : 'codeatelier-fail');
         if (!tr.passed && !firstfailureopen) {
@@ -430,8 +444,7 @@ const renderFeedback = (element, graded, results, config, strings) => {
             firstfailureopen = true;
         }
         const summary = document.createElement('summary');
-        summary.textContent = (strings.test || 'Test') + ' ' + (index + 1) + ': '
-            + (tr.passed ? (strings.pass || 'passed') : (strings.fail || 'failed'));
+        summary.textContent = status;
         details.appendChild(summary);
 
         const body = document.createElement('div');
@@ -442,7 +455,6 @@ const renderFeedback = (element, graded, results, config, strings) => {
         } else if (!tr.passed) {
             renderMismatch(body, config, config.tests[index], result, strings);
         }
-        const test = config.tests[index];
         if (test && test.feedback) {
             addBlock(body, strings.teacherfeedback || 'Feedback', String(test.feedback));
         }

@@ -676,6 +676,18 @@
     color: var(--ca-danger);
 }
 
+/* A passed test with nothing extra to disclose: a plain checklist line (no
+ * expandable accordion), aligned with the feedback accordions above. */
+.qtype_codeatelier .codeatelier-feedback-line {
+    margin: 0.25rem 0;
+    padding: 0.25rem 0.5rem;
+    font-weight: 600;
+}
+
+.qtype_codeatelier .codeatelier-feedback-line.codeatelier-pass {
+    color: var(--ca-success);
+}
+
 .qtype_codeatelier .codeatelier-feedback-body {
     display: flex;
     flex-wrap: wrap;
