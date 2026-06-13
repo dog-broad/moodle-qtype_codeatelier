@@ -307,9 +307,15 @@ const exampleCell = (value, scratch, test, strings) => {
         use.className = 'btn btn-link btn-sm codeatelier-use-input';
         use.textContent = strings.useinput || 'Use this input';
         use.addEventListener('click', () => {
-            scratch.value = String(test.input);
-            scratch.dispatchEvent(new Event('input', {bubbles: true}));
-            scratch.focus();
+            // For a function question the scratch box is driven by per-argument
+            // fields; distribute the example's argument array into them.
+            if (typeof scratch.codeatelierSetArgs === 'function') {
+                scratch.codeatelierSetArgs(String(test.input));
+            } else {
+                scratch.value = String(test.input);
+                scratch.dispatchEvent(new Event('input', {bubbles: true}));
+                scratch.focus();
+            }
         });
         td.appendChild(use);
     }
@@ -959,10 +965,111 @@ export const init = (params) => {
         return;
     }
 
+    // A function question's single "JSON array of all arguments" box confuses
+    // students: a call shown as f([1, 2, 3]) (one list argument) must be typed
+    // [[1, 2, 3]]. Replace it with one field per argument whose value is entered
+    // directly (matching the call and the student's mental model); the args array
+    // is assembled behind the scenes into the hidden scratch field the Run flow
+    // already reads, and a live call preview shows the resulting call. (LeetCode
+    // uses per-parameter inputs for the same reason.) Returns false if the arity
+    // cannot be inferred from the examples, so the raw box is kept as a fallback.
+    const setupFunctionArgs = () => {
+        let arity = null;
+        let prefill = null;
+        (config.tests || []).some((t) => {
+            let arr;
+            try {
+                arr = JSON.parse(t.input);
+            } catch (e) {
+                return false;
+            }
+            if (Array.isArray(arr)) {
+                arity = arr.length;
+                prefill = arr;
+                return true;
+            }
+            return false;
+        });
+        if (arity === null || !scratchinput) {
+            return false;
+        }
+
+        scratchinput.style.display = 'none';
+        const fieldsWrap = document.createElement('div');
+        fieldsWrap.className = 'codeatelier-argfields';
+        const inputs = [];
+        for (let i = 0; i < arity; i++) {
+            const id = config.wrapperid + '_arg' + i;
+            const fieldrow = document.createElement('div');
+            fieldrow.className = 'codeatelier-argfield';
+            const label = document.createElement('label');
+            label.className = 'codeatelier-block-label';
+            label.setAttribute('for', id);
+            label.textContent = (strings.argn || 'Argument {$a}').replace('{$a}', i + 1);
+            const inp = document.createElement('input');
+            inp.type = 'text';
+            inp.id = id;
+            inp.className = 'codeatelier-arg-input';
+            inp.spellcheck = false;
+            if (prefill && prefill[i] !== undefined) {
+                inp.value = JSON.stringify(prefill[i]);
+            }
+            inputs.push(inp);
+            fieldrow.appendChild(label);
+            fieldrow.appendChild(inp);
+            fieldsWrap.appendChild(fieldrow);
+        }
+
+        const preview = document.createElement('p');
+        preview.className = 'codeatelier-arg-callpreview';
+        const assemble = () => {
+            const args = inputs.map((inp) => {
+                try {
+                    return JSON.parse(inp.value);
+                } catch (e) {
+                    // Lenient: pass the raw text so a malformed argument surfaces as a
+                    // real run error rather than blocking the student.
+                    return inp.value;
+                }
+            });
+            scratchinput.value = JSON.stringify(args);
+            preview.textContent = (config.entrypoint || 'solve')
+                + '(' + args.map((a) => JSON.stringify(a)).join(', ') + ')';
+        };
+        inputs.forEach((inp) => inp.addEventListener('input', assemble));
+        assemble();
+
+        // Lets "Use this input" on an example distribute its argument array into the
+        // per-argument fields (the example's input is the full args array).
+        scratchinput.codeatelierSetArgs = (inputstr) => {
+            try {
+                const arr = JSON.parse(inputstr);
+                if (Array.isArray(arr)) {
+                    inputs.forEach((inp, i) => {
+                        inp.value = (arr[i] === undefined) ? '' : JSON.stringify(arr[i]);
+                    });
+                    assemble();
+                }
+            } catch (e) {
+                // Leave the fields unchanged on malformed input.
+            }
+            if (inputs[0]) {
+                inputs[0].focus();
+            }
+        };
+
+        scratchinput.parentNode.insertBefore(fieldsWrap, scratchinput.nextSibling);
+        fieldsWrap.parentNode.insertBefore(preview, fieldsWrap.nextSibling);
+        return true;
+    };
+
     // Scenario-shaped scratch input for Run.
     if (scratchwrap) {
         if (config.scenario === 'sql') {
             scratchwrap.style.display = 'none';
+        } else if (config.scenario === 'function' && setupFunctionArgs()) {
+            scratchwrap.style.display = '';
+            scratchlabel.textContent = strings.argsheading || 'Run with your own arguments';
         } else {
             scratchwrap.style.display = '';
             scratchlabel.textContent = (config.scenario === 'function')

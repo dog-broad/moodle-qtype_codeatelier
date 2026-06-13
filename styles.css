@@ -756,6 +756,42 @@
     font-size: 0.85rem;
 }
 
+/* Per-argument Run inputs for a function question: one field per argument, each
+ * holding the value directly (so a single list argument is [1, 2, 3], not
+ * [[1, 2, 3]]), with a live preview of the call they assemble. */
+.qtype_codeatelier .codeatelier-argfields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin: 0.3rem 0;
+}
+
+.qtype_codeatelier .codeatelier-argfield {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.qtype_codeatelier .codeatelier-arg-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--ca-border);
+    border-radius: 0.375rem;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.85rem;
+    background: var(--ca-surface);
+    color: var(--ca-text);
+}
+
+.qtype_codeatelier .codeatelier-arg-callpreview {
+    margin: 0.1rem 0 0;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.85rem;
+    color: var(--ca-text-muted);
+    overflow-wrap: anywhere;
+}
+
 .qtype_codeatelier .codeatelier-tabs {
     display: flex;
     gap: 0.25rem;

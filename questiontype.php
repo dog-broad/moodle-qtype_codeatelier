@@ -527,6 +527,8 @@ class qtype_codeatelier extends question_type {
             'call' => 'result_call',
             'got' => 'result_got',
             'argslabel' => 'scratchargs',
+            'argn' => 'argn',
+            'argsheading' => 'argsheading',
             'scratchplaceholderfn' => 'scratchplaceholderfn',
             'scratchplaceholderio' => 'scratchplaceholderio',
             'output' => 'output',
