@@ -24,6 +24,7 @@
  */
 
 import Ajax from 'core/ajax';
+import {setupFunctionArgs} from './argfields.js';
 
 /**
  * @param {Object} config
@@ -88,6 +89,31 @@ export const init = (config) => {
     const scratchIn = root.querySelector('[data-role="scratchinput"]');
     const scratchOut = root.querySelector('[data-role="scratchoutput"]');
     if (scratchBtn && scratchIn && scratchOut) {
+        // Function questions get the same per-argument fields as the practice tier
+        // (so a single list argument is [1, 2, 3], not [[1, 2, 3]]); the assembled
+        // args array lands in scratchIn, which the run reads. The example tests and
+        // entrypoint come from the workbench config on the wrapper.
+        let wcfg = {};
+        try {
+            wcfg = JSON.parse(root.dataset.config || '{}');
+        } catch (e) {
+            wcfg = {};
+        }
+        if (wcfg.scenario === 'function') {
+            const built = setupFunctionArgs(scratchIn, {
+                wrapperid: config.wrapperid,
+                entrypoint: wcfg.entrypoint,
+                tests: wcfg.tests,
+                strings: strings,
+            });
+            const label = scratchIn.closest('.codeatelier-scratch-judge');
+            if (built && label) {
+                const heading = label.querySelector('label');
+                if (heading) {
+                    heading.textContent = strings.argsheading || 'Run with your own arguments';
+                }
+            }
+        }
         scratchBtn.addEventListener('click', () => {
             scratchBtn.disabled = true;
             scratchOut.textContent = strings.running || 'Running…';
