@@ -536,16 +536,20 @@ const renderFeedback = (element, graded, results, config, strings) => {
  */
 const renderMismatch = (body, config, test, result, strings) => {
     if (config.scenario === 'sql') {
-        // resultset grading compares rows only (column names are not graded), and
-        // the stored Expected has no column names — so render Got headerless too,
-        // so the two tables line up instead of Got carrying a header row Expected
-        // can't match.
+        // Label both tables with the query's column names so they line up and stay
+        // readable. The stored Expected has no column names of its own, but its rows
+        // share the query's shape, so reuse the result's columns — unless the column
+        // counts differ (a wrong-shape answer), where headers would mislabel its
+        // values, in which case Expected falls back to headerless.
         const expectedrows = parseJson(test.expected) || [];
         const actualrows = result.rows || [];
+        const cols = result.columns || null;
+        const expectedcols = (cols && expectedrows.length && expectedrows[0].length === cols.length)
+            ? cols : null;
         addBlock(body, strings.expected || 'Expected',
-            resultSetTable(null, expectedrows, extraRowKeys(expectedrows, actualrows)));
+            resultSetTable(expectedcols, expectedrows, extraRowKeys(expectedrows, actualrows)));
         addBlock(body, strings.got || 'Got',
-            resultSetTable(null, actualrows, extraRowKeys(actualrows, expectedrows)));
+            resultSetTable(cols, actualrows, extraRowKeys(actualrows, expectedrows)));
         return;
     }
 
