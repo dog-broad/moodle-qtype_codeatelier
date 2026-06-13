@@ -70,6 +70,7 @@ class run_reference extends external_api {
                 'input' => new external_value(PARAM_RAW, 'The test input'),
                 'matchmode' => new external_value(PARAM_ALPHANUMEXT, 'The match mode'),
                 'checkerquery' => new external_value(PARAM_RAW, 'SQL checker query', VALUE_DEFAULT, ''),
+                'datasetsql' => new external_value(PARAM_RAW, 'SQL per-test dataset', VALUE_DEFAULT, ''),
             ])),
         ]);
     }
@@ -122,6 +123,7 @@ class run_reference extends external_api {
                 'input' => $test['input'],
                 'matchmode' => $test['matchmode'],
                 'checkerquery' => $test['checkerquery'],
+                'datasetsql' => $test['datasetsql'] ?? '',
             ];
         }
 

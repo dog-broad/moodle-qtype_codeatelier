@@ -427,6 +427,11 @@ const renderExamples = (element, config, strings) => {
                 title.textContent = (strings.test || 'Test') + ' ' + (i + 1);
                 card.appendChild(title);
                 if (config.scenario === 'sql') {
+                    // If this example runs against its own dataset, show it so the
+                    // expected result makes sense against that data (not the schema).
+                    if (test.datasetsql && String(test.datasetsql).trim() !== '') {
+                        addBlock(card, strings.datalabel || 'Data', String(test.datasetsql));
+                    }
                     addBlock(card, strings.expected || 'Expected',
                         resultSetTable(null, parseJson(test.expected) || [], null));
                 } else {

@@ -338,9 +338,12 @@ const activeRows = () => {
         const input = t.input || '';
         const expected = t.expected || '';
         const checkerquery = t.checkerquery || '';
+        const datasetsql = t.datasetsql || '';
         // A row is active if any of its inputs is set (SQL SELECT rows have no
-        // stdin, so a checker query or an expected value also counts).
-        if (input.trim() === '' && expected.trim() === '' && checkerquery.trim() === '') {
+        // stdin, so a checker query, a per-test dataset, or an expected value
+        // also counts — a dataset-only row still needs its Expected captured).
+        if (input.trim() === '' && expected.trim() === ''
+                && checkerquery.trim() === '' && datasetsql.trim() === '') {
             return;
         }
         rows.push({
@@ -348,6 +351,7 @@ const activeRows = () => {
             expected: expected,
             matchmode: t.matchmode || 'trimmed',
             checkerquery: checkerquery,
+            datasetsql: datasetsql,
             index: index,
         });
     });
@@ -833,7 +837,9 @@ export const init = (params) => {
     // Run the reference in-browser; one captured-output string (or null) per row.
     const capturePractice = (code, rows) => {
         const scenario = scenSel ? scenSel.value : 'stdinstdout';
-        const cases = rows.map((row) => ({input: row.input, checkerquery: row.checkerquery}));
+        const cases = rows.map((row) => ({
+            input: row.input, checkerquery: row.checkerquery, datasetsql: row.datasetsql,
+        }));
         return runCode(code, langSel ? langSel.value : 'python', cases, {
             scenario: scenario,
             entrypoint: byId(config.entrypointid) ? byId(config.entrypointid).value : '',
@@ -873,6 +879,7 @@ export const init = (params) => {
                     input: row.input,
                     matchmode: row.matchmode,
                     checkerquery: row.checkerquery,
+                    datasetsql: row.datasetsql,
                 })),
             },
         }])[0].then((res) => (res.results || []).map((r) => ({

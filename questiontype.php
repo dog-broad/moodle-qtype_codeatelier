@@ -383,7 +383,7 @@ class qtype_codeatelier extends question_type {
             $output .= "    <testcase>\n";
             foreach (
                 ['input', 'expected', 'matchmode', 'tolerance', 'weight',
-                    'visibility', 'checkerquery', 'feedback',
+                    'visibility', 'checkerquery', 'datasetsql', 'feedback',
                     'selector', 'assertproperty', 'assertmatcher', 'actions', 'subtask'] as $field
             ) {
                 $value = isset($test->$field) ? $test->$field : '';
@@ -446,7 +446,7 @@ class qtype_codeatelier extends question_type {
 
         foreach (
             ['testinput', 'testexpected', 'matchmode', 'tolerance',
-                'testweight', 'testvisibility', 'checkerquery', 'testfeedback',
+                'testweight', 'testvisibility', 'checkerquery', 'testdatasetsql', 'testfeedback',
                 'selector', 'assertproperty', 'assertmatcher', 'actions', 'subtask'] as $arr
         ) {
             $qo->$arr = [];
@@ -460,6 +460,7 @@ class qtype_codeatelier extends question_type {
             $qo->testweight[] = $format->getpath($tc, ['#', 'weight', 0, '#'], '1');
             $qo->testvisibility[] = $format->getpath($tc, ['#', 'visibility', 0, '#'], 1);
             $qo->checkerquery[] = $format->getpath($tc, ['#', 'checkerquery', 0, '#'], '');
+            $qo->testdatasetsql[] = $format->getpath($tc, ['#', 'datasetsql', 0, '#'], '');
             $qo->testfeedback[] = $format->getpath($tc, ['#', 'feedback', 0, '#'], '');
             $qo->selector[] = $format->getpath($tc, ['#', 'selector', 0, '#'], '');
             $qo->assertproperty[] = $format->getpath($tc, ['#', 'assertproperty', 0, '#'], '');
@@ -528,6 +529,7 @@ class qtype_codeatelier extends question_type {
             'schematables' => 'schematables',
             'examples' => 'examples',
             'examplesregion' => 'examplesregion',
+            'datalabel' => 'datalabel',
             'input' => 'input',
             'expected' => 'expected',
             'call' => 'result_call',
