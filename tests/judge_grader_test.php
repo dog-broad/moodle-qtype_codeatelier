@@ -394,6 +394,46 @@ final class judge_grader_test extends \advanced_testcase {
         $this->assertNotEquals($a, $c, 'checker-query change must change the key');
     }
 
+    public function test_cache_key_depends_on_per_test_datasetsql(): void {
+        // A per-test dataset changes what the query runs against, so editing it must
+        // change the memo key (else a stale grade could be reused).
+        $limits = ['cputime' => 2.0, 'memory' => 128000];
+        $a = [(object) ['input' => '', 'expected' => '[[1]]', 'matchmode' => 'resultset',
+            'tolerance' => null, 'weight' => 1, 'visibility' => 1, 'checkerquery' => null,
+            'datasetsql' => 'CREATE TABLE t(a INT); INSERT INTO t VALUES (1);']];
+        $b = [(object) ['input' => '', 'expected' => '[[1]]', 'matchmode' => 'resultset',
+            'tolerance' => null, 'weight' => 1, 'visibility' => 1, 'checkerquery' => null,
+            'datasetsql' => 'CREATE TABLE t(a INT); INSERT INTO t VALUES (2);']];
+        $this->assertNotEquals(
+            result_cache::key('sql', 'SELECT a FROM t', $a, $limits, 'CREATE TABLE t(a INT);'),
+            result_cache::key('sql', 'SELECT a FROM t', $b, $limits, 'CREATE TABLE t(a INT);'),
+            'a per-test dataset change must change the key'
+        );
+    }
+
+    public function test_sql_per_test_dataset_replaces_question_schema(): void {
+        // When a test carries its own dataset it replaces the question schema in the
+        // built SQL source; without one the source falls back to the question schema.
+        $runner = new qtype_codeatelier_stub_runner([
+            qtype_codeatelier_stub_runner::row('ran', "1\n"),
+        ]);
+        $withdataset = [(object) ['input' => '', 'expected' => '[[1]]', 'matchmode' => 'resultset',
+            'tolerance' => null, 'weight' => 1, 'visibility' => 1, 'checkerquery' => null,
+            'datasetsql' => 'CREATE TABLE perTest(a INT); INSERT INTO perTest VALUES (1);']];
+        (new judge_grader($runner))->grade('SELECT a FROM perTest', 'sql', $withdataset,
+            'CREATE TABLE questionSchema(x INT);');
+        $source = $runner->last_cases()[0]['source'];
+        $this->assertStringContainsString('perTest', $source, 'uses the per-test dataset');
+        $this->assertStringNotContainsString('questionSchema', $source, 'replaces the question schema');
+
+        // No dataset: the question schema is used.
+        $nodataset = $this->sql_test('[[1]]', 'resultset');
+        (new judge_grader($runner))->grade('SELECT a FROM t', 'sql', $nodataset,
+            'CREATE TABLE questionSchema(x INT);');
+        $this->assertStringContainsString('questionSchema', $runner->last_cases()[0]['source'],
+            'falls back to the question schema when the test has no dataset');
+    }
+
     public function test_parse_csv_rows_types_cells(): void {
         $rows = judge_grader::parse_csv_rows("1,alice,5.5\n2,bob,\n3,\"a,b\",10\n");
         $this->assertSame([

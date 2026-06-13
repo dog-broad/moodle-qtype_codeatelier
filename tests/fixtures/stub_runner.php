@@ -32,6 +32,9 @@ class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runn
     /** @var string|null the language passed to the most recent run() call. */
     private $lastlanguage = null;
 
+    /** @var array|null the cases the most recent run() call received. */
+    private $lastcases = null;
+
     /** @var string|null the base64 package passed to the most recent run_multifile() call. */
     private $lastmultifilezip = null;
 
@@ -94,7 +97,17 @@ class qtype_codeatelier_stub_runner extends \qtype_codeatelier\judge\judge0_runn
     public function run(string $code, string $language, array $cases): array {
         $this->calls++;
         $this->lastlanguage = $language;
+        $this->lastcases = array_values($cases);
         return $this->rows;
+    }
+
+    /**
+     * The cases the most recent run() received (each carries 'source' or 'input').
+     *
+     * @return array|null
+     */
+    public function last_cases() {
+        return $this->lastcases;
     }
 
     /**
