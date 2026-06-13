@@ -542,6 +542,15 @@
     margin: 0 0 0.25rem;
 }
 
+/* Card layout (stdin/SQL/project): full-width Input/Expected boxes per example. */
+.qtype_codeatelier .codeatelier-examples-cards {
+    padding: 0.25rem 0.6rem;
+}
+
+.qtype_codeatelier .codeatelier-examples-cards .codeatelier-example:first-child {
+    margin-top: 0.15rem;
+}
+
 .qtype_codeatelier .codeatelier-examples-wrap:focus-visible {
     outline: 2px solid var(--ca-focus);
     outline-offset: -2px;

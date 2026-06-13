@@ -290,6 +290,33 @@ const examplesScaffold = (element, headingText, ariaLabel, headers) => {
 };
 
 /**
+ * A "Use this input" button that loads an example into the scratch box.
+ *
+ * @param {HTMLElement} scratch the scratch input
+ * @param {Object} test the test whose input loads
+ * @param {Object} strings
+ * @return {HTMLElement}
+ */
+const useInputButton = (scratch, test, strings) => {
+    const use = document.createElement('button');
+    use.type = 'button';
+    use.className = 'btn btn-link btn-sm codeatelier-use-input';
+    use.textContent = strings.useinput || 'Use this input';
+    use.addEventListener('click', () => {
+        // For a function question the scratch box is driven by per-argument fields;
+        // distribute the example's argument array into them.
+        if (typeof scratch.codeatelierSetArgs === 'function') {
+            scratch.codeatelierSetArgs(String(test.input));
+        } else {
+            scratch.value = String(test.input);
+            scratch.dispatchEvent(new Event('input', {bubbles: true}));
+            scratch.focus();
+        }
+    });
+    return use;
+};
+
+/**
  * A value <td>, with an optional "Use this input" button (input/call cell only).
  *
  * @param {String} value
@@ -302,24 +329,32 @@ const exampleCell = (value, scratch, test, strings) => {
     const td = document.createElement('td');
     td.appendChild(exampleValue(value));
     if (scratch && test) {
-        const use = document.createElement('button');
-        use.type = 'button';
-        use.className = 'btn btn-link btn-sm codeatelier-use-input';
-        use.textContent = strings.useinput || 'Use this input';
-        use.addEventListener('click', () => {
-            // For a function question the scratch box is driven by per-argument
-            // fields; distribute the example's argument array into them.
-            if (typeof scratch.codeatelierSetArgs === 'function') {
-                scratch.codeatelierSetArgs(String(test.input));
-            } else {
-                scratch.value = String(test.input);
-                scratch.dispatchEvent(new Event('input', {bubbles: true}));
-                scratch.focus();
-            }
-        });
-        td.appendChild(use);
+        td.appendChild(useInputButton(scratch, test, strings));
     }
     return td;
+};
+
+/**
+ * Build the examples heading + a height-capped, scrollable, focusable region for
+ * a card layout (used by the multi-line scenarios), and return the region.
+ *
+ * @param {HTMLElement} element
+ * @param {String} headingText
+ * @param {String} ariaLabel
+ * @return {HTMLElement}
+ */
+const examplesCardRegion = (element, headingText, ariaLabel) => {
+    const heading = document.createElement('p');
+    heading.className = 'codeatelier-examples-heading';
+    heading.textContent = headingText;
+    element.appendChild(heading);
+    const wrap = document.createElement('div');
+    wrap.className = 'codeatelier-examples-wrap codeatelier-examples-cards';
+    wrap.setAttribute('role', 'region');
+    wrap.setAttribute('aria-label', ariaLabel);
+    wrap.tabIndex = 0;
+    element.appendChild(wrap);
+    return wrap;
 };
 
 /**
@@ -368,30 +403,44 @@ const renderExamples = (element, config, strings) => {
     if (visible.length) {
         const heading = (strings.examples || 'Examples') + ' (' + visible.length + ')';
         const region = strings.examplesregion || 'Worked examples';
-        const isfn = config.scenario === 'function';
-        const issql = config.scenario === 'sql';
-        const headers = issql
-            ? null
-            : [isfn ? (strings.call || 'Call') : (strings.input || 'Input'), strings.expected || 'Expected'];
-        const tbody = examplesScaffold(element, heading, region, headers);
 
-        visible.forEach((test, i) => {
-            const tr = document.createElement('tr');
-            if (issql) {
-                const td = document.createElement('td');
-                const label = document.createElement('span');
-                label.className = 'codeatelier-block-label';
-                label.textContent = (strings.test || 'Test') + ' ' + (i + 1);
-                td.appendChild(label);
-                td.appendChild(resultSetTable(null, parseJson(test.expected) || [], null));
-                tr.appendChild(td);
-            } else {
-                const left = isfn ? formatCall(config.entrypoint, test.input) : String(test.input || '');
-                tr.appendChild(exampleCell(left, scratch, test, strings));
+        if (config.scenario === 'function') {
+            // A function call and its return are short and naturally tabular.
+            const tbody = examplesScaffold(element, heading, region,
+                [strings.call || 'Call', strings.expected || 'Expected']);
+            visible.forEach((test) => {
+                const tr = document.createElement('tr');
+                tr.appendChild(exampleCell(formatCall(config.entrypoint, test.input), scratch, test, strings));
                 tr.appendChild(exampleCell(String(test.expected), null, null, strings));
-            }
-            tbody.appendChild(tr);
-        });
+                tbody.appendChild(tr);
+            });
+        } else {
+            // stdin/stdout, SQL and project I/O is multi-line, so show full-width
+            // Input / Expected boxes per example (the competitive-programming layout)
+            // instead of cramming them into table columns.
+            const wrap = examplesCardRegion(element, heading, region);
+            visible.forEach((test, i) => {
+                const card = document.createElement('div');
+                card.className = 'codeatelier-example';
+                const title = document.createElement('span');
+                title.className = 'codeatelier-block-label';
+                title.textContent = (strings.test || 'Test') + ' ' + (i + 1);
+                card.appendChild(title);
+                if (config.scenario === 'sql') {
+                    addBlock(card, strings.expected || 'Expected',
+                        resultSetTable(null, parseJson(test.expected) || [], null));
+                } else {
+                    if (test.input) {
+                        addBlock(card, strings.input || 'Input', String(test.input));
+                    }
+                    addBlock(card, strings.expected || 'Expected', String(test.expected));
+                }
+                if (scratch) {
+                    card.appendChild(useInputButton(scratch, test, strings));
+                }
+                wrap.appendChild(card);
+            });
+        }
     }
 
     hiddenNote(element, hidden, strings);
