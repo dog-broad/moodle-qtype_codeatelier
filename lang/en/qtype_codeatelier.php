@@ -109,6 +109,7 @@ $string['editor_template'] = 'Download template';
 $string['editor_upload'] = 'Upload file';
 $string['editor_visible'] = 'Visible';
 $string['editorfind'] = 'Find / replace';
+$string['editorformat'] = 'Reformat';
 $string['editorshortcuts'] = '<ul class="codeatelier-shortcut-list">
 <li><kbd>Ctrl/Cmd</kbd>+<kbd>F</kbd> — find and replace</li>
 <li><kbd>Ctrl/Cmd</kbd>+<kbd>D</kbd> — select the next occurrence (multiple cursors)</li>

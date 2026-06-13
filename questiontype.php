@@ -588,6 +588,7 @@ class qtype_codeatelier extends question_type {
             'outputempty' => get_string('outputempty', 'qtype_codeatelier'),
             'practicenote' => get_string('practicenote', 'qtype_codeatelier'),
             'findlabel' => get_string('editorfind', 'qtype_codeatelier'),
+            'formatlabel' => get_string('editorformat', 'qtype_codeatelier'),
             'shortcutstitle' => get_string('editorshortcutstitle', 'qtype_codeatelier'),
             'shortcutshtml' => get_string('editorshortcuts', 'qtype_codeatelier'),
             'themelabel' => get_string('editortheme', 'qtype_codeatelier'),

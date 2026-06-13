@@ -969,6 +969,17 @@ export const init = (params) => {
         });
     }
 
+    // Reformat: re-indent the whole document per the language's indentation rules.
+    const formatbtn = root.querySelector('[data-role="editor-format"]');
+    if (formatbtn) {
+        formatbtn.addEventListener('click', () => {
+            if (editor && typeof editor.reindent === 'function') {
+                editor.reindent();
+                markStale();
+            }
+        });
+    }
+
     // Language picker: re-mount the editor in the chosen language and record the
     // choice for submit / run / run-examples. Each language keeps its OWN code in a
     // per-language buffer (like a multi-language CP editor), so switching language
