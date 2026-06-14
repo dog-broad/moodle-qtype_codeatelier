@@ -332,7 +332,10 @@ export const highlightWithin = (root) => {
         if (!parser) {
             return;
         }
-        const text = code.textContent;
+        // Trim one leading newline and trailing whitespace so the natural
+        // <pre><code>\n ... \n</code></pre> authoring style doesn't render a blank
+        // first/last line.
+        const text = code.textContent.replace(/^\n/, '').replace(/\s+$/, '');
         const tree = parser.parse(text);
         let html = '';
         let pos = 0;
