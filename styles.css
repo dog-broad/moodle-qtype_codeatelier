@@ -709,6 +709,15 @@
     margin-top: 0.4rem;
 }
 
+/* A result set is wrapped so a wide table scrolls sideways and a tall one
+   scrolls down, bounded like the diff/console blocks (22rem) instead of
+   stretching the pane. */
+.qtype_codeatelier .codeatelier-table-scroll {
+    max-height: 22rem;
+    max-width: 100%;
+    overflow: auto;
+}
+
 .qtype_codeatelier .codeatelier-resultset {
     border-collapse: collapse;
     font-size: 0.85rem;
@@ -720,14 +729,25 @@
     border: 1px solid var(--ca-border);
     padding: 0.2rem 0.5rem;
     text-align: left;
+    overflow-wrap: anywhere;
 }
 
 .qtype_codeatelier .codeatelier-resultset th {
     background: var(--ca-surface-alt);
+    /* Keep the header visible while scrolling a tall result set. */
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
 .qtype_codeatelier .codeatelier-resultset .codeatelier-diff-row td {
     background: var(--ca-danger-strong-bg);
+}
+
+.qtype_codeatelier .codeatelier-rows-note {
+    margin: 0.15rem 0 0;
+    font-size: 0.78rem;
+    color: var(--ca-text-muted);
 }
 
 .qtype_codeatelier .codeatelier-hidden-note {

@@ -542,6 +542,7 @@ class qtype_codeatelier extends question_type {
             'output' => 'output',
             'stopped' => 'stopped',
             'noresult' => 'noresult',
+            'rowsnote' => 'rowsnote',
             'teacherfeedback' => 'result_feedback',
             'stale' => 'stale',
             'degraded' => 'degraded',

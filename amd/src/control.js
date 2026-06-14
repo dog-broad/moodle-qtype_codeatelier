@@ -92,12 +92,24 @@ const diffPre = (ops, keep) => {
 /**
  * Build a result-set table.
  *
+ * The table is wrapped in a scroll container (bounded height + both-axis scroll)
+ * so a wide or tall result set never breaks the pane, and display is capped so a
+ * pathological result set does not render thousands of rows; the cap is noted.
+ *
  * @param {Array} columns optional column names
  * @param {Array} rows array of row arrays
  * @param {Object} extrakeys set of JSON-stringified rows to highlight
+ * @param {Object} opts {cap: max rows to render (default 50), strings}
  * @return {HTMLElement}
  */
-const resultSetTable = (columns, rows, extrakeys) => {
+const ROWCAP = 50;
+const resultSetTable = (columns, rows, extrakeys, opts) => {
+    opts = opts || {};
+    const cap = (typeof opts.cap === 'number') ? opts.cap : ROWCAP;
+    const allrows = rows || [];
+    const capped = allrows.length > cap;
+    const shown = capped ? allrows.slice(0, cap) : allrows;
+
     const table = document.createElement('table');
     table.className = 'codeatelier-resultset';
     if (columns && columns.length) {
@@ -112,7 +124,7 @@ const resultSetTable = (columns, rows, extrakeys) => {
         table.appendChild(thead);
     }
     const tbody = document.createElement('tbody');
-    (rows || []).forEach((row) => {
+    shown.forEach((row) => {
         const tr = document.createElement('tr');
         if (extrakeys && extrakeys[JSON.stringify(row)]) {
             tr.className = 'codeatelier-diff-row';
@@ -125,7 +137,21 @@ const resultSetTable = (columns, rows, extrakeys) => {
         tbody.appendChild(tr);
     });
     table.appendChild(tbody);
-    return table;
+
+    const block = document.createElement('div');
+    block.className = 'codeatelier-resultset-block';
+    const scroll = document.createElement('div');
+    scroll.className = 'codeatelier-table-scroll';
+    scroll.appendChild(table);
+    block.appendChild(scroll);
+    if (capped) {
+        const note = document.createElement('p');
+        note.className = 'codeatelier-rows-note';
+        const tpl = (opts.strings && opts.strings.rowsnote) || 'Showing {shown} of {total} rows';
+        note.textContent = tpl.replace('{shown}', String(cap)).replace('{total}', String(allrows.length));
+        block.appendChild(note);
+    }
+    return block;
 };
 
 /**
@@ -175,7 +201,7 @@ const renderSchema = (element, info, strings) => {
         const summary = document.createElement('summary');
         summary.textContent = table.name + ' (' + table.columns.map((c) => c.name + ' ' + c.type).join(', ') + ')';
         details.appendChild(summary);
-        details.appendChild(resultSetTable(table.sampleColumns, table.sampleRows, null));
+        details.appendChild(resultSetTable(table.sampleColumns, table.sampleRows, null, {strings: strings}));
         element.appendChild(details);
     });
 };
@@ -434,7 +460,7 @@ const renderExamples = (element, config, strings) => {
                         addBlock(card, strings.datalabel || 'Data', String(test.datasetsql));
                     }
                     addBlock(card, strings.expected || 'Expected',
-                        resultSetTable(null, parseJson(test.expected) || [], null));
+                        resultSetTable(null, parseJson(test.expected) || [], null, {strings: strings}));
                 } else {
                     if (test.input) {
                         addBlock(card, strings.input || 'Input', String(test.input));
@@ -552,10 +578,13 @@ const renderMismatch = (body, config, test, result, strings) => {
         const cols = result.columns || null;
         const expectedcols = (cols && expectedrows.length && expectedrows[0].length === cols.length)
             ? cols : null;
+        // Grading feedback uses a generous cap so a differing row is never hidden
+        // by truncation (small/medium result sets show in full; scroll handles the rest).
+        const diffopts = {strings: strings, cap: 200};
         addBlock(body, strings.expected || 'Expected',
-            resultSetTable(expectedcols, expectedrows, extraRowKeys(expectedrows, actualrows)));
+            resultSetTable(expectedcols, expectedrows, extraRowKeys(expectedrows, actualrows), diffopts));
         addBlock(body, strings.got || 'Got',
-            resultSetTable(cols, actualrows, extraRowKeys(actualrows, expectedrows)));
+            resultSetTable(cols, actualrows, extraRowKeys(actualrows, expectedrows), diffopts));
         return;
     }
 
@@ -596,7 +625,7 @@ const renderConsole = (element, result, config, strings) => {
     if (config.scenario === 'sql') {
         const rows = result.rows || [];
         if (rows.length || (result.columns && result.columns.length)) {
-            addBlock(element, strings.output || 'Output', resultSetTable(result.columns, rows, null));
+            addBlock(element, strings.output || 'Output', resultSetTable(result.columns, rows, null, {strings: strings}));
         } else {
             addBlock(element, strings.output || 'Output', strings.noresult || '(no rows)');
         }
