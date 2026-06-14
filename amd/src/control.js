@@ -483,8 +483,11 @@ const renderExamples = (element, config, strings) => {
                         resultSetTable(null, parseJson(test.expected) || [], null, {strings: strings}));
                     // An example with its own dataset doesn't dump the DDL; instead it
                     // offers to run the student's query against that data ("Use this
-                    // dataset"), so the data is revealed by running. Interactive only.
-                    if (wrapper && !config.readonly
+                    // dataset"), so the data is revealed by running. Practice tier only:
+                    // the in-browser Run is what the dataset loads into, and the judge
+                    // tier has no free-form SQL run to drive (the override is wired by
+                    // the practice init, which the judge tier returns before reaching).
+                    if (wrapper && !config.readonly && !config.isjudge
                             && test.datasetsql && String(test.datasetsql).trim() !== '') {
                         const label = (strings.test || 'Test') + ' ' + (i + 1);
                         card.appendChild(useDatasetButton(wrapper, test, label, strings));
