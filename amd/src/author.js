@@ -317,10 +317,14 @@ const gatherTests = () => {
             weight: t.weight,
             visibility: visibility,
             checkerquery: t.checkerquery || '',
+            // SQL per-test dataset (replaces the question schema for this test) — must
+            // ride along or the preview runs every test on the question schema.
+            datasetsql: t.datasetsql || '',
             // Mirror the renderer: hidden tests reveal nothing client-side, feedback included.
             feedback: visibility === 1 ? (t.feedback || '') : null,
         };
-    }).filter((t) => !(t.input.trim() === '' && t.expected.trim() === ''));
+    }).filter((t) => !(t.input.trim() === '' && t.expected.trim() === ''
+        && t.checkerquery.trim() === '' && t.datasetsql.trim() === ''));
 };
 
 /**
