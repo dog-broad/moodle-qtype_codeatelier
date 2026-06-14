@@ -80,6 +80,12 @@ const normaliseRow = (row) => {
             value = (value === '' || value === null || isNaN(value)) ? 1 : Number(value);
         } else if (key === 'subtask') {
             value = parseInt(value, 10) || 0;
+        } else if (value !== null && typeof value === 'object') {
+            // A text field given a structured JSON value — most often SQL `expected`
+            // written as a nested array of rows, [["Alice",230],...]. Store its
+            // canonical JSON string (the form the grader parses) rather than letting
+            // it coerce to a flattened "Alice,230,..." string.
+            value = JSON.stringify(value);
         }
         t[key] = value;
     });
@@ -232,7 +238,18 @@ const serialize = (format, rows, scenario) => {
         return JSON.stringify(rows.map((t) => {
             const o = {};
             cols.forEach((c) => {
-                o[c] = exportValue(c, t);
+                let v = exportValue(c, t);
+                // For SQL, emit `expected` as the nested array of rows rather than an
+                // escaped JSON string, so the exported/template JSON is readable and
+                // round-trips through import unchanged.
+                if (scenario === 'sql' && c === 'expected' && typeof v === 'string' && v.trim() !== '') {
+                    try {
+                        v = JSON.parse(v);
+                    } catch (e) {
+                        // Not valid JSON — leave it as the raw string.
+                    }
+                }
+                o[c] = v;
             });
             return o;
         }), null, 2);
@@ -459,7 +476,10 @@ export const init = (params) => {
         };
         const textarea = (key, rows) => {
             const ta = el('textarea', {class: 'form-control', rows: rows || 3, spellcheck: 'false'}, []);
-            ta.value = t[key] || '';
+            const v = t[key];
+            // Defensive: never let a structured value coerce to a flattened string.
+            ta.value = (v === undefined || v === null) ? ''
+                : (typeof v === 'object' ? JSON.stringify(v) : v);
             ta.addEventListener('input', () => { t[key] = ta.value; sync(); });
             return ta;
         };
