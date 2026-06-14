@@ -24,6 +24,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+$string['activedataset'] = 'Running against {$a}\'s data';
 $string['addmoretestcases'] = 'Add another test case';
 $string['allornothing'] = 'All-or-nothing grading';
 $string['allornothing_help'] = 'When ticked, a submission scores full marks only if it passes every test case; otherwise it scores zero. When unticked, marks are the weighted fraction of tests passed (partial credit).';
@@ -328,7 +329,6 @@ $string['scenario_sql'] = 'SQL (query a database)';
 $string['scenario_stdinstdout'] = 'Standard input / output';
 $string['scenario_web'] = 'Web page (HTML / CSS / JavaScript)';
 $string['schemanote'] = 'Most SQL questions need a schema above (CREATE TABLE statements and seed INSERTs). Leave it empty only if the query needs no tables — for example a SELECT without a FROM clause. A test case can also override this with its own dataset, so hidden tests can run against different data.';
-$string['datalabel'] = 'Data';
 $string['testdataset'] = 'Dataset (schema + seed) — overrides the question schema for this test';
 $string['schemasql'] = 'Schema and seed data (SQL)';
 $string['schemasql_help'] = 'SQL run before the student\'s query to set up the database: CREATE TABLE statements and INSERTs. Runs on SQLite (sql.js) in the browser.';
@@ -398,6 +398,8 @@ $string['tierbadge_judge'] = 'Secure mode — the official grade, hidden tests s
 $string['tierbadge_practice'] = 'Practice mode — instant feedback, not for marks';
 $string['tolerance'] = 'Tolerance';
 $string['tolerancenumeric'] = 'A numeric tolerance is required when the matching rule is numeric.';
+$string['usedataset'] = 'Use this dataset';
+$string['usedefaultdata'] = 'Use default data';
 $string['useinput'] = 'Use this input';
 $string['verdict_AC'] = 'Accepted';
 $string['verdict_CE'] = 'Compile error';

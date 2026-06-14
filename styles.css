@@ -626,7 +626,28 @@
     margin-top: 0.3rem;
 }
 
-.qtype_codeatelier .codeatelier-use-input {
+.qtype_codeatelier .codeatelier-use-input,
+.qtype_codeatelier .codeatelier-use-dataset {
+    padding: 0;
+    font-size: 0.8rem;
+}
+
+/* Banner above the Run console showing which dataset the Run is using, with a
+   control to revert to the question's default schema. */
+.qtype_codeatelier .codeatelier-active-dataset {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 0 0 0.4rem;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--ca-border);
+    border-radius: 0.3rem;
+    background: var(--ca-surface-alt);
+    font-size: 0.82rem;
+}
+
+.qtype_codeatelier .codeatelier-use-default {
     padding: 0;
     font-size: 0.8rem;
 }

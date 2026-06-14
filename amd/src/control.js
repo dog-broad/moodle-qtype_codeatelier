@@ -344,6 +344,31 @@ const useInputButton = (scratch, test, strings) => {
 };
 
 /**
+ * A "Use this dataset" button for a SQL example: loads the example's own dataset
+ * as the active Run dataset and runs the student's query against it, so the data
+ * is revealed by running rather than dumped as DDL. Drives the override exposed on
+ * the workbench root by init() (mirrors the codeatelierSetArgs pattern).
+ *
+ * @param {HTMLElement} root the workbench root carrying codeatelierUseDataset
+ * @param {Object} test the test whose dataset loads
+ * @param {String} label what to name the active dataset in the banner
+ * @param {Object} strings
+ * @return {HTMLElement}
+ */
+const useDatasetButton = (root, test, label, strings) => {
+    const use = document.createElement('button');
+    use.type = 'button';
+    use.className = 'btn btn-link btn-sm codeatelier-use-dataset';
+    use.textContent = strings.usedataset || 'Use this dataset';
+    use.addEventListener('click', () => {
+        if (typeof root.codeatelierUseDataset === 'function') {
+            root.codeatelierUseDataset(String(test.datasetsql), label);
+        }
+    });
+    return use;
+};
+
+/**
  * A value <td>, with an optional "Use this input" button (input/call cell only).
  *
  * @param {String} value
@@ -454,13 +479,16 @@ const renderExamples = (element, config, strings) => {
                 title.textContent = (strings.test || 'Test') + ' ' + (i + 1);
                 card.appendChild(title);
                 if (config.scenario === 'sql') {
-                    // If this example runs against its own dataset, show it so the
-                    // expected result makes sense against that data (not the schema).
-                    if (test.datasetsql && String(test.datasetsql).trim() !== '') {
-                        addBlock(card, strings.datalabel || 'Data', String(test.datasetsql));
-                    }
                     addBlock(card, strings.expected || 'Expected',
                         resultSetTable(null, parseJson(test.expected) || [], null, {strings: strings}));
+                    // An example with its own dataset doesn't dump the DDL; instead it
+                    // offers to run the student's query against that data ("Use this
+                    // dataset"), so the data is revealed by running. Interactive only.
+                    if (wrapper && !config.readonly
+                            && test.datasetsql && String(test.datasetsql).trim() !== '') {
+                        const label = (strings.test || 'Test') + ' ' + (i + 1);
+                        card.appendChild(useDatasetButton(wrapper, test, label, strings));
+                    }
                 } else {
                     if (test.input) {
                         addBlock(card, strings.input || 'Input', String(test.input));
@@ -1100,11 +1128,20 @@ export const init = (params) => {
         }
     }
 
+    // SQL "Use this dataset": a per-run dataset override for the Run (default = the
+    // question schema). A visible example loads its own dataset here and Run executes
+    // the student's query against it; the banner shows what's active and reverts.
+    let activeDataset = null;
+    let datasetBanner = null;
+
     // Console | Tests tabs (WAI-ARIA tabs: roving tabindex + arrow-key navigation).
     const tabs = Array.prototype.slice.call(root.querySelectorAll('[data-role="tab"]'));
     const setTab = (name) => {
         if (consoleel) {
             consoleel.style.display = (name === 'console') ? '' : 'none';
+        }
+        if (datasetBanner) {
+            datasetBanner.style.display = (name === 'console' && activeDataset) ? '' : 'none';
         }
         resultsel.style.display = (name === 'tests') ? '' : 'none';
         tabs.forEach((tab) => {
@@ -1324,8 +1361,9 @@ export const init = (params) => {
             });
     });
 
-    // Run: execute once with the scratch input, no grading.
-    runbutton.addEventListener('click', () => {
+    // Run: execute once with the scratch input (and, for SQL, the active dataset
+    // override), no grading. Factored so "Use this dataset" can trigger it too.
+    const doRun = () => {
         setRunning(true);
         statusel.textContent = strings.running || 'Running…';
         if (consoleel) {
@@ -1336,7 +1374,11 @@ export const init = (params) => {
         }
         revealOutput('console');
         const scratch = scratchinput ? scratchinput.value : '';
-        run(editor.getValue(), currentLanguage, [{input: scratch}], runOptions())
+        const onecase = {input: scratch};
+        if (config.scenario === 'sql' && activeDataset) {
+            onecase.datasetsql = activeDataset;
+        }
+        run(editor.getValue(), currentLanguage, [onecase], runOptions())
             .then((result) => {
                 const single = (result.results && result.results.length) ? result.results[0] : result;
                 renderConsole(consoleel, result.aborted ? result : single, config, strings);
@@ -1350,7 +1392,44 @@ export const init = (params) => {
             .then(() => {
                 setRunning(false);
             });
-    });
+    };
+    runbutton.addEventListener('click', doRun);
+
+    // Examples drive the SQL dataset override through a function on the workbench
+    // root (mirrors scratch.codeatelierSetArgs). Only visible examples expose the
+    // button, so a hidden test's dataset is never runnable here.
+    const showActiveDataset = (label) => {
+        if (!consoleel || !consoleel.parentNode) {
+            return;
+        }
+        if (!datasetBanner) {
+            datasetBanner = document.createElement('div');
+            datasetBanner.className = 'codeatelier-active-dataset';
+            const text = document.createElement('span');
+            text.setAttribute('data-role', 'active-dataset-text');
+            const revert = document.createElement('button');
+            revert.type = 'button';
+            revert.className = 'btn btn-link btn-sm codeatelier-use-default';
+            revert.textContent = strings.usedefaultdata || 'Use default data';
+            revert.addEventListener('click', () => {
+                activeDataset = null;
+                datasetBanner.style.display = 'none';
+                doRun();
+            });
+            datasetBanner.appendChild(text);
+            datasetBanner.appendChild(revert);
+            consoleel.parentNode.insertBefore(datasetBanner, consoleel);
+        }
+        const tpl = strings.activedataset || 'Running against {$a}\'s data';
+        datasetBanner.querySelector('[data-role="active-dataset-text"]').textContent =
+            tpl.replace('{$a}', label);
+        datasetBanner.style.display = '';
+    };
+    root.codeatelierUseDataset = (datasetsql, label) => {
+        activeDataset = datasetsql;
+        showActiveDataset(label);
+        doRun();
+    };
 
     // Stop: cancel an in-flight run.
     if (stopbutton) {
