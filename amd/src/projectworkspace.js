@@ -253,7 +253,6 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
     explorer.className = 'codeatelier-project-explorer';
     const filelist = document.createElement('ul');
     filelist.className = 'codeatelier-filelist';
-    filelist.setAttribute('role', 'tablist');
     filelist.setAttribute('aria-label', strings.projectfiles || 'Project files');
     const editorpane = document.createElement('div');
     editorpane.className = 'codeatelier-project-editorpane';
@@ -297,7 +296,7 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
     };
 
     // ---- file explorer --------------------------------------------------------
-    const rowEls = () => Array.prototype.slice.call(filelist.querySelectorAll('[role="tab"]'));
+    const rowEls = () => Array.prototype.slice.call(filelist.querySelectorAll('.codeatelier-fileitem'));
 
     /**
      * Activate a file by index (saving the outgoing editor content first).
@@ -376,8 +375,12 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
             const tab = document.createElement('button');
             tab.type = 'button';
             tab.className = 'codeatelier-fileitem';
-            tab.setAttribute('role', 'tab');
-            tab.setAttribute('aria-selected', index === active ? 'true' : 'false');
+            // A list of file buttons (not an ARIA tablist — the buttons sit inside
+            // <li>s, which a tablist forbids). Roving tabindex + arrow keys for quick
+            // nav; aria-current marks the open file.
+            if (index === active) {
+                tab.setAttribute('aria-current', 'true');
+            }
             tab.tabIndex = index === active ? 0 : -1;
 
             const name = document.createElement('span');

@@ -535,24 +535,24 @@
 .codeatelier-entry-badge {
     border: 0;
     background: transparent;
-    color: var(--ca-text-muted, #adb5bd);
+    /* Full text colour (not muted) so the ▸ meets contrast on the explorer rail;
+       the active entry is distinguished by the success colour + weight below. */
+    color: var(--ca-text, #343a40);
     font-size: 0.72rem;
     line-height: 1;
     padding: 0.15rem 0.25rem;
     cursor: pointer;
-    opacity: 0.4;
 }
 
 .codeatelier-entry-active {
     color: var(--ca-success, #198754);
-    opacity: 1;
     font-weight: 700;
 }
 
 .codeatelier-filedelete {
     border: 0;
     background: transparent;
-    color: var(--ca-text-muted, #adb5bd);
+    color: var(--ca-text-muted, #6c757d);
     font-size: 1rem;
     line-height: 1;
     padding: 0 0.25rem;
