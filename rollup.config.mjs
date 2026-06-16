@@ -59,6 +59,14 @@ export default [
         plugins: [nodeResolve(), terser()],
     },
     {
+        // The project workspace: a two-pane file explorer + editor with a language
+        // switch and Starter|Solution layer toggle (authoring) reused for attempts.
+        input: 'amd/src/projectworkspace.js',
+        external: (id) => id.startsWith('qtype_codeatelier/'),
+        output: {file: 'amd/build/projectworkspace.min.js', format: 'amd', sourcemap: true, sourcemapExcludeSources: true},
+        plugins: [nodeResolve(), terser()],
+    },
+    {
         // The web (frontend) scenario runtime: composes the file set and renders it
         // in a sandboxed live-preview iframe. Self-contained (no plugin deps).
         input: 'amd/src/webruntime.js',

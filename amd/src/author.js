@@ -25,6 +25,7 @@ import {init as initControl} from 'qtype_codeatelier/control';
 import {run as runCode} from 'qtype_codeatelier/runner';
 import {grade} from 'qtype_codeatelier/grader';
 import {setup as setupProjectFiles} from 'qtype_codeatelier/projectfiles';
+import {setup as setupProjectWorkspace} from 'qtype_codeatelier/projectworkspace';
 import {setupPreview} from 'qtype_codeatelier/webruntime';
 import {render as renderTemplate} from 'core/templates';
 import Ajax from 'core/ajax';
@@ -554,24 +555,47 @@ export const init = (params) => {
                 }
                 : undefined;
             const fblang = langSel ? langSel.value : 'cpp';
-            const fbentry = entryfileField ? entryfileField.value.trim() : 'main';
-            projectEditor = setupProjectFiles(null, projectfilesTa, {
-                language: scen === 'web' ? 'html' : fblang,
-                entryfile: scen === 'web' ? 'index.html' : fbentry,
-                readonly: false,
-            }, config.strings || {}, onChange);
-            if (scen === 'web') {
+            if (scen === 'project') {
+                // The project workspace: a two-pane explorer over the language-keyed
+                // env blob, with the allowed-language switch and Starter|Solution toggle.
+                const allowedlangs = [fblang];
+                if (langsSel) {
+                    Array.prototype.slice.call(langsSel.selectedOptions || []).forEach((o) => {
+                        if (allowedlangs.indexOf(o.value) === -1) {
+                            allowedlangs.push(o.value);
+                        }
+                    });
+                }
+                projectEditor = setupProjectWorkspace(null, projectfilesTa, {
+                    author: true,
+                    language: fblang,
+                    languages: allowedlangs,
+                    readonly: false,
+                }, config.strings || {});
+            } else {
+                // The web (frontend) scenario keeps the flat single-language file set.
+                const fbentry = entryfileField ? entryfileField.value.trim() : 'main';
+                projectEditor = setupProjectFiles(null, projectfilesTa, {
+                    language: 'html',
+                    entryfile: 'index.html',
+                    readonly: false,
+                }, config.strings || {}, onChange);
                 webPicker = buildWebPicker();
             }
         };
         mountProject();
         scenSel.addEventListener('change', mountProject);
+        const remountProject = () => {
+            if (scenSel.value === 'project') {
+                mountProject();
+            }
+        };
         if (langSel) {
-            langSel.addEventListener('change', () => {
-                if (scenSel.value === 'project') {
-                    mountProject();
-                }
-            });
+            langSel.addEventListener('change', remountProject);
+        }
+        const projLangsSel = byId(config.languagesid);
+        if (projLangsSel) {
+            projLangsSel.addEventListener('change', remountProject);
         }
     }
 
