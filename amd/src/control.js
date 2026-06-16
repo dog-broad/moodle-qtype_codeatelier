@@ -32,6 +32,7 @@ import {setup as setupProjectFiles} from 'qtype_codeatelier/projectfiles';
 import {setUserPreference} from 'core_user/repository';
 import {setupPreview, gradeWeb} from 'qtype_codeatelier/webruntime';
 import {setupFunctionArgs} from './argfields.js';
+import {resultSetTable, extraRowKeys} from './resulttable.js';
 
 /**
  * @param {String} value
@@ -87,96 +88,6 @@ const diffPre = (ops, keep) => {
         }
     });
     return pre;
-};
-
-/**
- * Build a result-set table.
- *
- * The table is wrapped in a scroll container (bounded height + both-axis scroll)
- * so a wide or tall result set never breaks the pane, and display is capped so a
- * pathological result set does not render thousands of rows; the cap is noted.
- *
- * @param {Array} columns optional column names
- * @param {Array} rows array of row arrays
- * @param {Object} extrakeys set of JSON-stringified rows to highlight
- * @param {Object} opts {cap: max rows to render (default 50), strings}
- * @return {HTMLElement}
- */
-const ROWCAP = 50;
-const resultSetTable = (columns, rows, extrakeys, opts) => {
-    opts = opts || {};
-    const cap = (typeof opts.cap === 'number') ? opts.cap : ROWCAP;
-    const allrows = rows || [];
-    const capped = allrows.length > cap;
-    const shown = capped ? allrows.slice(0, cap) : allrows;
-
-    const table = document.createElement('table');
-    table.className = 'codeatelier-resultset';
-    if (columns && columns.length) {
-        const thead = document.createElement('thead');
-        const tr = document.createElement('tr');
-        columns.forEach((col) => {
-            const th = document.createElement('th');
-            th.textContent = col;
-            tr.appendChild(th);
-        });
-        thead.appendChild(tr);
-        table.appendChild(thead);
-    }
-    const tbody = document.createElement('tbody');
-    shown.forEach((row) => {
-        const tr = document.createElement('tr');
-        if (extrakeys && extrakeys[JSON.stringify(row)]) {
-            tr.className = 'codeatelier-diff-row';
-        }
-        row.forEach((value) => {
-            const td = document.createElement('td');
-            td.textContent = (value === null) ? 'NULL' : String(value);
-            tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-    });
-    table.appendChild(tbody);
-
-    const block = document.createElement('div');
-    block.className = 'codeatelier-resultset-block';
-    const scroll = document.createElement('div');
-    scroll.className = 'codeatelier-table-scroll';
-    scroll.appendChild(table);
-    block.appendChild(scroll);
-    if (capped) {
-        const note = document.createElement('p');
-        note.className = 'codeatelier-rows-note';
-        const tpl = (opts.strings && opts.strings.rowsnote) || 'Showing {shown} of {total} rows';
-        note.textContent = tpl.replace('{shown}', String(cap)).replace('{total}', String(allrows.length));
-        block.appendChild(note);
-    }
-    return block;
-};
-
-/**
- * Rows present in `rows` but not in `other` (as a multiset by JSON key).
- *
- * @param {Array} rows
- * @param {Array} other
- * @return {Object} set of JSON keys
- */
-const extraRowKeys = (rows, other) => {
-    const counts = {};
-    (other || []).forEach((row) => {
-        const key = JSON.stringify(row);
-        counts[key] = (counts[key] || 0) + 1;
-    });
-    const extra = {};
-    (rows || []).forEach((row) => {
-        const key = JSON.stringify(row);
-        if (counts[key]) {
-            counts[key]--;
-        } else {
-            extra[key] = true;
-        }
-    });
-    return extra;
 };
 
 /**

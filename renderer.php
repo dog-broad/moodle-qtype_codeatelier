@@ -123,7 +123,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                     ['data-role' => 'gradestatus']
                 );
             } else {
-                $judgereviewhtml = $this->render_judge_review($cached);
+                $judgereviewhtml = $this->render_judge_review($cached, $scenario);
             }
             $proctorreviewhtml = $this->render_proctor_summary((int) $qa->get_database_id());
         }
@@ -276,6 +276,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                     'clear' => get_string('clear', 'qtype_codeatelier'),
                     'argn' => get_string('argn', 'qtype_codeatelier'),
                     'argsheading' => get_string('argsheading', 'qtype_codeatelier'),
+                    'rowsnote' => get_string('rowsnote', 'qtype_codeatelier'),
                 ],
             ]]);
         }
@@ -289,9 +290,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      * tests are shown as pass/fail only and never reveal their expected output.
      *
      * @param array|null $result the memoised judge result, or null on a cache miss
+     * @param string $scenario the question scenario (sql renders result tables)
      * @return string HTML
      */
-    protected function render_judge_review($result) {
+    protected function render_judge_review($result, $scenario = '') {
         if ($result === null) {
             return html_writer::div(
                 get_string('judgenoresult', 'qtype_codeatelier'),
@@ -336,7 +338,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
 
         $items = '';
         foreach ($result['testresults'] as $tr) {
-            $items .= $this->render_judge_test_row($tr);
+            $items .= $this->render_judge_test_row($tr, $scenario);
         }
         $out .= html_writer::tag('ul', $items, ['class' => 'codeatelier-judge-tests']);
 
@@ -396,9 +398,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      * a pass/fail badge — they carry no diagnostics in the result.
      *
      * @param array $tr a per-test result
+     * @param string $scenario the question scenario
      * @return string HTML
      */
-    protected function render_judge_test_row(array $tr) {
+    protected function render_judge_test_row(array $tr, $scenario = '') {
         $visible = (int) $tr['visibility'] === 1;
         $passed = !empty($tr['passed']);
         $status = (string) $tr['status'];
@@ -433,7 +436,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             } else if (($status === 're' || $status === 'mle') && !empty($tr['stderr'])) {
                 $detail = html_writer::tag('pre', s($tr['stderr']), ['class' => 'codeatelier-test-error']);
             } else if ($status === 'fail') {
-                $detail = $this->render_test_diff($tr);
+                $detail = $this->render_test_diff($tr, $scenario);
             }
         }
 
@@ -465,9 +468,33 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      * An input / expected / got diff for a failed visible test.
      *
      * @param array $tr a per-test result
+     * @param string $scenario the question scenario
      * @return string HTML
      */
-    protected function render_test_diff(array $tr) {
+    protected function render_test_diff(array $tr, $scenario = '') {
+        // SQL: expected/actual are JSON row arrays — render result tables (with the
+        // differing rows highlighted) for parity with the practice tier and the
+        // run-against-examples view, instead of dumping raw JSON text.
+        if ($scenario === 'sql') {
+            $expectedrows = json_decode(isset($tr['expected']) ? (string) $tr['expected'] : '', true);
+            $actualrows = json_decode(isset($tr['actual']) ? (string) $tr['actual'] : '', true);
+            if (is_array($expectedrows) && is_array($actualrows)) {
+                $rows = $this->sql_result_table(
+                    get_string('expected', 'qtype_codeatelier'),
+                    $expectedrows,
+                    $this->extra_row_keys($expectedrows, $actualrows),
+                    'expected'
+                );
+                $rows .= $this->sql_result_table(
+                    get_string('result_got', 'qtype_codeatelier'),
+                    $actualrows,
+                    $this->extra_row_keys($actualrows, $expectedrows),
+                    'got'
+                );
+                return html_writer::div($rows, 'codeatelier-test-diff');
+            }
+        }
+
         $rows = '';
         if (isset($tr['input']) && trim((string) $tr['input']) !== '') {
             $rows .= $this->diff_line(get_string('input', 'qtype_codeatelier'), $tr['input'], 'input');
@@ -483,6 +510,81 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'got'
         );
         return html_writer::div($rows, 'codeatelier-test-diff');
+    }
+
+    /**
+     * The JSON keys of rows present in $rows but not in $other (multiset), so the
+     * differing rows in a SQL diff can be highlighted. Mirrors the JS extraRowKeys.
+     *
+     * @param array $rows
+     * @param array $other
+     * @return array set of json_encode(row) => true
+     */
+    protected function extra_row_keys(array $rows, array $other) {
+        $counts = [];
+        foreach ($other as $row) {
+            $key = json_encode($row);
+            $counts[$key] = ($counts[$key] ?? 0) + 1;
+        }
+        $extra = [];
+        foreach ($rows as $row) {
+            $key = json_encode($row);
+            if (!empty($counts[$key])) {
+                $counts[$key]--;
+            } else {
+                $extra[$key] = true;
+            }
+        }
+        return $extra;
+    }
+
+    /**
+     * A labelled SQL result-set table (one diff side), bounded + scrollable, with
+     * the differing rows highlighted. Matches the markup the JS renderer emits so
+     * the shared CSS styles both tiers identically. Display is capped at 200 rows
+     * (a failed-test review, so generous enough never to hide a differing row).
+     *
+     * @param string $label the row label (Expected / Got)
+     * @param array $rows the rows (each an array of cell values)
+     * @param array $extrakeys json_encode(row) => true for rows to highlight
+     * @param string $which expected | got (for styling)
+     * @return string HTML
+     */
+    protected function sql_result_table($label, array $rows, array $extrakeys, $which) {
+        $cap = 200;
+        $shown = array_slice($rows, 0, $cap);
+        $body = '';
+        foreach ($shown as $row) {
+            $cells = '';
+            foreach ((array) $row as $value) {
+                $cells .= html_writer::tag('td', $value === null ? 'NULL' : s((string) $value));
+            }
+            $trclass = !empty($extrakeys[json_encode($row)]) ? 'codeatelier-diff-row' : '';
+            $body .= html_writer::tag('tr', $cells, $trclass ? ['class' => $trclass] : []);
+        }
+        $table = html_writer::tag(
+            'table',
+            html_writer::tag('tbody', $body),
+            ['class' => 'codeatelier-resultset']
+        );
+        $block = html_writer::div(
+            html_writer::div($table, 'codeatelier-table-scroll'),
+            'codeatelier-resultset-block'
+        );
+        if (count($rows) > $cap) {
+            // The string uses {shown}/{total} (so the JS renderer can substitute too),
+            // not Moodle's {$a->..}, so replace by hand here.
+            $note = str_replace(
+                ['{shown}', '{total}'],
+                [$cap, count($rows)],
+                get_string('rowsnote', 'qtype_codeatelier')
+            );
+            $block .= html_writer::tag('p', s($note), ['class' => 'codeatelier-rows-note']);
+        }
+        return html_writer::div(
+            html_writer::span(s($label), 'codeatelier-diff-label') . $block,
+            'codeatelier-diff-row codeatelier-diff-' . $which
+        );
     }
 
     /**
