@@ -904,7 +904,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         }
 
         $hasreference = ($scenario === 'project')
-                ? self::project_reference_has_content($data['referencesolution'] ?? '')
+                ? self::project_reference_has_content($data['projectfiles'] ?? '')
                 : (trim((string) ($data['referencesolution'] ?? '')) !== '');
 
         // A custom checker (special judge) is a judge-tier stdin/stdout feature,
@@ -969,16 +969,23 @@ class qtype_codeatelier_edit_form extends question_edit_form {
     }
 
     /**
-     * Whether a project reference file set carries any real code (the file-tab
-     * editor seeds an empty default that should not trigger validate-on-save).
+     * Whether a project's environment blob carries any Solution-layer content, i.e.
+     * a reference worth validating (an author who filled only starters has no
+     * reference to run; the Solution layer is the reference).
      *
-     * @param string $json the reference file set (canonical JSON)
+     * @param string $json the projectfiles blob
      * @return bool
      */
     protected static function project_reference_has_content($json) {
-        foreach (\qtype_codeatelier\judge\project_packager::decode_files((string) $json) as $content) {
-            if (trim((string) $content) !== '') {
-                return true;
+        $blob = json_decode((string) $json, true);
+        if (!is_array($blob) || empty($blob['envs'])) {
+            return false;
+        }
+        foreach ($blob['envs'] as $env) {
+            foreach ((is_array($env['files'] ?? null) ? $env['files'] : []) as $f) {
+                if (is_array($f) && trim((string) ($f['solution'] ?? '')) !== '') {
+                    return true;
+                }
             }
         }
         return false;
@@ -998,9 +1005,11 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $question->tier = 'judge';
         $question->scenario = $data['scenario'];
         $question->schemasql = ($data['scenario'] === 'sql') ? ($data['schemasql'] ?? '') : null;
-        // The project reference is a file set; its entry file drives the build.
-        $question->entryfile = ($data['scenario'] === 'project' && isset($data['entryfile']))
-                ? trim((string) $data['entryfile']) : null;
+        // The project reference + entry are per-language inside the blob; project_entry
+        // resolves the entry for the primary language from it.
+        $question->projectfiles = ($data['scenario'] === 'project')
+                ? (string) ($data['projectfiles'] ?? '') : null;
+        $question->entryfile = null;
         $question->cputimelimit = (isset($data['cputimelimit']) && trim($data['cputimelimit']) !== '')
                 ? (float) $data['cputimelimit'] : null;
         $question->memorylimit = (isset($data['memorylimit']) && trim($data['memorylimit']) !== '')
@@ -1012,7 +1021,20 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $question->checkerlang = isset($data['checkerlang']) ? (string) $data['checkerlang'] : null;
         $question->tests = $this->tests_from_form($data);
 
-        $result = $question->get_judge_result($data['referencesolution'], $data['language']);
+        // The reference code: for a project it is the primary language's Solution-layer
+        // file set from the blob; otherwise the single reference field.
+        if ($data['scenario'] === 'project') {
+            $envs = \qtype_codeatelier\judge\project_packager::decode_envs($question->projectfiles);
+            $env = isset($envs[$data['language']]) ? $envs[$data['language']]
+                    : (reset($envs) ?: null);
+            $referencecode = $env
+                    ? \qtype_codeatelier\judge\project_packager::encode_files(
+                        \qtype_codeatelier\judge\project_packager::reference_files($env))
+                    : '[]';
+        } else {
+            $referencecode = $data['referencesolution'];
+        }
+        $result = $question->get_judge_result($referencecode, $data['language']);
         if ($result === null) {
             return $errors;
         }

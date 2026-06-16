@@ -757,7 +757,32 @@ export const init = (params) => {
             scenSel.addEventListener('change', mountRef);
         }
     }
+    // For a project, the reference is the workspace Solution layer of the primary
+    // language as a flat file set (solution content, falling back to starter), plus
+    // its entry — the shape run-reference packages and runs to capture/validate.
+    const projectReference = () => {
+        let blob = null;
+        try {
+            blob = JSON.parse(projectfilesTa ? projectfilesTa.value : '');
+        } catch (e) {
+            blob = null;
+        }
+        const primary = langSel ? langSel.value : 'python';
+        const envs = (blob && blob.envs) ? blob.envs : {};
+        const env = envs[primary] || envs[Object.keys(envs)[0]];
+        if (!env || !Array.isArray(env.files) || !env.files.length) {
+            return {code: '[]', entry: ''};
+        }
+        const files = env.files.map((f) => ({
+            name: f.name,
+            content: (typeof f.solution === 'string' && f.solution !== '') ? f.solution : (f.starter || ''),
+        }));
+        return {code: JSON.stringify(files), entry: env.entry || (files[0] && files[0].name) || ''};
+    };
     const referenceValue = () => {
+        if (scenSel && scenSel.value === 'project') {
+            return projectReference().code;
+        }
         if (refEditor) {
             return refEditor.getValue();
         }
@@ -971,7 +996,9 @@ export const init = (params) => {
                 scenario: scenSel ? scenSel.value : 'stdinstdout',
                 entrypoint: byId(config.entrypointid) ? byId(config.entrypointid).value : '',
                 functionsignature: byId('id_functionsignature') ? byId('id_functionsignature').value : '',
-                entryfile: entryfileField ? entryfileField.value.trim() : '',
+                entryfile: (scenSel && scenSel.value === 'project')
+                    ? projectReference().entry
+                    : (entryfileField ? entryfileField.value.trim() : ''),
                 schemasql: schemaTa ? schemaTa.value : '',
                 cputimelimit: byId('id_cputimelimit') ? byId('id_cputimelimit').value : '',
                 memorylimit: byId('id_memorylimit') ? byId('id_memorylimit').value : '',
