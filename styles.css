@@ -761,8 +761,34 @@
     z-index: 1;
 }
 
-.qtype_codeatelier .codeatelier-resultset .codeatelier-diff-row td {
+/* A differing row in a result-set diff. Its own class (NOT codeatelier-diff-row,
+   which is the display:flex label row) so a highlighted <tr> keeps table layout. */
+.qtype_codeatelier .codeatelier-resultset .codeatelier-row-diff td {
     background: var(--ca-danger-strong-bg);
+}
+
+.qtype_codeatelier .codeatelier-resultset .codeatelier-row-diff td:first-child {
+    border-left: 3px solid var(--ca-danger);
+}
+
+/* A per-side marker so the highlight is not colour-only: − for an expected row
+   missing from the result, + for a produced row that was not expected. */
+.qtype_codeatelier .codeatelier-resultset-expected .codeatelier-row-diff td:first-child::before {
+    content: "\2212\00a0";
+    font-weight: 700;
+    color: var(--ca-danger);
+}
+
+.qtype_codeatelier .codeatelier-resultset-got .codeatelier-row-diff td:first-child::before {
+    content: "+\00a0";
+    font-weight: 700;
+    color: var(--ca-danger);
+}
+
+.qtype_codeatelier .codeatelier-diff-legend {
+    margin: 0.2rem 0 0;
+    font-size: 0.78rem;
+    color: var(--ca-text-muted);
 }
 
 .qtype_codeatelier .codeatelier-rows-note {

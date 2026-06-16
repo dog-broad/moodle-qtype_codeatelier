@@ -209,10 +209,12 @@ const render = (out, result, strings, scenario) => {
  * @param {String} label
  * @param {String} rowsjson the side's rows as a JSON array string
  * @param {String} otherjson the other side's rows (for diff highlighting)
+ * @param {Array|null} columns the result's column names (header), or null
+ * @param {String} side 'expected' | 'got' (drives the per-side row marker)
  * @param {Object} strings
  * @return {HTMLElement|null} null when the value is not a JSON row array
  */
-const sqlDiffRow = (label, rowsjson, otherjson, strings) => {
+const sqlDiffRow = (label, rowsjson, otherjson, columns, side, strings) => {
     const rows = parseRows(rowsjson);
     if (rows === null) {
         return null;
@@ -224,7 +226,8 @@ const sqlDiffRow = (label, rowsjson, otherjson, strings) => {
     l.className = 'codeatelier-diff-label';
     l.textContent = label;
     row.appendChild(l);
-    row.appendChild(resultSetTable(null, rows, other !== null ? extraRowKeys(rows, other) : null, {strings: strings}));
+    row.appendChild(resultSetTable(columns, rows, other !== null ? extraRowKeys(rows, other) : null,
+        {strings: strings, diffside: side}));
     return row;
 };
 
@@ -251,13 +254,22 @@ const renderExample = (ex, strings, scenario) => {
             const diff = document.createElement('div');
             diff.className = 'codeatelier-test-diff';
             // SQL: expected/actual are JSON row arrays — render result tables (with
-            // differing rows highlighted), matching the practice tier. Fall back to
-            // text if they are not parseable rows.
-            const exprow = (scenario === 'sql') ? sqlDiffRow(strings.expected || 'Expected', ex.expected, ex.actual, strings) : null;
-            const gotrow = (scenario === 'sql') ? sqlDiffRow(strings.got || 'Got', ex.actual, ex.expected, strings) : null;
+            // differing rows highlighted + column headers), matching the practice tier.
+            // Fall back to text if they are not parseable rows.
+            const cols = (scenario === 'sql') ? parseRows(ex.columns) : null;
+            const exprow = (scenario === 'sql')
+                ? sqlDiffRow(strings.expected || 'Expected', ex.expected, ex.actual, cols, 'expected', strings) : null;
+            const gotrow = (scenario === 'sql')
+                ? sqlDiffRow(strings.got || 'Got', ex.actual, ex.expected, cols, 'got', strings) : null;
             if (exprow && gotrow) {
                 diff.appendChild(exprow);
                 diff.appendChild(gotrow);
+                if (strings.resultdifflegend) {
+                    const legend = document.createElement('p');
+                    legend.className = 'codeatelier-diff-legend';
+                    legend.textContent = strings.resultdifflegend;
+                    diff.appendChild(legend);
+                }
             } else {
                 if (ex.input && ex.input.trim() !== '') {
                     diff.appendChild(diffRow(strings.input || 'Input', ex.input));

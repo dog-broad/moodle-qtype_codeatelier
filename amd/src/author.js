@@ -892,7 +892,8 @@ export const init = (params) => {
                 li.appendChild(label);
                 const sqlrows = (scenario === 'sql') ? parseRows(item.output) : null;
                 if (sqlrows !== null) {
-                    li.appendChild(resultSetTable(null, sqlrows, null, {strings: {rowsnote: cstr.rowsnote}}));
+                    const cols = item.columns ? parseRows(item.columns) : null;
+                    li.appendChild(resultSetTable(cols, sqlrows, null, {strings: {rowsnote: cstr.rowsnote}}));
                 } else {
                     const pre = document.createElement('pre');
                     pre.className = 'codeatelier-diff-value';
@@ -926,6 +927,7 @@ export const init = (params) => {
                 return {
                     output: capturedExpected(r, scenario),
                     error: (r && r.error) ? String(r.error) : null,
+                    columns: (scenario === 'sql' && r && r.columns) ? JSON.stringify(r.columns) : '',
                 };
             });
         });
@@ -957,6 +959,7 @@ export const init = (params) => {
         }])[0].then((res) => (res.results || []).map((r) => ({
             output: r.ok ? r.output : null,
             error: r.ok ? null : (r.error || r.message || null),
+            columns: r.columns || '',
         })));
     };
 

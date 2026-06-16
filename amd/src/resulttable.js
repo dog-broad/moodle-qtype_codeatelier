@@ -78,7 +78,7 @@ export const extraRowKeys = (rows, other) => {
  * @param {Array} columns optional column names
  * @param {Array} rows array of row arrays
  * @param {Object} extrakeys set of JSON-stringified rows to highlight
- * @param {Object} opts {cap: max rows to render (default 50), strings}
+ * @param {Object} opts {cap: max rows (default 50), strings, diffside: 'expected'|'got'}
  * @return {HTMLElement}
  */
 export const resultSetTable = (columns, rows, extrakeys, opts) => {
@@ -90,6 +90,11 @@ export const resultSetTable = (columns, rows, extrakeys, opts) => {
 
     const table = document.createElement('table');
     table.className = 'codeatelier-resultset';
+    // On a diff side, a modifier class drives the per-side row marker (− expected,
+    // + got) so a highlighted row is distinguishable without relying on colour.
+    if (opts.diffside === 'expected' || opts.diffside === 'got') {
+        table.classList.add('codeatelier-resultset-' + opts.diffside);
+    }
     if (columns && columns.length) {
         const thead = document.createElement('thead');
         const tr = document.createElement('tr');
@@ -105,7 +110,7 @@ export const resultSetTable = (columns, rows, extrakeys, opts) => {
     shown.forEach((row) => {
         const tr = document.createElement('tr');
         if (extrakeys && extrakeys[JSON.stringify(row)]) {
-            tr.className = 'codeatelier-diff-row';
+            tr.className = 'codeatelier-row-diff';
         }
         row.forEach((value) => {
             const td = document.createElement('td');

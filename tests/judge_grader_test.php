@@ -446,6 +446,19 @@ final class judge_grader_test extends \advanced_testcase {
         $this->assertSame([[null]], judge_grader::parse_csv_rows("\n"));
     }
 
+    public function test_parse_csv_result_splits_header(): void {
+        // .headers on output: first line = column names, rest = typed data rows.
+        $result = judge_grader::parse_csv_result("name,total\nalice,5\nbob,\n");
+        $this->assertSame(['name', 'total'], $result['columns']);
+        $this->assertSame([['alice', 5], ['bob', null]], $result['rows']);
+        // A header-only result (zero data rows) keeps the columns, no rows.
+        $headeronly = judge_grader::parse_csv_result("name,total\n");
+        $this->assertSame(['name', 'total'], $headeronly['columns']);
+        $this->assertSame([], $headeronly['rows']);
+        // Empty output: no columns, no rows.
+        $this->assertSame(['columns' => [], 'rows' => []], judge_grader::parse_csv_result(''));
+    }
+
     /**
      * One SQL result-set test with the given expected JSON and match mode.
      *
@@ -461,8 +474,9 @@ final class judge_grader_test extends \advanced_testcase {
 
     public function test_sql_resultset_unordered_ac(): void {
         // Judge0 returns the rows in a different order; the unordered match passes.
+        // Output is .headers on: the first line is the column names.
         $runner = new qtype_codeatelier_stub_runner([
-            qtype_codeatelier_stub_runner::row('ran', "2,y\n1,x\n"),
+            qtype_codeatelier_stub_runner::row('ran', "a,b\n2,y\n1,x\n"),
         ]);
         $result = (new judge_grader($runner))->grade(
             'SELECT a, b FROM t',
@@ -473,13 +487,15 @@ final class judge_grader_test extends \advanced_testcase {
 
         $this->assertSame('AC', $result['verdict']);
         $this->assertEquals(1.0, $result['fraction']);
-        // The visible diagnostic shows the parsed rows as JSON (symmetric with expected).
+        // The visible diagnostic shows the parsed data rows as JSON (header stripped,
+        // symmetric with expected) plus the captured column names for the table header.
         $this->assertSame('[[2,"y"],[1,"x"]]', $result['testresults'][0]['actual']);
+        $this->assertSame('["a","b"]', $result['testresults'][0]['columns']);
     }
 
     public function test_sql_resultset_ordered_is_order_sensitive(): void {
         $runner = new qtype_codeatelier_stub_runner([
-            qtype_codeatelier_stub_runner::row('ran', "2,y\n1,x\n"),
+            qtype_codeatelier_stub_runner::row('ran', "a,b\n2,y\n1,x\n"),
         ]);
         $result = (new judge_grader($runner))->grade(
             'SELECT a, b FROM t ORDER BY a',
@@ -493,9 +509,10 @@ final class judge_grader_test extends \advanced_testcase {
     }
 
     public function test_sql_mutation_with_checker_ac(): void {
-        // A mutation graded by its checker SELECT: Judge0 prints only the checker rows.
+        // A mutation graded by its checker SELECT: Judge0 prints the checker's header
+        // line (.headers on) then its rows.
         $runner = new qtype_codeatelier_stub_runner([
-            qtype_codeatelier_stub_runner::row('ran', "11\n12\n"),
+            qtype_codeatelier_stub_runner::row('ran', "a\n11\n12\n"),
         ]);
         $result = (new judge_grader($runner))->grade(
             'UPDATE t SET a = a + 10',
@@ -544,10 +561,11 @@ final class judge_grader_test extends \advanced_testcase {
     }
 
     public function test_run_outputs_sql_returns_parsed_rows_json(): void {
-        // The captured value for a SQL result-set test is the parsed rows as JSON,
-        // the same shape grading compares against.
+        // The captured value for a SQL result-set test is the parsed rows as JSON
+        // (header line stripped), the same shape grading compares against; the column
+        // names ride along for the capture-review table header.
         $runner = new qtype_codeatelier_stub_runner([
-            qtype_codeatelier_stub_runner::row('ran', "1,amy\n2,bo\n"),
+            qtype_codeatelier_stub_runner::row('ran', "id,name\n1,amy\n2,bo\n"),
         ]);
         $outputs = (new judge_grader($runner))->run_outputs(
             'SELECT id, name FROM users',
@@ -557,6 +575,7 @@ final class judge_grader_test extends \advanced_testcase {
         );
 
         $this->assertSame('[[1,"amy"],[2,"bo"]]', $outputs[0]['output']);
+        $this->assertSame('["id","name"]', $outputs[0]['columns']);
     }
 
     public function test_all_or_nothing_zeroes_a_partial(): void {

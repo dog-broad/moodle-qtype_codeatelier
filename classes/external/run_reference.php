@@ -147,6 +147,7 @@ class run_reference extends external_api {
                 'output' => (string) $output['output'],
                 'ok' => !empty($output['ok']),
                 'error' => (string) $output['error'],
+                'columns' => isset($output['columns']) ? (string) $output['columns'] : '',
             ];
         }
         return ['results' => $results];
@@ -180,6 +181,7 @@ class run_reference extends external_api {
                 'output' => new external_value(PARAM_RAW, 'The produced output, to write into the Expected field'),
                 'ok' => new external_value(PARAM_BOOL, 'Whether the reference ran cleanly for this test'),
                 'error' => new external_value(PARAM_RAW, 'Error detail when the reference did not run cleanly'),
+                'columns' => new external_value(PARAM_RAW, 'SQL result column names as a JSON array, when any'),
             ])),
         ]);
     }

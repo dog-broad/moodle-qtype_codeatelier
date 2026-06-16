@@ -103,10 +103,11 @@ final class judge_question_test extends \advanced_testcase {
 
     public function test_judge_sql_grades_authoritatively_via_rows(): void {
         $this->resetAfterTest();
-        // Judge0 SQLite CSV: visible test returns rows in order, hidden out of order.
+        // Judge0 SQLite CSV (.headers on): the first line is the column names, then
+        // the rows — visible test in order, hidden out of order.
         $runner = new qtype_codeatelier_stub_runner([
-            qtype_codeatelier_stub_runner::row('ran', "1,amy\n2,bo\n"),
-            qtype_codeatelier_stub_runner::row('ran', "2,bo\n1,amy\n"),
+            qtype_codeatelier_stub_runner::row('ran', "id,name\n1,amy\n2,bo\n"),
+            qtype_codeatelier_stub_runner::row('ran', "id,name\n2,bo\n1,amy\n"),
         ]);
         $question = test_question_maker::make_question('codeatelier', 'judge_sql');
         $question->judgerunner = $runner;

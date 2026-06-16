@@ -524,9 +524,15 @@ const renderMismatch = (body, config, test, result, strings) => {
         // by truncation (small/medium result sets show in full; scroll handles the rest).
         const diffopts = {strings: strings, cap: 200};
         addBlock(body, strings.expected || 'Expected',
-            resultSetTable(expectedcols, expectedrows, extraRowKeys(expectedrows, actualrows), diffopts));
+            resultSetTable(expectedcols, expectedrows, extraRowKeys(expectedrows, actualrows),
+                {...diffopts, diffside: 'expected'}));
         addBlock(body, strings.got || 'Got',
-            resultSetTable(cols, actualrows, extraRowKeys(actualrows, expectedrows), diffopts));
+            resultSetTable(cols, actualrows, extraRowKeys(actualrows, expectedrows),
+                {...diffopts, diffside: 'got'}));
+        const legend = document.createElement('p');
+        legend.className = 'codeatelier-diff-legend';
+        legend.textContent = strings.resultdifflegend || '';
+        body.appendChild(legend);
         return;
     }
 

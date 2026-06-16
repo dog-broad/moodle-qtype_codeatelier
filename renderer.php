@@ -277,6 +277,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                     'argn' => get_string('argn', 'qtype_codeatelier'),
                     'argsheading' => get_string('argsheading', 'qtype_codeatelier'),
                     'rowsnote' => get_string('rowsnote', 'qtype_codeatelier'),
+                    'resultdifflegend' => get_string('resultdifflegend', 'qtype_codeatelier'),
                 ],
             ]]);
         }
@@ -479,17 +480,27 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             $expectedrows = json_decode(isset($tr['expected']) ? (string) $tr['expected'] : '', true);
             $actualrows = json_decode(isset($tr['actual']) ? (string) $tr['actual'] : '', true);
             if (is_array($expectedrows) && is_array($actualrows)) {
+                // The actual run's column names header both tables (same query shape).
+                $columns = json_decode(isset($tr['columns']) ? (string) $tr['columns'] : '', true);
+                $columns = is_array($columns) ? $columns : [];
                 $rows = $this->sql_result_table(
                     get_string('expected', 'qtype_codeatelier'),
+                    $columns,
                     $expectedrows,
                     $this->extra_row_keys($expectedrows, $actualrows),
                     'expected'
                 );
                 $rows .= $this->sql_result_table(
                     get_string('result_got', 'qtype_codeatelier'),
+                    $columns,
                     $actualrows,
                     $this->extra_row_keys($actualrows, $expectedrows),
                     'got'
+                );
+                $rows .= html_writer::tag(
+                    'p',
+                    s(get_string('resultdifflegend', 'qtype_codeatelier')),
+                    ['class' => 'codeatelier-diff-legend']
                 );
                 return html_writer::div($rows, 'codeatelier-test-diff');
             }
@@ -545,27 +556,37 @@ class qtype_codeatelier_renderer extends qtype_renderer {
      * (a failed-test review, so generous enough never to hide a differing row).
      *
      * @param string $label the row label (Expected / Got)
+     * @param array $columns the column names (header), or empty for none
      * @param array $rows the rows (each an array of cell values)
      * @param array $extrakeys json_encode(row) => true for rows to highlight
-     * @param string $which expected | got (for styling)
+     * @param string $which expected | got (drives the per-side row marker + styling)
      * @return string HTML
      */
-    protected function sql_result_table($label, array $rows, array $extrakeys, $which) {
+    protected function sql_result_table($label, array $columns, array $rows, array $extrakeys, $which) {
         $cap = 200;
         $shown = array_slice($rows, 0, $cap);
+        $head = '';
+        if ($columns) {
+            $hcells = '';
+            foreach ($columns as $name) {
+                $hcells .= html_writer::tag('th', s((string) $name));
+            }
+            $head = html_writer::tag('thead', html_writer::tag('tr', $hcells));
+        }
         $body = '';
         foreach ($shown as $row) {
             $cells = '';
             foreach ((array) $row as $value) {
                 $cells .= html_writer::tag('td', $value === null ? 'NULL' : s((string) $value));
             }
-            $trclass = !empty($extrakeys[json_encode($row)]) ? 'codeatelier-diff-row' : '';
+            // codeatelier-row-diff (NOT codeatelier-diff-row, which is display:flex).
+            $trclass = !empty($extrakeys[json_encode($row)]) ? 'codeatelier-row-diff' : '';
             $body .= html_writer::tag('tr', $cells, $trclass ? ['class' => $trclass] : []);
         }
         $table = html_writer::tag(
             'table',
-            html_writer::tag('tbody', $body),
-            ['class' => 'codeatelier-resultset']
+            $head . html_writer::tag('tbody', $body),
+            ['class' => 'codeatelier-resultset codeatelier-resultset-' . $which]
         );
         $block = html_writer::div(
             html_writer::div($table, 'codeatelier-table-scroll'),

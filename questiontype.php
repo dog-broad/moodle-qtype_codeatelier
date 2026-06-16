@@ -542,6 +542,7 @@ class qtype_codeatelier extends question_type {
             'stopped' => 'stopped',
             'noresult' => 'noresult',
             'rowsnote' => 'rowsnote',
+            'resultdifflegend' => 'resultdifflegend',
             'usedataset' => 'usedataset',
             'usedefaultdata' => 'usedefaultdata',
             'activedataset' => 'activedataset',

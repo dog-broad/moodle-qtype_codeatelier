@@ -167,7 +167,8 @@ class judge_grader {
             } else if ($result['outcome'] === 're' || $result['outcome'] === 'mle') {
                 $graderresults[] = ['error' => true];
             } else if ($issql && self::is_resultset_mode($tests[$i]->matchmode)) {
-                $graderresults[] = ['rows' => self::parse_csv_rows($result['stdout'])];
+                // Strip the .headers-on header line; grade only the data rows.
+                $graderresults[] = ['rows' => self::parse_csv_result($result['stdout'])['rows']];
             } else if ($isfunction) {
                 // Dynamic: the harness prints JSON; feed the string and let the
                 // structured matcher decode it. Static: decode the typed protocol
@@ -266,8 +267,11 @@ class judge_grader {
                 $row['input'] = (string) $tests[$i]->input;
                 $row['expected'] = (string) $tests[$i]->expected;
                 if ($outcome === 'ran' && $issql && self::is_resultset_mode($tests[$i]->matchmode)) {
-                    // Show the parsed rows as JSON so the diff matches the JSON expected.
-                    $row['actual'] = json_encode(self::parse_csv_rows($run['stdout']));
+                    // Show the parsed rows as JSON so the diff matches the JSON expected,
+                    // and ship the column names so both diff tables render a header.
+                    $parsed = self::parse_csv_result($run['stdout']);
+                    $row['actual'] = json_encode($parsed['rows']);
+                    $row['columns'] = json_encode($parsed['columns']);
                 } else {
                     $row['actual'] = $outcome === 'ran' ? (string) $run['stdout'] : '';
                 }
@@ -352,15 +356,20 @@ class judge_grader {
         foreach ($runresults as $i => $result) {
             $outcome = $result['outcome'];
             if ($outcome === 'ran') {
+                $columns = '';
                 if ($issql && self::is_resultset_mode($tests[$i]->matchmode)) {
-                    $output = json_encode(self::parse_csv_rows($result['stdout']));
+                    // Expected field gets the data rows; columns ride along for the
+                    // capture-review table header (not stored, display only).
+                    $parsed = self::parse_csv_result($result['stdout']);
+                    $output = json_encode($parsed['rows']);
+                    $columns = json_encode($parsed['columns']);
                 } else if ($isstaticfn) {
                     // Capture the canonical JSON of the typed return for the Expected field.
                     $output = json_encode($sig->decode_return($result['stdout']));
                 } else {
                     $output = (string) $result['stdout'];
                 }
-                $outputs[] = ['index' => $i, 'output' => $output, 'ok' => true, 'error' => ''];
+                $outputs[] = ['index' => $i, 'output' => $output, 'ok' => true, 'error' => '', 'columns' => $columns];
             } else {
                 // A compile error, timeout, runtime error or unreachable sandbox
                 // yields no usable output; surface why so the author can fix it.
@@ -368,7 +377,7 @@ class judge_grader {
                     : (trim((string) ($result['stderr'] ?? '')) !== '' ? (string) $result['stderr']
                         : (string) ($result['statusdesc'] ?? $outcome));
                 $outputs[] = ['index' => $i, 'output' => '', 'ok' => false,
-                    'error' => $error !== '' ? $error : $outcome];
+                    'error' => $error !== '' ? $error : $outcome, 'columns' => ''];
             }
         }
         return $outputs;
@@ -578,7 +587,10 @@ class judge_grader {
         // pipe-separated list mode. Judge0's SQLite rejects '.mode json'. Each SQL
         // fragment is statement-terminated so a non-terminated student query does
         // not merge with the checker into one malformed statement.
-        $parts = ['.mode csv', '.headers off'];
+        // Headers ON so the result carries its column names for display (the first
+        // output line); parse_csv_result() splits that header off before grading, so
+        // the comparison still sees only data rows (expected stays header-less).
+        $parts = ['.mode csv', '.headers on'];
         // A per-test dataset replaces the question schema for that test (so hidden
         // tests can run against different data); empty falls back to the schema.
         $dataset = isset($test->datasetsql) ? (string) $test->datasetsql : '';
@@ -617,7 +629,7 @@ class judge_grader {
      * number, or an embedded newline inside a quoted cell, is ambiguous — resolved
      * by run-to-capture authoring the expected against real output.)
      *
-     * @param string $stdout the Judge0 stdout (CSV, headers off)
+     * @param string $stdout CSV data rows (no header line)
      * @return array the rows, each an array of cell values (int|float|string|null)
      */
     public static function parse_csv_rows(string $stdout): array {
@@ -639,6 +651,33 @@ class judge_grader {
             $rows[] = array_map([self::class, 'coerce_cell'], $cells);
         }
         return $rows;
+    }
+
+    /**
+     * Parse Judge0 SQLite CSV output produced with `.headers on`: the first line is
+     * the column names, the remainder the typed data rows. Grading uses only the
+     * rows (so a header-less stored expected still compares equal); the columns are
+     * surfaced for display so the secure tier shows a headed table like practice.
+     *
+     * @param string $stdout the Judge0 stdout (CSV, headers on)
+     * @return array ['columns' => string[], 'rows' => array[]]
+     */
+    public static function parse_csv_result(string $stdout): array {
+        $stdout = str_replace("\r\n", "\n", $stdout);
+        if ($stdout === '') {
+            return ['columns' => [], 'rows' => []];
+        }
+        if (substr($stdout, -1) === "\n") {
+            $stdout = substr($stdout, 0, -1);
+        }
+        $nl = strpos($stdout, "\n");
+        $headerline = ($nl === false) ? $stdout : substr($stdout, 0, $nl);
+        $rest = ($nl === false) ? '' : substr($stdout, $nl + 1);
+        $columns = [];
+        foreach (str_getcsv($headerline, ',', '"', '') as $name) {
+            $columns[] = (string) ($name ?? '');
+        }
+        return ['columns' => $columns, 'rows' => $rest === '' ? [] : self::parse_csv_rows($rest)];
     }
 
     /**

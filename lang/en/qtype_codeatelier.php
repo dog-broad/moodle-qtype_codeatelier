@@ -264,6 +264,7 @@ $string['referencesolution_help'] = 'A correct solution in the primary language.
 $string['referenceverifyfail'] = 'Could not verify the reference solution (the runtime did not load). Saving anyway.';
 $string['referencewarning'] = 'Warning: your reference solution does not pass test {$a}. Students may not be able to score full marks.';
 $string['report_attempts'] = 'Submissions';
+$string['resultdifflegend'] = 'Highlighted rows differ: − expected but missing from your result, + produced but not expected.';
 $string['rowsnote'] = 'Showing {shown} of {total} rows';
 $string['report_backtoquiz'] = '« Back to the quiz overview';
 $string['report_coverage'] = 'Full detail (result, per-test pass rates, time and memory) is available for {$a->with} of {$a->total} submissions; the rest were graded against an earlier version of the question or have aged out of the result cache.';
