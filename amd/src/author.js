@@ -24,7 +24,6 @@ import {create as createEditor} from 'qtype_codeatelier/editor';
 import {init as initControl} from 'qtype_codeatelier/control';
 import {run as runCode} from 'qtype_codeatelier/runner';
 import {grade} from 'qtype_codeatelier/grader';
-import {setup as setupProjectFiles} from 'qtype_codeatelier/projectfiles';
 import {setup as setupProjectWorkspace} from 'qtype_codeatelier/projectworkspace';
 import {setupPreview} from 'qtype_codeatelier/webruntime';
 import {render as renderTemplate} from 'core/templates';
@@ -577,9 +576,11 @@ export const init = (params) => {
                     readonly: false,
                 }, config.strings || {});
             } else {
-                // The web (frontend) scenario keeps the flat single-language file set.
-                const fbentry = entryfileField ? entryfileField.value.trim() : 'main';
-                projectEditor = setupProjectFiles(null, projectfilesTa, {
+                // The web (frontend) scenario is a single, flat HTML/CSS/JS file set
+                // (no language choice, no Starter|Solution layer — web grades against
+                // DOM assertions). The explorer workspace in its flat mode (no author
+                // blob) is exactly that; index.html stays the served page by convention.
+                projectEditor = setupProjectWorkspace(null, projectfilesTa, {
                     language: 'html',
                     entryfile: 'index.html',
                     readonly: false,
