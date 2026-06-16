@@ -84,6 +84,75 @@ class project_packager {
     }
 
     /**
+     * Decode the language-keyed project workspace blob
+     * `{envs: {<lang>: {entry, files: [{name, starter, solution}]}}}` into a map
+     * `[lang => ['entry' => string, 'files' => [name => ['starter','solution']]]]`,
+     * preserving file order. Malformed input yields an empty map.
+     *
+     * @param string $json the projectfiles blob
+     * @return array
+     */
+    public static function decode_envs(string $json): array {
+        $json = trim($json);
+        if ($json === '') {
+            return [];
+        }
+        $decoded = json_decode($json, true);
+        if (!is_array($decoded) || !isset($decoded['envs']) || !is_array($decoded['envs'])) {
+            return [];
+        }
+        $out = [];
+        foreach ($decoded['envs'] as $lang => $env) {
+            if (!is_array($env)) {
+                continue;
+            }
+            $files = [];
+            foreach ((is_array($env['files'] ?? null) ? $env['files'] : []) as $f) {
+                if (is_array($f) && isset($f['name']) && trim((string) $f['name']) !== '') {
+                    $files[(string) $f['name']] = [
+                        'starter' => isset($f['starter']) ? (string) $f['starter'] : '',
+                        'solution' => isset($f['solution']) ? (string) $f['solution'] : '',
+                    ];
+                }
+            }
+            $entry = (isset($env['entry']) && isset($files[(string) $env['entry']]))
+                ? (string) $env['entry'] : (string) (array_key_first($files) ?? '');
+            $out[(string) $lang] = ['entry' => $entry, 'files' => $files];
+        }
+        return $out;
+    }
+
+    /**
+     * The starter file set for one environment: name => starter content.
+     *
+     * @param array $env an entry from decode_envs()
+     * @return array name => content
+     */
+    public static function starter_files(array $env): array {
+        $out = [];
+        foreach (($env['files'] ?? []) as $name => $layers) {
+            $out[(string) $name] = (string) ($layers['starter'] ?? '');
+        }
+        return $out;
+    }
+
+    /**
+     * The reference (solution) file set for one environment: each file's solution
+     * content, falling back to its starter where the solution layer is empty.
+     *
+     * @param array $env an entry from decode_envs()
+     * @return array name => content
+     */
+    public static function reference_files(array $env): array {
+        $out = [];
+        foreach (($env['files'] ?? []) as $name => $layers) {
+            $sol = (string) ($layers['solution'] ?? '');
+            $out[(string) $name] = $sol !== '' ? $sol : (string) ($layers['starter'] ?? '');
+        }
+        return $out;
+    }
+
+    /**
      * Build the base64 ZIP Judge0 (language 89) unpacks: the project's source files
      * plus a generated compile and run script for the language and entry file.
      *

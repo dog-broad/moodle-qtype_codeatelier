@@ -558,9 +558,13 @@ export const init = (params) => {
             if (scen === 'project') {
                 // The project workspace: a two-pane explorer over the language-keyed
                 // env blob, with the allowed-language switch and Starter|Solution toggle.
+                // Look the allowed-languages select up locally (the shared `langsSel`
+                // const is declared later in init, so referencing it here — mountProject
+                // runs at init for an existing project — is a temporal-dead-zone error).
+                const allowedSel = byId(config.languagesid);
                 const allowedlangs = [fblang];
-                if (langsSel) {
-                    Array.prototype.slice.call(langsSel.selectedOptions || []).forEach((o) => {
+                if (allowedSel) {
+                    Array.prototype.slice.call(allowedSel.selectedOptions || []).forEach((o) => {
                         if (allowedlangs.indexOf(o.value) === -1) {
                             allowedlangs.push(o.value);
                         }
@@ -736,16 +740,14 @@ export const init = (params) => {
         const mountRef = () => {
             if (refEditor) {
                 refEditor.destroy();
+                refEditor = null;
             }
+            // A project's reference is the workspace's Solution layer (per language,
+            // in the projectfiles blob) — no separate reference editor for projects.
             if (scenSel && scenSel.value === 'project') {
-                refEditor = setupProjectFiles(null, refSolTa, {
-                    language: langSel ? langSel.value : 'cpp',
-                    entryfile: entryfileField ? entryfileField.value.trim() : 'main',
-                    readonly: false,
-                }, config.strings || {});
-            } else {
-                refEditor = createEditor(refSolTa, langSel ? langSel.value : 'python', {});
+                return;
             }
+            refEditor = createEditor(refSolTa, langSel ? langSel.value : 'python', {});
         };
         mountRef();
         if (langSel) {

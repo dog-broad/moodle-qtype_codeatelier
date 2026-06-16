@@ -340,6 +340,10 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
         const commit = (keep) => {
             const next = input.value.trim();
             if (keep && next !== files()[index].name && validName(next, index)) {
+                // Keep the entry designation pointing at the file if it is renamed.
+                if (env().entry === files()[index].name) {
+                    env().entry = next;
+                }
                 files()[index].name = next;
                 serialise();
             }
