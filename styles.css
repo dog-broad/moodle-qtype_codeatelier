@@ -1184,6 +1184,9 @@
 
 .qtype_codeatelier .codeatelier-diff-value {
     flex: 1 1 auto;
+    /* Shrink within the flex row so a long value scrolls internally rather than
+       widening (and overflowing) the row. */
+    min-width: 0;
     margin: 0;
     padding: 0.3rem 0.5rem;
     background: var(--ca-surface-muted);
@@ -1194,6 +1197,18 @@
     white-space: pre-wrap;
     max-height: 22rem;
     overflow: auto;
+}
+
+/* A SQL result table sits in a flex diff-row (Expected/Got) on both tiers; let it
+   shrink so a wide table scrolls inside its own container instead of overflowing
+   the row. The block also never exceeds its container in non-flex contexts. */
+.qtype_codeatelier .codeatelier-resultset-block {
+    max-width: 100%;
+}
+
+.qtype_codeatelier .codeatelier-diff-row .codeatelier-resultset-block {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .qtype_codeatelier .codeatelier-diff-expected .codeatelier-diff-value {
