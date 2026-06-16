@@ -95,7 +95,12 @@ export const resultSetTable = (columns, rows, extrakeys, opts) => {
     if (opts.diffside === 'expected' || opts.diffside === 'got') {
         table.classList.add('codeatelier-resultset-' + opts.diffside);
     }
-    if (columns && columns.length) {
+    // Only header the table when the column count matches the rows (an empty result
+    // keeps its headers); a wrong-arity answer falls back to headerless so the names
+    // never mislabel mismatched cells.
+    const headered = columns && columns.length
+        && (!allrows.length || (allrows[0] && allrows[0].length === columns.length));
+    if (headered) {
         const thead = document.createElement('thead');
         const tr = document.createElement('tr');
         columns.forEach((col) => {

@@ -566,7 +566,11 @@ class qtype_codeatelier_renderer extends qtype_renderer {
         $cap = 200;
         $shown = array_slice($rows, 0, $cap);
         $head = '';
-        if ($columns) {
+        // Header only when the column count matches the rows (empty result keeps its
+        // header); a wrong-arity result falls back to headerless.
+        $headered = $columns && (!$rows || (isset($rows[0]) && is_array($rows[0])
+            && count($rows[0]) === count($columns)));
+        if ($headered) {
             $hcells = '';
             foreach ($columns as $name) {
                 $hcells .= html_writer::tag('th', s((string) $name));
