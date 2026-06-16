@@ -581,6 +581,7 @@ export const init = (params) => {
                 // DOM assertions). The explorer workspace in its flat mode (no author
                 // blob) is exactly that; index.html stays the served page by convention.
                 projectEditor = setupProjectWorkspace(null, projectfilesTa, {
+                    web: true,
                     language: 'html',
                     entryfile: 'index.html',
                     readonly: false,

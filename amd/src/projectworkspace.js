@@ -176,6 +176,7 @@ const parseFlat = (json) => {
 export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
     const readonly = !!config.readonly;
     const author = !!config.author && !readonly;
+    const isweb = !!config.web || config.scenario === 'web';
     const sandbox = !!config.isjudge && !readonly;
     const onExternal = sandbox
         ? (type) => root.dispatchEvent(new CustomEvent('codeatelier:clip-external', {detail: {type: type}}))
@@ -438,7 +439,11 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
                 const marker = document.createElement('span');
                 marker.className = 'codeatelier-entry-badge codeatelier-entry-active';
                 marker.textContent = '▸︎';
-                marker.title = strings.entryis || 'Entry file (runs first)';
+                // Web grades the served page (index.html by convention), not a "run
+                // first" entry — label it for what it is in that scenario.
+                marker.title = isweb
+                    ? (strings.servedpage || 'Served page (loads in the browser)')
+                    : (strings.entryis || 'Entry file (runs first)');
                 marker.setAttribute('aria-label', marker.title);
                 row.appendChild(marker);
             }
