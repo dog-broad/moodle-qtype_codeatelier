@@ -1012,6 +1012,29 @@
     border-color: var(--ca-danger);
 }
 
+/* The capture-expected review panel renders on the QUESTION EDIT FORM, which has
+   no .qtype_codeatelier ancestor — so the height bounds defined elsewhere (all
+   prefixed with .qtype_codeatelier for the attempt page) do not apply here, and a
+   large captured output would stretch the form. Re-state the bounds unprefixed,
+   scoped to the panel, so a long stdout or a wide/tall SQL result scrolls within
+   the panel instead. */
+.codeatelier-capture-review {
+    max-height: 28rem;
+    overflow: auto;
+}
+
+.codeatelier-capture-review .codeatelier-diff-value,
+.codeatelier-capture-review .codeatelier-test-error {
+    max-height: 22rem;
+    overflow: auto;
+}
+
+.codeatelier-capture-review .codeatelier-table-scroll {
+    max-height: 22rem;
+    max-width: 100%;
+    overflow: auto;
+}
+
 .qtype_codeatelier .codeatelier-hidden-note {
     color: var(--ca-text-muted);
     font-style: italic;
