@@ -28,6 +28,7 @@ import {setup as setupProjectFiles} from 'qtype_codeatelier/projectfiles';
 import {setupPreview} from 'qtype_codeatelier/webruntime';
 import {render as renderTemplate} from 'core/templates';
 import Ajax from 'core/ajax';
+import {resultSetTable, parseRows} from './resulttable.js';
 
 const byId = (id) => document.getElementById(id);
 
@@ -838,6 +839,73 @@ export const init = (params) => {
         }
     };
 
+    // Per-test review panel rendered after a capture, so the author can confirm
+    // what was written into each Expected field (and which tests errored) without
+    // opening every row. Replaces itself on each capture; cleared on the next run.
+    const clearCaptureReview = () => {
+        if (!statusEl || !statusEl.parentNode) {
+            return;
+        }
+        const existing = statusEl.parentNode.querySelector('[data-role="capture-review"]');
+        if (existing) {
+            existing.remove();
+        }
+    };
+    const renderCaptureReview = (rows, items, scenario) => {
+        clearCaptureReview();
+        if (!statusEl || !statusEl.parentNode || !rows.length) {
+            return;
+        }
+        const panel = document.createElement('div');
+        panel.className = 'codeatelier-capture-review';
+        panel.setAttribute('data-role', 'capture-review');
+        const heading = document.createElement('p');
+        heading.className = 'codeatelier-block-label';
+        heading.textContent = cstr.reviewheading || 'Captured outputs — review each before saving';
+        panel.appendChild(heading);
+
+        const list = document.createElement('ul');
+        list.className = 'codeatelier-capture-list';
+        rows.forEach((row, k) => {
+            const item = items[k] || {};
+            const errored = (item.output === null || item.output === undefined);
+            const li = document.createElement('li');
+            li.className = 'codeatelier-capture-item ' + (errored ? 'codeatelier-fail' : 'codeatelier-pass');
+
+            const status = document.createElement('span');
+            status.className = 'codeatelier-test-status codeatelier-status-' + (errored ? 'fail' : 'pass');
+            status.textContent = (cstr.test || 'Test') + ' ' + (row.index + 1) + ': '
+                + (errored ? (cstr.itemerror || 'Could not run') : (cstr.itemok || 'Captured'));
+            li.appendChild(status);
+
+            if (errored) {
+                if (item.error) {
+                    const err = document.createElement('pre');
+                    err.className = 'codeatelier-test-error';
+                    err.textContent = String(item.error);
+                    li.appendChild(err);
+                }
+            } else {
+                const label = document.createElement('span');
+                label.className = 'codeatelier-diff-label';
+                label.textContent = cstr.expected || 'Expected';
+                li.appendChild(label);
+                const sqlrows = (scenario === 'sql') ? parseRows(item.output) : null;
+                if (sqlrows !== null) {
+                    li.appendChild(resultSetTable(null, sqlrows, null, {strings: {rowsnote: cstr.rowsnote}}));
+                } else {
+                    const pre = document.createElement('pre');
+                    pre.className = 'codeatelier-diff-value';
+                    pre.textContent = String(item.output);
+                    li.appendChild(pre);
+                }
+            }
+            list.appendChild(li);
+        });
+        panel.appendChild(list);
+        statusEl.parentNode.insertBefore(panel, statusEl.nextSibling);
+    };
+
     // Run the reference in-browser; one captured-output string (or null) per row.
     const capturePractice = (code, rows) => {
         const scenario = scenSel ? scenSel.value : 'stdinstdout';
@@ -923,8 +991,10 @@ export const init = (params) => {
                 return;
             }
             setStatus(cstr.running || 'Running…');
+            clearCaptureReview();
             captureBtn.disabled = true;
             const api = testEditor();
+            const scenario = scenSel ? scenSel.value : 'stdinstdout';
             (isJudge() ? captureJudge(code, rows) : capturePractice(code, rows)).then((items) => {
                 let ok = 0;
                 let failed = 0;
@@ -942,6 +1012,7 @@ export const init = (params) => {
                     ok++;
                 });
                 reportCapture(ok, failed, rows.length, firsterror);
+                renderCaptureReview(rows, items, scenario);
                 return null;
             }).catch((err) => {
                 setStatus(String(err && err.message ? err.message : err));

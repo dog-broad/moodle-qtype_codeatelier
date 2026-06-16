@@ -771,6 +771,31 @@
     color: var(--ca-text-muted);
 }
 
+/* Post-capture review: a per-test list of what was written into each Expected
+   field (SQL as a table), so the author confirms before saving. */
+.qtype_codeatelier .codeatelier-capture-review {
+    margin-top: 0.5rem;
+    max-height: 28rem;
+    overflow: auto;
+}
+
+.qtype_codeatelier .codeatelier-capture-list {
+    list-style: none;
+    margin: 0.25rem 0 0;
+    padding: 0;
+}
+
+.qtype_codeatelier .codeatelier-capture-item {
+    margin: 0.3rem 0;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--ca-border-soft);
+    border-radius: 0.3rem;
+}
+
+.qtype_codeatelier .codeatelier-capture-item.codeatelier-fail {
+    border-color: var(--ca-danger);
+}
+
 .qtype_codeatelier .codeatelier-hidden-note {
     color: var(--ca-text-muted);
     font-style: italic;
