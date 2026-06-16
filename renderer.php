@@ -68,9 +68,15 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             // A project or web question's starting answer is its starter file set
             // (canonical JSON); other scenarios start from the chosen language's
             // starter code.
-            $currentcode = ($scenario === 'project' || $scenario === 'web')
-                    ? (string) $question->projectfiles
-                    : (isset($startermap[$chosen]) ? $startermap[$chosen] : $this->starter_code($chosen));
+            if ($scenario === 'project') {
+                // The starting answer is the chosen language's flat starter file set,
+                // extracted from the per-language environment blob.
+                $currentcode = $this->project_starter_answer($question, $chosen);
+            } else if ($scenario === 'web') {
+                $currentcode = (string) $question->projectfiles;
+            } else {
+                $currentcode = isset($startermap[$chosen]) ? $startermap[$chosen] : $this->starter_code($chosen);
+            }
         }
         $currentscore = $qa->get_last_qt_var('score', '');
 
@@ -205,9 +211,14 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             'starters' => $startermap,
             'scenario' => $scenario,
             'entrypoint' => $question->entrypoint,
-            // The project scenario's entry/main file name (the default first file).
-            // The web scenario always renders index.html as the page root.
-            'entryfile' => ($scenario === 'web') ? 'index.html' : $question->entryfile,
+            // The entry/main file. For a project it is the chosen language's entry
+            // from the environment blob; web always renders index.html.
+            'entryfile' => ($scenario === 'web') ? 'index.html'
+                    : (($scenario === 'project') ? $question->project_entry($chosen) : $question->entryfile),
+            // Project: the per-language flat starter file sets, so the attempt editor
+            // can load the right files when the student switches language.
+            'projectstarters' => ($scenario === 'project')
+                    ? $this->project_starters($question, $allowed) : null,
             // Ship the schema for any SQL question so the client schema viewer
             // renders. A judge attempt has no Check button, so control.js never
             // wires client-side grading — the schema is the visible data, while the
@@ -684,6 +695,39 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             default:
                 return get_string('result_fail', 'qtype_codeatelier');
         }
+    }
+
+    /**
+     * The flat starter file set (canonical [{name, content}] JSON) for one language
+     * of a project, extracted from the per-language environment blob. Falls back to
+     * the primary language's environment when the requested one is absent.
+     *
+     * @param qtype_codeatelier_question $question
+     * @param string $language
+     * @return string the canonical file-set JSON
+     */
+    protected function project_starter_answer($question, $language) {
+        $envs = \qtype_codeatelier\judge\project_packager::decode_envs((string) $question->projectfiles);
+        $lang = isset($envs[$language]) ? $language : $question->language;
+        $env = isset($envs[$lang]) ? $envs[$lang] : null;
+        $files = $env ? \qtype_codeatelier\judge\project_packager::starter_files($env) : [];
+        return \qtype_codeatelier\judge\project_packager::encode_files($files);
+    }
+
+    /**
+     * The per-language flat starter file sets for a project, keyed by language, so
+     * the attempt editor can load a language's files when the student switches.
+     *
+     * @param qtype_codeatelier_question $question
+     * @param array $allowed the allowed languages
+     * @return array language => canonical file-set JSON
+     */
+    protected function project_starters($question, array $allowed) {
+        $map = [];
+        foreach ($allowed as $lang) {
+            $map[$lang] = $this->project_starter_answer($question, $lang);
+        }
+        return $map;
     }
 
     /**

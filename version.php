@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'qtype_codeatelier';
-$plugin->version   = 2026062764;
+$plugin->version   = 2026062765;
 $plugin->requires  = 2024100100; // Moodle 4.5.
 $plugin->maturity  = MATURITY_ALPHA;
-$plugin->release   = '0.97.0';
+$plugin->release   = '0.98.0';

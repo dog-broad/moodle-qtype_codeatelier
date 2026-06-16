@@ -1008,6 +1008,36 @@ export const init = (params) => {
         });
     }
 
+    // A multi-language project: each language has its own file environment. Switching
+    // language loads that language's starter file set (keeping per-language edits in a
+    // buffer so switching back restores the student's work) and re-mounts the file
+    // editor so per-file highlighting + the entry use the new language.
+    if (langselect && config.scenario === 'project') {
+        const filesByLang = {};
+        filesByLang[currentLanguage] = textarea.value;
+        langselect.addEventListener('change', () => {
+            const next = langselect.value;
+            if (next === currentLanguage) {
+                return;
+            }
+            const starters = config.projectstarters || {};
+            filesByLang[currentLanguage] = editor.getValue ? editor.getValue() : textarea.value;
+            const nextValue = (next in filesByLang) ? filesByLang[next] : (starters[next] || '[]');
+            if (editor.destroy) {
+                editor.destroy();
+            }
+            textarea.value = nextValue;
+            currentLanguage = next;
+            if (langhidden) {
+                langhidden.value = next;
+            }
+            const cfg = Object.assign({}, config, {language: next});
+            editor = setupProjectFiles(root, textarea, cfg, strings, null, () => themeCtl.currentEffective());
+            themeCtl.setEditor(editor);
+            markStale();
+        });
+    }
+
     const schemael = root.querySelector('[data-role="schema"]');
     if (config.scenario === 'sql' && schemael) {
         describe(config.sqljsbaseurl, config.schemasql).then((info) => {
