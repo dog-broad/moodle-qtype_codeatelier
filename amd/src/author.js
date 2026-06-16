@@ -478,7 +478,7 @@ export const init = (params) => {
         const buildWebPicker = () => {
             const fitem = projectfilesTa.closest('.fitem') || projectfilesTa.parentNode;
             const wrap = document.createElement('div');
-            wrap.className = 'codeatelier-webpicker form-group';
+            wrap.className = 'codeatelier-webpicker';
             const label = document.createElement('span');
             label.className = 'codeatelier-block-label';
             label.textContent = strings.previewpick || 'Preview — pick an element to add a check';
@@ -542,8 +542,20 @@ export const init = (params) => {
             if (scen !== 'project' && scen !== 'web') {
                 return;
             }
-            if (scen === 'web' && projectfilesTa.value.trim() === '') {
-                projectfilesTa.value = WEB_STARTER;
+            // Seed the HTML/CSS/JS scaffold for web unless the field already holds a
+            // real web file set — so a fresh web question, or one switched in from
+            // another scenario (whose field holds a project blob, not a flat set),
+            // starts from the helpful three-file starter rather than a bare file.
+            if (scen === 'web') {
+                let flat = null;
+                try {
+                    flat = JSON.parse(projectfilesTa.value || 'null');
+                } catch (e) {
+                    flat = null;
+                }
+                if (!Array.isArray(flat) || !flat.length) {
+                    projectfilesTa.value = WEB_STARTER;
+                }
             }
             // For web, refresh the picker preview as the starter files change.
             const onChange = scen === 'web'
