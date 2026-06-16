@@ -420,7 +420,7 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
                     : (strings.setentry || 'Set as the entry file');
                 badge.setAttribute('aria-label', badge.title);
                 badge.setAttribute('aria-pressed', isentry ? 'true' : 'false');
-                badge.textContent = '▶';
+                badge.textContent = '▸︎';
                 badge.addEventListener('click', () => {
                     env().entry = file.name;
                     renderFiles();
@@ -430,7 +430,7 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
             } else if (isentry) {
                 const marker = document.createElement('span');
                 marker.className = 'codeatelier-entry-badge codeatelier-entry-active';
-                marker.textContent = '▶';
+                marker.textContent = '▸︎';
                 marker.title = strings.entryis || 'Entry file (runs first)';
                 marker.setAttribute('aria-label', marker.title);
                 row.appendChild(marker);
