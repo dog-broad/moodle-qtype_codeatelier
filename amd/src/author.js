@@ -683,9 +683,26 @@ export const init = (params) => {
             });
         };
 
+        // Project and web questions author their per-language starters in the file
+        // workspace (per-file, with a Starter|Solution layer), so the single-file
+        // per-language starter editor must not appear for them.
+        const fileSetScenario = () => {
+            const sc = byId(config.scenarioid);
+            return !!sc && (sc.value === 'project' || sc.value === 'web');
+        };
+
         const rebuild = () => {
             if (otherEditor && currentOther) {
                 map[currentOther] = otherEditor.getValue();
+            }
+            if (fileSetScenario()) {
+                if (otherEditor) {
+                    otherEditor.destroy();
+                    otherEditor = null;
+                }
+                currentOther = null;
+                toggle(false);
+                return;
             }
             const list = others();
             starterLangSel.innerHTML = '';
@@ -726,6 +743,10 @@ export const init = (params) => {
         }
         if (langsSel) {
             langsSel.addEventListener('change', rebuild);
+        }
+        const starterScen = byId(config.scenarioid);
+        if (starterScen) {
+            starterScen.addEventListener('change', rebuild);
         }
         rebuild();
     }

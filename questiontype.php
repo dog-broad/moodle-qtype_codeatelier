@@ -123,7 +123,10 @@ class qtype_codeatelier extends question_type {
                 }
             }
         }
-        $question->starters = $starters ? json_encode($starters) : null;
+        // Project and web questions author per-language starters in the file workspace,
+        // not the single-file per-language starter map, so that field stays empty.
+        $isfileset = in_array($question->scenario ?? '', ['project', 'web'], true);
+        $question->starters = (!$isfileset && $starters) ? json_encode($starters) : null;
 
         // The reference solution is a single-file scalar for function/stdin questions.
         // A project's reference lives in the workspace Solution layer (inside the
