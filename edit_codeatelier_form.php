@@ -478,6 +478,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'matchmodes' => $this->matchmode_options(),
             'visibilities' => $this->visibility_options(),
             'assertmatchers' => $this->assertmatcher_options(),
+            'assertproperties' => $this->assertproperty_options(),
             'strings' => $this->testeditor_strings(),
         ];
         $mform->addElement(
@@ -512,6 +513,9 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             'callpreview', 'callpreviewhint',
             'subtask', 'checkerquery', 'testdataset', 'testfeedback', 'assertselector',
             'assertproperty', 'assertmatcher', 'assertactions',
+            'assertprop_attr', 'assertprop_style', 'assertattrname', 'assertstylename',
+            'assertcombine', 'assertcollapse', 'assertmust', 'assertgroupall', 'assertgroupany',
+            'assertaddcondition', 'assertaddgroup', 'assertnot', 'assertremovecond', 'assertgrouplabel',
             'editor_addtest', 'editor_edit', 'editor_delete', 'editor_moveup',
             'editor_movedown', 'editor_search', 'editor_count', 'editor_page',
             'editor_empty', 'editor_import', 'editor_importformat', 'editor_importhelp',
@@ -622,24 +626,82 @@ class qtype_codeatelier_edit_form extends question_edit_form {
     protected function assertmatcher_options() {
         return [
             'equals' => get_string('assertmatch_equals', 'qtype_codeatelier'),
+            'not-equals' => get_string('assertmatch_notequals', 'qtype_codeatelier'),
             'contains' => get_string('assertmatch_contains', 'qtype_codeatelier'),
+            'not-contains' => get_string('assertmatch_notcontains', 'qtype_codeatelier'),
+            'has-class' => get_string('assertmatch_hasclass', 'qtype_codeatelier'),
             'regex' => get_string('assertmatch_regex', 'qtype_codeatelier'),
+            'gt' => get_string('assertmatch_gt', 'qtype_codeatelier'),
+            'lt' => get_string('assertmatch_lt', 'qtype_codeatelier'),
+            'gte' => get_string('assertmatch_gte', 'qtype_codeatelier'),
+            'lte' => get_string('assertmatch_lte', 'qtype_codeatelier'),
         ];
     }
 
     /**
-     * Whether a web DOM-assertion property is one the interpreter understands:
-     * text, exists, count, or attr:<name> / style:<property>.
+     * The fixed (non-parameterised) DOM-assertion properties, as code => label, for
+     * the authoring dropdown. attr:<name> / style:<prop> are added by the editor as
+     * a free sub-input, so they are not listed here.
+     *
+     * @return array
+     */
+    protected function assertproperty_options() {
+        $keys = ['text', 'html', 'value', 'checked', 'disabled', 'visible', 'classlist', 'exists', 'count'];
+        $out = [];
+        foreach ($keys as $key) {
+            $out[$key] = get_string('assertprop_' . $key, 'qtype_codeatelier');
+        }
+        return $out;
+    }
+
+    /**
+     * Whether a web DOM-assertion property is one the interpreter understands: one of
+     * the fixed properties, or attr:<name> / style:<property>.
      *
      * @param string $property
      * @return bool
      */
     protected static function valid_assert_property($property) {
         $property = trim((string) $property);
-        if (in_array($property, ['text', 'exists', 'count'], true)) {
+        $fixed = ['text', 'html', 'value', 'checked', 'disabled', 'visible', 'classlist', 'exists', 'count'];
+        if (in_array($property, $fixed, true)) {
             return true;
         }
         return (bool) preg_match('/^(attr|style):\S+/', $property);
+    }
+
+    /**
+     * Validate a compound assertion tree: a node is {all:[…]} / {any:[…]} / {not:node}
+     * over leaves; a leaf needs a selector and a valid property. Returns true when the
+     * whole tree is well formed.
+     *
+     * @param mixed $node a decoded assertion node
+     * @return bool
+     */
+    protected static function valid_assertion_tree($node) {
+        if (!is_array($node)) {
+            return false;
+        }
+        if (isset($node['all']) || isset($node['any'])) {
+            $children = $node['all'] ?? $node['any'];
+            if (!is_array($children) || $children === []) {
+                return false;
+            }
+            foreach ($children as $child) {
+                if (!self::valid_assertion_tree($child)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        if (isset($node['not'])) {
+            return self::valid_assertion_tree($node['not']);
+        }
+        // A leaf: needs a non-empty selector and a valid property.
+        if (trim((string) ($node['selector'] ?? '')) === '') {
+            return false;
+        }
+        return self::valid_assert_property((string) ($node['property'] ?? 'text'));
     }
 
     /**
@@ -687,6 +749,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 'assertproperty' => (string) $test->assertproperty,
                 'assertmatcher' => (string) $test->assertmatcher,
                 'actions' => (string) $test->actions,
+                'assertionjson' => (string) ($test->assertionjson ?? ''),
                 'subtask' => isset($test->subtask) ? (int) $test->subtask : 0,
             ];
         }
@@ -870,12 +933,22 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 break;
             }
             if ($isweb) {
-                if (trim((string) ($test['selector'] ?? '')) === '') {
+                // A web row is either a compound assertion tree or a flat single leaf.
+                $assertion = $test['assertionjson'] ?? '';
+                $hastree = is_array($assertion) ? ($assertion !== []) : (trim((string) $assertion) !== '');
+                if ($hastree) {
+                    $count++;
+                    $tree = is_array($assertion) ? $assertion : json_decode((string) $assertion, true);
+                    if (!self::valid_assertion_tree($tree)) {
+                        $errors['testcasesjson'] = get_string('assertioninvalid', 'qtype_codeatelier');
+                    }
+                } else if (trim((string) ($test['selector'] ?? '')) !== '') {
+                    $count++;
+                    if (!self::valid_assert_property(trim((string) ($test['assertproperty'] ?? '')))) {
+                        $errors['testcasesjson'] = get_string('assertpropertyinvalid', 'qtype_codeatelier');
+                    }
+                } else {
                     continue;
-                }
-                $count++;
-                if (!self::valid_assert_property(trim((string) ($test['assertproperty'] ?? '')))) {
-                    $errors['testcasesjson'] = get_string('assertpropertyinvalid', 'qtype_codeatelier');
                 }
             } else {
                 if (trim((string) ($test['input'] ?? '')) === '' && trim((string) ($test['expected'] ?? '')) === '') {

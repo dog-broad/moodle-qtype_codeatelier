@@ -109,6 +109,10 @@ class qtype_codeatelier_renderer extends qtype_renderer {
                 'assertproperty' => $test->assertproperty,
                 'assertmatcher' => $test->assertmatcher,
                 'actions' => $test->actions,
+                // Web scenario: the compound assertion tree (all/any/not), parsed so
+                // the client evaluates it directly; null falls back to the flat leaf.
+                'assertion' => (isset($test->assertionjson) && trim((string) $test->assertionjson) !== '')
+                        ? json_decode($test->assertionjson, true) : null,
             ];
         }
 

@@ -175,7 +175,7 @@ class qtype_codeatelier extends question_type {
             $decoded = json_decode((string) $question->testcasesjson, true);
             foreach (['testinput', 'testexpected', 'matchmode', 'tolerance', 'testweight',
                     'testvisibility', 'checkerquery', 'testdatasetsql', 'testfeedback', 'selector',
-                    'assertproperty', 'assertmatcher', 'actions', 'subtask'] as $arrayfield) {
+                    'assertproperty', 'assertmatcher', 'actions', 'assertionjson', 'subtask'] as $arrayfield) {
                 $question->$arrayfield = [];
             }
             foreach (is_array($decoded) ? $decoded : [] as $test) {
@@ -195,6 +195,11 @@ class qtype_codeatelier extends question_type {
                 $question->assertproperty[] = (string) ($test['assertproperty'] ?? '');
                 $question->assertmatcher[] = (string) ($test['assertmatcher'] ?? '');
                 $question->actions[] = (string) ($test['actions'] ?? '');
+                // A compound assertion tree may arrive as a JSON string (bulk import)
+                // or an already-decoded object (the builder); normalise to a string.
+                $assertion = $test['assertionjson'] ?? '';
+                $question->assertionjson[] = is_array($assertion)
+                    ? json_encode($assertion) : (string) $assertion;
                 $question->subtask[] = (int) ($test['subtask'] ?? 0);
             }
         }
@@ -205,10 +210,12 @@ class qtype_codeatelier extends question_type {
         foreach ($inputs as $key => $input) {
             $expected = isset($question->testexpected[$key]) ? $question->testexpected[$key] : '';
             $selector = isset($question->selector[$key]) ? trim((string) $question->selector[$key]) : '';
-            // Skip a completely blank row. A web assertion row is keyed by its
-            // selector; every other scenario by its input/expected.
+            $assertiontree = isset($question->assertionjson[$key])
+                    ? trim((string) $question->assertionjson[$key]) : '';
+            // Skip a completely blank row. A web assertion row is keyed by its flat
+            // selector or its compound tree; every other scenario by its input/expected.
             if ($isweb) {
-                if ($selector === '') {
+                if ($selector === '' && $assertiontree === '') {
                     continue;
                 }
             } else if (trim($input) === '' && trim($expected) === '') {
@@ -250,6 +257,11 @@ class qtype_codeatelier extends question_type {
             $record->actions = ($isweb && isset($question->actions[$key])
                     && trim((string) $question->actions[$key]) !== '')
                     ? $question->actions[$key] : null;
+            // Web scenario: optional compound assertion tree; when set it supersedes
+            // the flat selector/property/matcher leaf for this test. Null otherwise.
+            $record->assertionjson = ($isweb && isset($question->assertionjson[$key])
+                    && trim((string) $question->assertionjson[$key]) !== '')
+                    ? $question->assertionjson[$key] : null;
             // Subtask group id (IOI-style); 0 is ungrouped (per-test weighting).
             $record->subtask = (isset($question->subtask[$key]) && (int) $question->subtask[$key] > 0)
                     ? (int) $question->subtask[$key] : 0;
@@ -371,7 +383,8 @@ class qtype_codeatelier extends question_type {
             foreach (
                 ['input', 'expected', 'matchmode', 'tolerance', 'weight',
                     'visibility', 'checkerquery', 'datasetsql', 'feedback',
-                    'selector', 'assertproperty', 'assertmatcher', 'actions', 'subtask'] as $field
+                    'selector', 'assertproperty', 'assertmatcher', 'actions',
+                    'assertionjson', 'subtask'] as $field
             ) {
                 $value = isset($test->$field) ? $test->$field : '';
                 $output .= "      <{$field}>" . $format->xml_escape((string) $value) . "</{$field}>\n";
@@ -434,7 +447,7 @@ class qtype_codeatelier extends question_type {
         foreach (
             ['testinput', 'testexpected', 'matchmode', 'tolerance',
                 'testweight', 'testvisibility', 'checkerquery', 'testdatasetsql', 'testfeedback',
-                'selector', 'assertproperty', 'assertmatcher', 'actions', 'subtask'] as $arr
+                'selector', 'assertproperty', 'assertmatcher', 'actions', 'assertionjson', 'subtask'] as $arr
         ) {
             $qo->$arr = [];
         }
@@ -453,6 +466,7 @@ class qtype_codeatelier extends question_type {
             $qo->assertproperty[] = $format->getpath($tc, ['#', 'assertproperty', 0, '#'], '');
             $qo->assertmatcher[] = $format->getpath($tc, ['#', 'assertmatcher', 0, '#'], '');
             $qo->actions[] = $format->getpath($tc, ['#', 'actions', 0, '#'], '');
+            $qo->assertionjson[] = $format->getpath($tc, ['#', 'assertionjson', 0, '#'], '');
             $qo->subtask[] = $format->getpath($tc, ['#', 'subtask', 0, '#'], 0);
         }
 
