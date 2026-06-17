@@ -478,7 +478,8 @@ class qtype_codeatelier_question extends question_graded_automatically {
             (string) $this->functionsignature,
             $this->project_entry($language),
             (string) $this->checkersource,
-            (string) $this->checkerlang
+            (string) $this->checkerlang,
+            $this->data_files_map()
         );
         if (empty($result['infrastructure'])) {
             \qtype_codeatelier\judge\result_cache::put($hash, $result);
@@ -584,7 +585,8 @@ class qtype_codeatelier_question extends question_graded_automatically {
             (string) $this->functionsignature,
             $this->project_entry($language),
             (string) $this->checkersource,
-            (string) $this->checkerlang
+            (string) $this->checkerlang,
+            $this->data_files_map()
         );
     }
 
@@ -612,7 +614,8 @@ class qtype_codeatelier_question extends question_graded_automatically {
             (string) $this->functionsignature,
             (string) $this->schemasql,
             (string) $input,
-            $this->project_entry($language)
+            $this->project_entry($language),
+            $this->data_files_map()
         );
     }
 
@@ -705,5 +708,21 @@ class qtype_codeatelier_question extends question_graded_automatically {
             return null;
         }
         return base64_encode(file_get_contents($tmp));
+    }
+
+    /**
+     * The support/data files as a path => content map, for merging into a project's
+     * judge package (Judge0's project additional_files is the project source zip, so
+     * support files reach a project box this way rather than via set_additional_files).
+     * Paths are preserved, so a nested fixture works.
+     *
+     * @return array path => content
+     */
+    protected function data_files_map() {
+        $map = [];
+        foreach ($this->data_files() as $file) {
+            $map[ltrim($file->get_filepath() . $file->get_filename(), '/')] = $file->get_content();
+        }
+        return $map;
     }
 }
