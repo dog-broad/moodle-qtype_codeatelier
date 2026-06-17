@@ -324,5 +324,66 @@ function xmldb_qtype_codeatelier_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026062747, 'qtype', 'codeatelier');
     }
 
+    if ($oldversion < 2026062764) {
+        // Project questions move from three fields (a flat projectfiles starter set,
+        // a scalar entryfile, a flat referencesolution set) to one language-keyed
+        // blob in projectfiles: {version, envs: {<lang>: {entry, files: [{name,
+        // starter, solution}]}}}. Migrate existing single-language projects in place;
+        // entry + solution then live in the blob, so the scalar columns are cleared.
+        $records = $DB->get_records('qtype_codeatelier_options', ['scenario' => 'project']);
+        foreach ($records as $rec) {
+            $pf = trim((string) $rec->projectfiles);
+            if ($pf === '') {
+                continue;
+            }
+            $decoded = json_decode($pf, true);
+            if (is_array($decoded) && isset($decoded['envs'])) {
+                continue; // Already a blob.
+            }
+            $starter = [];
+            if (is_array($decoded)) {
+                foreach ($decoded as $f) {
+                    if (is_array($f) && isset($f['name']) && trim((string) $f['name']) !== '') {
+                        $starter[(string) $f['name']] = isset($f['content']) ? (string) $f['content'] : '';
+                    }
+                }
+            }
+            $solution = [];
+            $ref = json_decode((string) $rec->referencesolution, true);
+            if (is_array($ref)) {
+                foreach ($ref as $f) {
+                    if (is_array($f) && isset($f['name']) && trim((string) $f['name']) !== '') {
+                        $solution[(string) $f['name']] = isset($f['content']) ? (string) $f['content'] : '';
+                    }
+                }
+            }
+            $byname = $starter + $solution;
+            if (!$byname) {
+                continue;
+            }
+            $files = [];
+            foreach (array_keys($byname) as $name) {
+                $files[] = [
+                    'name' => $name,
+                    'starter' => $starter[$name] ?? '',
+                    'solution' => $solution[$name] ?? '',
+                ];
+            }
+            $entry = trim((string) $rec->entryfile);
+            if ($entry === '' || !array_key_exists($entry, $byname)) {
+                $entry = $files[0]['name'];
+            }
+            $lang = (string) $rec->language;
+            $rec->projectfiles = json_encode([
+                'version' => 2,
+                'envs' => [$lang => ['entry' => $entry, 'files' => $files]],
+            ]);
+            $rec->entryfile = null;
+            $rec->referencesolution = null;
+            $DB->update_record('qtype_codeatelier_options', $rec);
+        }
+        upgrade_plugin_savepoint(true, 2026062764, 'qtype', 'codeatelier');
+    }
+
     return true;
 }

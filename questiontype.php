@@ -53,21 +53,6 @@ class qtype_codeatelier extends question_type {
     }
 
     /**
-     * Whether a project file set (canonical JSON) carries any non-empty file.
-     *
-     * @param string $json the file set
-     * @return bool
-     */
-    protected static function project_files_have_content($json) {
-        foreach (\qtype_codeatelier\judge\project_packager::decode_files((string) $json) as $content) {
-            if (trim((string) $content) !== '') {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
      * The options table and its columns saved with each question.
      *
      * @return array the table name followed by its option column names
@@ -140,23 +125,25 @@ class qtype_codeatelier extends question_type {
         }
         $question->starters = $starters ? json_encode($starters) : null;
 
-        // The reference solution is a scalar (or, for a project, a JSON file set);
-        // store null when blank, or when a project's reference file set is empty
-        // (its file-tab editor seeds an empty default we should not persist).
+        // The reference solution is a single-file scalar for function/stdin questions.
+        // A project's reference lives in the workspace Solution layer (inside the
+        // projectfiles blob) and a web question grades by DOM assertions, so neither
+        // uses this field.
+        $scenario = $question->scenario ?? '';
         $reference = isset($question->referencesolution) ? (string) $question->referencesolution : '';
-        $isemptyproject = (($question->scenario ?? '') === 'project')
-                && !self::project_files_have_content($reference);
-        $question->referencesolution = (trim($reference) !== '' && !$isemptyproject) ? $reference : null;
+        $question->referencesolution = ($scenario !== 'project' && trim($reference) !== '')
+                ? $reference : null;
 
         $question->allornothing = !empty($question->allornothing) ? 1 : 0;
 
-        // Project scenario: the starter file set is a JSON array; the entry file is
-        // a scalar. Store null when blank so non-project questions stay clean.
-        $question->projectfiles = (isset($question->projectfiles)
-                && trim((string) $question->projectfiles) !== ''
-                && trim((string) $question->projectfiles) !== '[]')
-                ? (string) $question->projectfiles : null;
-        $question->entryfile = (isset($question->entryfile) && trim((string) $question->entryfile) !== '')
+        // Project scenario: the per-language file environments (starter + solution +
+        // entry) live in the projectfiles blob; the scalar entryfile column is legacy
+        // (null for projects — the entry is per-language inside the blob). Store null
+        // when the blob/file set is blank.
+        $pf = isset($question->projectfiles) ? trim((string) $question->projectfiles) : '';
+        $question->projectfiles = ($pf !== '' && $pf !== '[]' && $pf !== '{}') ? $pf : null;
+        $question->entryfile = ($scenario !== 'project'
+                && isset($question->entryfile) && trim((string) $question->entryfile) !== '')
                 ? (string) $question->entryfile : null;
 
         // Custom checker (special judge): a blank checker source means "no custom
@@ -572,6 +559,12 @@ class qtype_codeatelier extends question_type {
             'addfile' => 'projectaddfile',
             'deletefile' => 'projectdeletefile',
             'badfilename' => 'projectbadfilename',
+            'language' => 'language',
+            'layer' => 'projectlayer',
+            'starterlayer' => 'projectlayerstarter',
+            'solutionlayer' => 'projectlayersolution',
+            'entryis' => 'projectentryis',
+            'setentry' => 'projectsetentry',
         ];
         $strings = [];
         foreach ($keys as $jskey => $stringid) {

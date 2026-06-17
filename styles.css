@@ -399,6 +399,196 @@
     font-weight: 600;
 }
 
+/* ---- Project workspace (two-pane explorer + editor) -------------------------
+   Unprefixed (no .qtype_codeatelier) because this mounts in the AUTHORING form
+   too, which has no .qtype_codeatelier ancestor — same as the file-tab styles. */
+.codeatelier-project {
+    /* The Moodle felement is a flex row; take the full column width rather than
+       shrinking to content (which would starve the editor pane). */
+    width: 100%;
+    flex: 1 1 100%;
+    border: 1px solid var(--ca-border, #ced4da);
+    border-radius: 0.375rem;
+    overflow: hidden;
+    background: var(--ca-surface, #fff);
+}
+
+.codeatelier-project-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--ca-border-soft, #dee2e6);
+    background: var(--ca-surface-alt, #f1f3f5);
+}
+
+/* Segmented controls: language switch + Starter|Solution layer toggle. */
+.codeatelier-lang-switch,
+.codeatelier-layer-toggle {
+    display: inline-flex;
+    border: 1px solid var(--ca-border, #ced4da);
+    border-radius: 0.375rem;
+    overflow: hidden;
+}
+
+.codeatelier-layer-toggle {
+    margin-left: auto;
+}
+
+.codeatelier-lang-btn,
+.codeatelier-layer-btn {
+    border: 0;
+    background: var(--ca-surface, #fff);
+    color: var(--ca-text-muted, #495057);
+    padding: 0.2rem 0.7rem;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+.codeatelier-lang-btn + .codeatelier-lang-btn,
+.codeatelier-layer-btn + .codeatelier-layer-btn {
+    border-left: 1px solid var(--ca-border, #ced4da);
+}
+
+.codeatelier-lang-active,
+.codeatelier-layer-active {
+    background: var(--ca-accent, #0b5ed7);
+    color: #fff;
+    font-weight: 600;
+}
+
+.codeatelier-project-body {
+    display: flex;
+    align-items: stretch;
+    min-height: 18rem;
+}
+
+.codeatelier-project-explorer {
+    flex: 0 0 13rem;
+    max-width: 13rem;
+    border-right: 1px solid var(--ca-border-soft, #dee2e6);
+    background: var(--ca-surface-muted, #f8f9fa);
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+}
+
+.codeatelier-explorer-head {
+    padding: 0.25rem 0.4rem;
+    border-bottom: 1px solid var(--ca-border-soft, #dee2e6);
+}
+
+.codeatelier-newfile {
+    padding: 0.1rem 0.3rem;
+    font-size: 0.82rem;
+}
+
+.codeatelier-filelist {
+    list-style: none;
+    margin: 0;
+    padding: 0.2rem;
+    flex: 1 1 auto;
+}
+
+.codeatelier-filerow {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    border-radius: 0.25rem;
+    padding: 0.05rem 0.15rem;
+}
+
+.codeatelier-filerow-active {
+    background: var(--ca-surface, #fff);
+    box-shadow: inset 2px 0 0 var(--ca-accent, #0b5ed7);
+}
+
+.codeatelier-fileitem {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    border: 0;
+    background: transparent;
+    color: var(--ca-text, #1f2933);
+    padding: 0.2rem 0.3rem;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.82rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.codeatelier-filename-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.codeatelier-filename-inline {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.82rem;
+}
+
+.codeatelier-entry-badge {
+    border: 0;
+    background: transparent;
+    /* Full text colour (not muted) so the ▸ meets contrast on the explorer rail;
+       the active entry is distinguished by the success colour + weight below. */
+    color: var(--ca-text, #343a40);
+    font-size: 0.72rem;
+    line-height: 1;
+    padding: 0.15rem 0.25rem;
+    cursor: pointer;
+}
+
+.codeatelier-entry-active {
+    color: var(--ca-success, #198754);
+    font-weight: 700;
+}
+
+.codeatelier-filedelete {
+    border: 0;
+    background: transparent;
+    color: var(--ca-text-muted, #6c757d);
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0 0.25rem;
+    cursor: pointer;
+}
+
+.codeatelier-filedelete:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+}
+
+.codeatelier-project-editorpane {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.codeatelier-project-editorpane .cm-editor {
+    height: 100%;
+}
+
+/* Narrow screens: stack the explorer above the editor. */
+@media (max-width: 48rem) {
+    .codeatelier-project-body {
+        flex-direction: column;
+    }
+    .codeatelier-project-explorer {
+        flex-basis: auto;
+        max-width: none;
+        max-height: 9rem;
+        border-right: 0;
+        border-bottom: 1px solid var(--ca-border-soft, #dee2e6);
+    }
+}
+
 .codeatelier-fileactions {
     display: flex;
     flex-wrap: wrap;
@@ -820,6 +1010,29 @@
 
 .qtype_codeatelier .codeatelier-capture-item.codeatelier-fail {
     border-color: var(--ca-danger);
+}
+
+/* The capture-expected review panel renders on the QUESTION EDIT FORM, which has
+   no .qtype_codeatelier ancestor — so the height bounds defined elsewhere (all
+   prefixed with .qtype_codeatelier for the attempt page) do not apply here, and a
+   large captured output would stretch the form. Re-state the bounds unprefixed,
+   scoped to the panel, so a long stdout or a wide/tall SQL result scrolls within
+   the panel instead. */
+.codeatelier-capture-review {
+    max-height: 28rem;
+    overflow: auto;
+}
+
+.codeatelier-capture-review .codeatelier-diff-value,
+.codeatelier-capture-review .codeatelier-test-error {
+    max-height: 22rem;
+    overflow: auto;
+}
+
+.codeatelier-capture-review .codeatelier-table-scroll {
+    max-height: 22rem;
+    max-width: 100%;
+    overflow: auto;
 }
 
 .qtype_codeatelier .codeatelier-hidden-note {

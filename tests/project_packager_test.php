@@ -56,6 +56,53 @@ final class project_packager_test extends \advanced_testcase {
         $this->assertSame($files, project_packager::decode_files(project_packager::encode_files($files)));
     }
 
+    public function test_decode_envs_parses_language_keyed_blob(): void {
+        $blob = json_encode(['version' => 2, 'envs' => [
+            'python' => ['entry' => 'main.py', 'files' => [
+                ['name' => 'main.py', 'starter' => 'pass', 'solution' => 'print(1)'],
+                ['name' => 'util.py', 'starter' => '', 'solution' => 'X'],
+            ]],
+            'java' => ['entry' => 'Main.java', 'files' => [
+                ['name' => 'Main.java', 'starter' => '', 'solution' => 'class Main{}'],
+            ]],
+        ]]);
+        $envs = project_packager::decode_envs($blob);
+        $this->assertSame(['python', 'java'], array_keys($envs));
+        $this->assertSame('main.py', $envs['python']['entry']);
+        $this->assertSame(['main.py', 'util.py'], array_keys($envs['python']['files']));
+        $this->assertSame('print(1)', $envs['python']['files']['main.py']['solution']);
+        $this->assertSame('Main.java', $envs['java']['entry']);
+    }
+
+    public function test_decode_envs_defaults_entry_to_first_file_when_invalid(): void {
+        $blob = json_encode(['envs' => ['python' => ['entry' => 'nope.py', 'files' => [
+            ['name' => 'a.py', 'starter' => 'x', 'solution' => ''],
+        ]]]]);
+        $envs = project_packager::decode_envs($blob);
+        $this->assertSame('a.py', $envs['python']['entry']);
+    }
+
+    public function test_decode_envs_tolerates_malformed(): void {
+        $this->assertSame([], project_packager::decode_envs(''));
+        $this->assertSame([], project_packager::decode_envs('not json'));
+        // A flat file-set array (the legacy shape) is not a blob.
+        $this->assertSame([], project_packager::decode_envs('[{"name":"a"}]'));
+    }
+
+    public function test_starter_and_reference_files(): void {
+        $envs = project_packager::decode_envs(json_encode(['envs' => ['python' => [
+            'entry' => 'main.py',
+            'files' => [
+                ['name' => 'main.py', 'starter' => 'STUB', 'solution' => 'SOLVED'],
+                ['name' => 'helper.py', 'starter' => 'H', 'solution' => ''],
+            ],
+        ]]]));
+        $env = $envs['python'];
+        $this->assertSame(['main.py' => 'STUB', 'helper.py' => 'H'], project_packager::starter_files($env));
+        // Reference uses the solution, falling back to the starter where it is empty.
+        $this->assertSame(['main.py' => 'SOLVED', 'helper.py' => 'H'], project_packager::reference_files($env));
+    }
+
     public function test_supports_only_project_languages(): void {
         $this->assertTrue(project_packager::supports('cpp'));
         $this->assertTrue(project_packager::supports('java'));

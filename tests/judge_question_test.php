@@ -57,6 +57,23 @@ final class judge_question_test extends \advanced_testcase {
         return $question;
     }
 
+    public function test_project_entry_resolves_per_language(): void {
+        $this->resetAfterTest();
+        $q = new \qtype_codeatelier_question();
+        $q->scenario = 'project';
+        $q->language = 'python';
+        $q->languages = 'python,java';
+        $q->entryfile = null;
+        $q->projectfiles = json_encode(['version' => 2, 'envs' => [
+            'python' => ['entry' => 'main.py', 'files' => [['name' => 'main.py', 'starter' => '', 'solution' => '']]],
+            'java' => ['entry' => 'Main.java', 'files' => [['name' => 'Main.java', 'starter' => '', 'solution' => '']]],
+        ]]);
+        $this->assertSame('main.py', $q->project_entry('python'));
+        $this->assertSame('Main.java', $q->project_entry('java'));
+        // A disallowed language falls back to the primary language's entry.
+        $this->assertSame('main.py', $q->project_entry('ruby'));
+    }
+
     public function test_grades_in_the_chosen_language(): void {
         $this->resetAfterTest();
         $runner = new qtype_codeatelier_stub_runner([

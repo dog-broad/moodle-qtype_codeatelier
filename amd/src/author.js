@@ -25,6 +25,7 @@ import {init as initControl} from 'qtype_codeatelier/control';
 import {run as runCode} from 'qtype_codeatelier/runner';
 import {grade} from 'qtype_codeatelier/grader';
 import {setup as setupProjectFiles} from 'qtype_codeatelier/projectfiles';
+import {setup as setupProjectWorkspace} from 'qtype_codeatelier/projectworkspace';
 import {setupPreview} from 'qtype_codeatelier/webruntime';
 import {render as renderTemplate} from 'core/templates';
 import Ajax from 'core/ajax';
@@ -554,24 +555,51 @@ export const init = (params) => {
                 }
                 : undefined;
             const fblang = langSel ? langSel.value : 'cpp';
-            const fbentry = entryfileField ? entryfileField.value.trim() : 'main';
-            projectEditor = setupProjectFiles(null, projectfilesTa, {
-                language: scen === 'web' ? 'html' : fblang,
-                entryfile: scen === 'web' ? 'index.html' : fbentry,
-                readonly: false,
-            }, config.strings || {}, onChange);
-            if (scen === 'web') {
+            if (scen === 'project') {
+                // The project workspace: a two-pane explorer over the language-keyed
+                // env blob, with the allowed-language switch and Starter|Solution toggle.
+                // Look the allowed-languages select up locally (the shared `langsSel`
+                // const is declared later in init, so referencing it here — mountProject
+                // runs at init for an existing project — is a temporal-dead-zone error).
+                const allowedSel = byId(config.languagesid);
+                const allowedlangs = [fblang];
+                if (allowedSel) {
+                    Array.prototype.slice.call(allowedSel.selectedOptions || []).forEach((o) => {
+                        if (allowedlangs.indexOf(o.value) === -1) {
+                            allowedlangs.push(o.value);
+                        }
+                    });
+                }
+                projectEditor = setupProjectWorkspace(null, projectfilesTa, {
+                    author: true,
+                    language: fblang,
+                    languages: allowedlangs,
+                    readonly: false,
+                }, config.strings || {});
+            } else {
+                // The web (frontend) scenario keeps the flat single-language file set.
+                const fbentry = entryfileField ? entryfileField.value.trim() : 'main';
+                projectEditor = setupProjectFiles(null, projectfilesTa, {
+                    language: 'html',
+                    entryfile: 'index.html',
+                    readonly: false,
+                }, config.strings || {}, onChange);
                 webPicker = buildWebPicker();
             }
         };
         mountProject();
         scenSel.addEventListener('change', mountProject);
+        const remountProject = () => {
+            if (scenSel.value === 'project') {
+                mountProject();
+            }
+        };
         if (langSel) {
-            langSel.addEventListener('change', () => {
-                if (scenSel.value === 'project') {
-                    mountProject();
-                }
-            });
+            langSel.addEventListener('change', remountProject);
+        }
+        const projLangsSel = byId(config.languagesid);
+        if (projLangsSel) {
+            projLangsSel.addEventListener('change', remountProject);
         }
     }
 
@@ -712,16 +740,14 @@ export const init = (params) => {
         const mountRef = () => {
             if (refEditor) {
                 refEditor.destroy();
+                refEditor = null;
             }
+            // A project's reference is the workspace's Solution layer (per language,
+            // in the projectfiles blob) — no separate reference editor for projects.
             if (scenSel && scenSel.value === 'project') {
-                refEditor = setupProjectFiles(null, refSolTa, {
-                    language: langSel ? langSel.value : 'cpp',
-                    entryfile: entryfileField ? entryfileField.value.trim() : 'main',
-                    readonly: false,
-                }, config.strings || {});
-            } else {
-                refEditor = createEditor(refSolTa, langSel ? langSel.value : 'python', {});
+                return;
             }
+            refEditor = createEditor(refSolTa, langSel ? langSel.value : 'python', {});
         };
         mountRef();
         if (langSel) {
@@ -731,7 +757,32 @@ export const init = (params) => {
             scenSel.addEventListener('change', mountRef);
         }
     }
+    // For a project, the reference is the workspace Solution layer of the primary
+    // language as a flat file set (solution content, falling back to starter), plus
+    // its entry — the shape run-reference packages and runs to capture/validate.
+    const projectReference = () => {
+        let blob = null;
+        try {
+            blob = JSON.parse(projectfilesTa ? projectfilesTa.value : '');
+        } catch (e) {
+            blob = null;
+        }
+        const primary = langSel ? langSel.value : 'python';
+        const envs = (blob && blob.envs) ? blob.envs : {};
+        const env = envs[primary] || envs[Object.keys(envs)[0]];
+        if (!env || !Array.isArray(env.files) || !env.files.length) {
+            return {code: '[]', entry: ''};
+        }
+        const files = env.files.map((f) => ({
+            name: f.name,
+            content: (typeof f.solution === 'string' && f.solution !== '') ? f.solution : (f.starter || ''),
+        }));
+        return {code: JSON.stringify(files), entry: env.entry || (files[0] && files[0].name) || ''};
+    };
     const referenceValue = () => {
+        if (scenSel && scenSel.value === 'project') {
+            return projectReference().code;
+        }
         if (refEditor) {
             return refEditor.getValue();
         }
@@ -945,7 +996,9 @@ export const init = (params) => {
                 scenario: scenSel ? scenSel.value : 'stdinstdout',
                 entrypoint: byId(config.entrypointid) ? byId(config.entrypointid).value : '',
                 functionsignature: byId('id_functionsignature') ? byId('id_functionsignature').value : '',
-                entryfile: entryfileField ? entryfileField.value.trim() : '',
+                entryfile: (scenSel && scenSel.value === 'project')
+                    ? projectReference().entry
+                    : (entryfileField ? entryfileField.value.trim() : ''),
                 schemasql: schemaTa ? schemaTa.value : '',
                 cputimelimit: byId('id_cputimelimit') ? byId('id_cputimelimit').value : '',
                 memorylimit: byId('id_memorylimit') ? byId('id_memorylimit').value : '',

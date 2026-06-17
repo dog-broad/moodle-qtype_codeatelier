@@ -218,7 +218,11 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         );
         $mform->setType('entryfile', PARAM_RAW_TRIMMED);
         $mform->addHelpButton('entryfile', 'entryfile', 'qtype_codeatelier');
+        // The entry/main file is now a per-language designation inside the project
+        // workspace blob (the run badge), not a form field — keep the column for
+        // back-compat but never show the element.
         $mform->hideIf('entryfile', 'scenario', 'neq', 'project');
+        $mform->hideIf('entryfile', 'scenario', 'eq', 'project');
 
         $mform->addElement(
             'textarea',
@@ -237,9 +241,10 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // Single-file starter code does not apply to a file-set (project or web) question.
         $mform->hideIf('startercode', 'scenario', 'eq', 'project');
         $mform->hideIf('startercode', 'scenario', 'eq', 'web');
-        // These scenarios author their files directly in a single language, so the
-        // language set and single-field reference solution do not apply.
-        $mform->hideIf('languages', 'scenario', 'eq', 'project');
+        // The web scenario authors its files directly in one language, so the
+        // language set does not apply. A project now supports several languages
+        // (each with its own file environment in the workspace), so its picker is
+        // shown like the single-file scenarios.
         $mform->hideIf('languages', 'scenario', 'eq', 'web');
         // SQL is single-language (schema + one query), so additional languages
         // never apply — hide the picker rather than only rejecting it on save.
@@ -256,10 +261,11 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         );
         $mform->setType('referencesolution', PARAM_RAW);
         $mform->addHelpButton('referencesolution', 'referencesolution', 'qtype_codeatelier');
-        // For a project the reference is a complete file SET (a second file-tab editor
-        // the authoring JS mounts on this field) used for capture and validate-on-save.
-        // A web (frontend) question grades against DOM assertions, not a reference run.
+        // A web (frontend) question grades against DOM assertions, not a reference
+        // run. A project's reference is the workspace's Solution layer (per language,
+        // in the projectfiles blob), not this single field — so hide it for both.
         $mform->hideIf('referencesolution', 'scenario', 'eq', 'web');
+        $mform->hideIf('referencesolution', 'scenario', 'eq', 'project');
 
         // Custom checker (special judge): a program that decides AC/WA per test
         // instead of the declarative matching rule, for problems with many valid
@@ -769,33 +775,41 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                     }
                 }
             } else if ($scenario === 'project') {
-                // A project is judge-tier only and runs as a single-language build.
+                // A project is judge-tier only; one or more allowed languages, each
+                // of which must support a multi-file build.
                 if ($tier !== 'judge') {
                     $errors['scenario'] = get_string('projectjudgeonly', 'qtype_codeatelier');
-                } else if (
-                    count($allowed) !== 1
-                        || !\qtype_codeatelier\judge\project_packager::supports($allowed[0])
-                ) {
-                    $errors['language'] = get_string('projectlanguageset', 'qtype_codeatelier');
+                } else {
+                    foreach ($allowed as $lang) {
+                        if (!\qtype_codeatelier\judge\project_packager::supports($lang)) {
+                            $errors['language'] = get_string('projectlanguageset', 'qtype_codeatelier');
+                            break;
+                        }
+                    }
                 }
             }
             // Web (frontend) questions grade on either tier: Practice mode in the
             // browser (formative), or Secure mode via the web-judge service.
         }
 
-        // A project must carry a valid file set with the entry file among the files.
-        if ($scenario === 'project') {
-            $files = \qtype_codeatelier\judge\project_packager::decode_files(
+        // A project must carry, for each allowed language, a file environment with at
+        // least one file and an entry file that is one of those files.
+        if ($scenario === 'project' && !isset($errors['language'])) {
+            $envs = \qtype_codeatelier\judge\project_packager::decode_envs(
                 isset($data['projectfiles']) ? (string) $data['projectfiles'] : ''
             );
-            if (!$files) {
-                $errors['projectfiles'] = get_string('projectfilesempty', 'qtype_codeatelier');
-            } else {
-                $entry = isset($data['entryfile']) ? trim((string) $data['entryfile']) : '';
-                if ($entry === '') {
-                    $errors['entryfile'] = get_string('entryfilerequired', 'qtype_codeatelier');
-                } else if (!array_key_exists($entry, $files)) {
-                    $errors['entryfile'] = get_string('entryfilemissing', 'qtype_codeatelier');
+            foreach ($allowed as $lang) {
+                $env = isset($envs[$lang]) ? $envs[$lang] : null;
+                $names = ($env && is_array($env['files'] ?? null))
+                    ? array_keys($env['files']) : [];
+                if (!$names) {
+                    $errors['projectfiles'] = get_string('projectfilesempty', 'qtype_codeatelier');
+                    break;
+                }
+                $entry = $env['entry'] ?? '';
+                if ($entry === '' || !in_array($entry, $names, true)) {
+                    $errors['projectfiles'] = get_string('entryfilemissing', 'qtype_codeatelier');
+                    break;
                 }
             }
         }
@@ -890,7 +904,7 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         }
 
         $hasreference = ($scenario === 'project')
-                ? self::project_reference_has_content($data['referencesolution'] ?? '')
+                ? self::project_reference_has_content($data['projectfiles'] ?? '')
                 : (trim((string) ($data['referencesolution'] ?? '')) !== '');
 
         // A custom checker (special judge) is a judge-tier stdin/stdout feature,
@@ -955,16 +969,23 @@ class qtype_codeatelier_edit_form extends question_edit_form {
     }
 
     /**
-     * Whether a project reference file set carries any real code (the file-tab
-     * editor seeds an empty default that should not trigger validate-on-save).
+     * Whether a project's environment blob carries any Solution-layer content, i.e.
+     * a reference worth validating (an author who filled only starters has no
+     * reference to run; the Solution layer is the reference).
      *
-     * @param string $json the reference file set (canonical JSON)
+     * @param string $json the projectfiles blob
      * @return bool
      */
     protected static function project_reference_has_content($json) {
-        foreach (\qtype_codeatelier\judge\project_packager::decode_files((string) $json) as $content) {
-            if (trim((string) $content) !== '') {
-                return true;
+        $blob = json_decode((string) $json, true);
+        if (!is_array($blob) || empty($blob['envs'])) {
+            return false;
+        }
+        foreach ($blob['envs'] as $env) {
+            foreach ((is_array($env['files'] ?? null) ? $env['files'] : []) as $f) {
+                if (is_array($f) && trim((string) ($f['solution'] ?? '')) !== '') {
+                    return true;
+                }
             }
         }
         return false;
@@ -984,9 +1005,11 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $question->tier = 'judge';
         $question->scenario = $data['scenario'];
         $question->schemasql = ($data['scenario'] === 'sql') ? ($data['schemasql'] ?? '') : null;
-        // The project reference is a file set; its entry file drives the build.
-        $question->entryfile = ($data['scenario'] === 'project' && isset($data['entryfile']))
-                ? trim((string) $data['entryfile']) : null;
+        // The project reference + entry are per-language inside the blob; project_entry
+        // resolves the entry for the primary language from it.
+        $question->projectfiles = ($data['scenario'] === 'project')
+                ? (string) ($data['projectfiles'] ?? '') : null;
+        $question->entryfile = null;
         $question->cputimelimit = (isset($data['cputimelimit']) && trim($data['cputimelimit']) !== '')
                 ? (float) $data['cputimelimit'] : null;
         $question->memorylimit = (isset($data['memorylimit']) && trim($data['memorylimit']) !== '')
@@ -998,7 +1021,20 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $question->checkerlang = isset($data['checkerlang']) ? (string) $data['checkerlang'] : null;
         $question->tests = $this->tests_from_form($data);
 
-        $result = $question->get_judge_result($data['referencesolution'], $data['language']);
+        // The reference code: for a project it is the primary language's Solution-layer
+        // file set from the blob; otherwise the single reference field.
+        if ($data['scenario'] === 'project') {
+            $envs = \qtype_codeatelier\judge\project_packager::decode_envs($question->projectfiles);
+            $env = isset($envs[$data['language']]) ? $envs[$data['language']]
+                    : (reset($envs) ?: null);
+            $referencecode = $env
+                    ? \qtype_codeatelier\judge\project_packager::encode_files(
+                        \qtype_codeatelier\judge\project_packager::reference_files($env))
+                    : '[]';
+        } else {
+            $referencecode = $data['referencesolution'];
+        }
+        $result = $question->get_judge_result($referencecode, $data['language']);
         if ($result === null) {
             return $errors;
         }

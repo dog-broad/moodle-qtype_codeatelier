@@ -154,6 +154,30 @@ class qtype_codeatelier_question extends question_graded_automatically {
     }
 
     /**
+     * The entry/main file the program runs from. For a project it is the per-language
+     * designation in the projectfiles environment blob (falling back to the primary
+     * language's environment, then the legacy scalar entryfile column); for other
+     * scenarios it is the legacy scalar.
+     *
+     * @param string $language the (resolved) language being run/graded
+     * @return string
+     */
+    public function project_entry($language) {
+        if ($this->scenario !== 'project') {
+            return (string) $this->entryfile;
+        }
+        $language = $this->resolve_language($language);
+        $envs = \qtype_codeatelier\judge\project_packager::decode_envs((string) $this->projectfiles);
+        if (isset($envs[$language]['entry']) && $envs[$language]['entry'] !== '') {
+            return (string) $envs[$language]['entry'];
+        }
+        if (isset($envs[$this->language]['entry']) && $envs[$this->language]['entry'] !== '') {
+            return (string) $envs[$this->language]['entry'];
+        }
+        return (string) $this->entryfile;
+    }
+
+    /**
      * Whether this question grades authoritatively on the server (judge tier)
      * rather than in the browser (practice tier).
      *
@@ -216,7 +240,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
             if ($this->is_project()) {
                 // A project is gradable once the entry file carries some code.
                 $files = $this->project_files_from_response($response);
-                $entry = (string) $this->entryfile;
+                $entry = $this->project_entry($response['language'] ?? '');
                 return isset($files[$entry]) && trim($files[$entry]) !== '';
             }
             if ($this->scenario === 'web') {
@@ -433,7 +457,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
             (string) $this->scenario,
             (string) $this->entrypoint,
             (string) $this->functionsignature,
-            (string) $this->entryfile,
+            $this->project_entry($language),
             (string) $this->checkersource,
             (string) $this->checkerlang
         );
@@ -452,7 +476,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
             (string) $this->scenario,
             (string) $this->entrypoint,
             (string) $this->functionsignature,
-            (string) $this->entryfile,
+            $this->project_entry($language),
             (string) $this->checkersource,
             (string) $this->checkerlang
         );
@@ -558,7 +582,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
             (string) $this->scenario,
             (string) $this->entrypoint,
             (string) $this->functionsignature,
-            (string) $this->entryfile,
+            $this->project_entry($language),
             (string) $this->checkersource,
             (string) $this->checkerlang
         );
@@ -588,7 +612,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
             (string) $this->functionsignature,
             (string) $this->schemasql,
             (string) $input,
-            (string) $this->entryfile
+            $this->project_entry($language)
         );
     }
 
@@ -616,7 +640,7 @@ class qtype_codeatelier_question extends question_graded_automatically {
             (string) $this->scenario,
             (string) $this->entrypoint,
             (string) $this->functionsignature,
-            (string) $this->entryfile,
+            $this->project_entry($language),
             (string) $this->checkersource,
             (string) $this->checkerlang
         );
