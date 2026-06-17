@@ -965,6 +965,16 @@ export const init = (params) => {
                 }
             });
         }
+        const webformatbtn = root.querySelector('[data-role="editor-format"]');
+        if (webformatbtn) {
+            webformatbtn.addEventListener('click', () => {
+                if (webeditor && typeof webeditor.reindent === 'function') {
+                    webeditor.reindent();
+                }
+            });
+        }
+        // Focus mode for the web workbench (editor + live preview, full viewport).
+        setupFocusMode();
         if (examplesel) {
             renderWebExamples(examplesel, config, strings);
         }
@@ -1265,7 +1275,9 @@ export const init = (params) => {
     // Focus mode: an opt-in split-pane that fills the viewport. Implemented as a
     // class on the question root so the editor, results and form fields keep
     // their DOM position (the score/answer fields must stay inside the quiz
-    // form) and CodeMirror is never remounted.
+    // form) and CodeMirror is never remounted. A hoisted function so the web
+    // branch — which returns before this point — can wire it up as well.
+    function setupFocusMode() {
     const focusbutton = root.querySelector('[data-role="focus"]');
     if (focusbutton) {
         const cmContent = () => root.querySelector('.cm-content');
@@ -1342,6 +1354,8 @@ export const init = (params) => {
             }
         });
     }
+    }
+    setupFocusMode();
 
     const runOptions = () => ({
         timeoutMs: config.timeoutms,
