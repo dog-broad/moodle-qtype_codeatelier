@@ -614,6 +614,11 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
                 cm.setTheme(mode);
             }
         },
+        reindent: () => {
+            if (cm && typeof cm.reindent === 'function') {
+                cm.reindent();
+            }
+        },
         destroy: () => {
             if (cm && cm.destroy) {
                 cm.destroy();

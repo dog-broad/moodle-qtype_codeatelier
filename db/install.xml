@@ -48,7 +48,8 @@
         <FIELD NAME="selector" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: the CSS selector this DOM assertion targets."/>
         <FIELD NAME="assertproperty" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: the property checked - text, exists, count, attr:NAME or style:PROP."/>
         <FIELD NAME="assertmatcher" TYPE="char" LENGTH="32" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: how expected is compared - equals, contains or regex."/>
-        <FIELD NAME="actions" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: optional interaction steps run before the assertion (click/type), one per line."/>
+        <FIELD NAME="actions" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: optional interaction steps run before the assertion (click/type/select/check/submit/key/wait/wait-for), one per line."/>
+        <FIELD NAME="assertionjson" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Web scenario: optional compound assertion tree (all/any/not over leaf checks). When set it supersedes the flat selector/assertproperty/assertmatcher/expected for this test; empty falls back to that single leaf."/>
         <FIELD NAME="subtask" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Subtask group id (IOI-style). 0 is ungrouped (per-test weighting); a positive id groups tests for all-or-nothing credit within the group."/>
       </FIELDS>
       <KEYS>
