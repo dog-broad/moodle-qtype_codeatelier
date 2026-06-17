@@ -482,6 +482,9 @@ export const gradeWeb = (files, tests, options) => {
                 visibility: Number(t.visibility),
                 actual: r.actual,
                 error: r.error || null,
+                // The full evaluator result (a compound node carries {op, children})
+                // so the feedback can show which sub-condition failed.
+                result: r,
             });
         }
         if (iframe.parentNode) {

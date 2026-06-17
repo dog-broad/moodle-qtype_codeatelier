@@ -42,7 +42,8 @@ const FIELD_ALIASES = {
     datasetsql: 'datasetsql', dataset: 'datasetsql', data: 'datasetsql',
     selector: 'selector', assertproperty: 'assertproperty', property: 'assertproperty',
     assertmatcher: 'assertmatcher', matcher: 'assertmatcher',
-    actions: 'actions', subtask: 'subtask',
+    actions: 'actions', assertionjson: 'assertionjson', assertion: 'assertionjson',
+    subtask: 'subtask',
 };
 
 /**
@@ -53,8 +54,44 @@ const FIELD_ALIASES = {
 const blankTest = () => ({
     input: '', expected: '', matchmode: 'trimmed', tolerance: '', weight: 1,
     visibility: 1, feedback: '', checkerquery: '', datasetsql: '', selector: '',
-    assertproperty: '', assertmatcher: 'equals', actions: '', subtask: 0,
+    assertproperty: '', assertmatcher: 'equals', actions: '', assertionjson: '', subtask: 0,
 });
+
+/**
+ * A terse one-line summary of a compound assertion tree, for the row header
+ * (e.g. "All of 3 conditions").
+ *
+ * @param {String} json the assertionjson string
+ * @param {Object} s localised strings
+ * @return {String}
+ */
+const describeTree = (json, s) => {
+    let tree;
+    try {
+        tree = JSON.parse(json);
+    } catch (e) {
+        return s.assertmust || 'Combined check';
+    }
+    const count = (node) => {
+        if (!node) {
+            return 0;
+        }
+        if (node.all) {
+            return node.all.reduce((n, c) => n + count(c), 0);
+        }
+        if (node.any) {
+            return node.any.reduce((n, c) => n + count(c), 0);
+        }
+        if (node.not) {
+            return count(node.not);
+        }
+        return 1;
+    };
+    const label = tree.all ? (s.assertgroupall || 'All') : (tree.any ? (s.assertgroupany || 'Any') : '');
+    const op = label.replace(/\s*\(.*\)\s*/, '');
+    const n = count(tree);
+    return (op ? op + ' of ' : '') + n + ' condition' + (n === 1 ? '' : 's');
+};
 
 /**
  * Coerce an imported row (object keyed by field/alias) into a test object.
@@ -503,11 +540,169 @@ export const init = (params) => {
         };
 
         if (isWeb()) {
-            body.appendChild(fieldRow(s.assertselector || 'Selector', textInput('selector')));
-            body.appendChild(fieldRow(s.assertproperty || 'Property', textInput('assertproperty')));
-            body.appendChild(fieldRow(s.assertmatcher || 'Matcher', select('assertmatcher', config.assertmatchers || {})));
-            body.appendChild(fieldRow(s.assertactions || 'Actions', textarea('actions', 2)));
-            body.appendChild(fieldRow(s.expected || 'Expected', textarea('expected', 2)));
+            // A web check is a flat single condition by default, promotable to a
+            // compound AND/OR/NOT tree. The bound widgets operate on an arbitrary
+            // {object, key} so the same controls serve the simple form and each leaf.
+            const blankLeaf = () => ({selector: '', property: 'text', matcher: 'equals', expected: ''});
+            const boundText = (obj, key, onChange, placeholder) => {
+                const inp = el('input', {type: 'text', class: 'form-control form-control-sm',
+                    placeholder: placeholder || ''}, []);
+                inp.value = obj[key] === undefined ? '' : obj[key];
+                inp.addEventListener('input', () => { obj[key] = inp.value; onChange(); });
+                return inp;
+            };
+            const boundSelect = (obj, key, options, onChange) => {
+                const sel = el('select', {class: 'form-select form-select-sm'}, []);
+                Object.keys(options).forEach((val) => {
+                    const opt = el('option', {value: val, text: options[val]}, []);
+                    if (String(obj[key]) === String(val)) {
+                        opt.selected = true;
+                    }
+                    sel.appendChild(opt);
+                });
+                sel.addEventListener('change', () => { obj[key] = sel.value; onChange(); });
+                return sel;
+            };
+            // Property dropdown: the fixed properties plus attribute…/style… which
+            // reveal a name sub-input and write attr:<name> / style:<prop>.
+            const propertyControl = (obj, key, onChange) => {
+                const wrap = el('div', {class: 'codeatelier-propfield'}, []);
+                const sel = el('select', {class: 'form-select form-select-sm'}, []);
+                const opts = config.assertproperties || {text: 'text'};
+                Object.keys(opts).forEach((v) => sel.appendChild(el('option', {value: v, text: opts[v]}, [])));
+                sel.appendChild(el('option', {value: 'attr', text: s.assertprop_attr || 'attribute…'}, []));
+                sel.appendChild(el('option', {value: 'style', text: s.assertprop_style || 'style…'}, []));
+                const sub = el('input', {type: 'text', class: 'form-control form-control-sm codeatelier-propsub'}, []);
+                const cur = String(obj[key] || 'text');
+                let base = cur;
+                if (cur.indexOf('attr:') === 0) { base = 'attr'; sub.value = cur.slice(5); } else if (cur.indexOf('style:') === 0) { base = 'style'; sub.value = cur.slice(6); }
+                sel.value = (opts[base] !== undefined || base === 'attr' || base === 'style') ? base : 'text';
+                const apply = () => {
+                    if (sel.value === 'attr') {
+                        sub.style.display = ''; sub.placeholder = s.assertattrname || 'Attribute name';
+                        obj[key] = 'attr:' + sub.value.trim();
+                    } else if (sel.value === 'style') {
+                        sub.style.display = ''; sub.placeholder = s.assertstylename || 'Style property';
+                        obj[key] = 'style:' + sub.value.trim();
+                    } else {
+                        sub.style.display = 'none'; obj[key] = sel.value;
+                    }
+                    onChange();
+                };
+                sel.addEventListener('change', apply);
+                sub.addEventListener('input', apply);
+                sub.style.display = (sel.value === 'attr' || sel.value === 'style') ? '' : 'none';
+                wrap.appendChild(sel); wrap.appendChild(sub);
+                return wrap;
+            };
+            // One condition row in a group: a leaf (selector/property/matcher/expected)
+            // or a nested group, each with a Not toggle and a remove button.
+            const renderChild = (arr, i, persist, rebuild, depth) => {
+                const child = arr[i];
+                const isNot = !!(child && child.not);
+                const inner = isNot ? child.not : child;
+                const isGroup = !!(inner && (inner.all || inner.any));
+                const row = el('div', {class: 'codeatelier-te-cond' + (isGroup ? ' codeatelier-te-cond-group' : '')}, []);
+                if (isGroup) {
+                    row.appendChild(renderGroup(inner, persist, rebuild, depth + 1, null));
+                } else {
+                    row.appendChild(boundText(inner, 'selector', persist, s.assertselector || 'CSS selector'));
+                    row.appendChild(propertyControl(inner, 'property', persist));
+                    row.appendChild(boundSelect(inner, 'matcher', config.assertmatchers || {}, persist));
+                    row.appendChild(boundText(inner, 'expected', persist, s.expected || 'Expected'));
+                }
+                const notLabel = el('label', {class: 'codeatelier-te-not'}, []);
+                const notCb = el('input', {type: 'checkbox'}, []);
+                notCb.checked = isNot;
+                notCb.addEventListener('change', () => { arr[i] = notCb.checked ? {not: inner} : inner; rebuild(); });
+                notLabel.appendChild(notCb);
+                notLabel.appendChild(el('span', {text: s.assertnot || 'Not'}, []));
+                row.appendChild(notLabel);
+                const rm = el('button', {type: 'button', class: 'codeatelier-filedelete', text: '×',
+                    title: s.assertremovecond || 'Remove this condition'}, []);
+                rm.addEventListener('click', () => {
+                    arr.splice(i, 1);
+                    if (arr.length === 0) { arr.push(blankLeaf()); }
+                    rebuild();
+                });
+                row.appendChild(rm);
+                return row;
+            };
+            // A group node: operator (All/Any), its condition rows, and add controls.
+            const renderGroup = (group, persist, rebuild, depth, onCollapse) => {
+                const box = el('div', {class: 'codeatelier-te-group'}, []);
+                const op = el('select', {class: 'form-select form-select-sm codeatelier-te-op'}, [
+                    el('option', {value: 'all', text: s.assertgroupall || 'All (AND)'}, []),
+                    el('option', {value: 'any', text: s.assertgroupany || 'Any (OR)'}, []),
+                ]);
+                op.value = group.all ? 'all' : 'any';
+                op.addEventListener('change', () => {
+                    const items = group.all || group.any;
+                    delete group.all; delete group.any;
+                    group[op.value] = items;
+                    persist();
+                });
+                box.appendChild(el('div', {class: 'codeatelier-te-grouphead'}, [op]));
+                const arr = group.all || group.any;
+                arr.forEach((child, i) => box.appendChild(renderChild(arr, i, persist, rebuild, depth)));
+                const tools = el('div', {class: 'codeatelier-te-grouptools'}, []);
+                const addCond = el('button', {type: 'button', class: 'btn btn-link btn-sm',
+                    text: s.assertaddcondition || '+ Condition'}, []);
+                addCond.addEventListener('click', () => { arr.push(blankLeaf()); rebuild(); });
+                tools.appendChild(addCond);
+                if (depth < 3) {
+                    const addGroup = el('button', {type: 'button', class: 'btn btn-link btn-sm',
+                        text: s.assertaddgroup || '+ Group'}, []);
+                    addGroup.addEventListener('click', () => { arr.push({all: [blankLeaf()]}); rebuild(); });
+                    tools.appendChild(addGroup);
+                }
+                if (onCollapse && arr.length === 1 && !arr[0].all && !arr[0].any && !arr[0].not) {
+                    const coll = el('button', {type: 'button', class: 'btn btn-link btn-sm',
+                        text: s.assertcollapse || 'Simplify to one condition'}, []);
+                    coll.addEventListener('click', onCollapse);
+                    tools.appendChild(coll);
+                }
+                box.appendChild(tools);
+                return box;
+            };
+
+            const webwrap = el('div', {class: 'codeatelier-webcheck'}, []);
+            const renderWeb = () => {
+                webwrap.textContent = '';
+                if (String(t.assertionjson || '').trim() === '') {
+                    webwrap.appendChild(fieldRow(s.assertselector || 'Selector', textInput('selector')));
+                    webwrap.appendChild(fieldRow(s.assertproperty || 'Property', propertyControl(t, 'assertproperty', sync)));
+                    webwrap.appendChild(fieldRow(s.assertmatcher || 'Compare', select('assertmatcher', config.assertmatchers || {})));
+                    webwrap.appendChild(fieldRow(s.expected || 'Expected', textarea('expected', 2)));
+                    const combine = el('button', {type: 'button', class: 'btn btn-link btn-sm codeatelier-te-combine',
+                        text: s.assertcombine || '+ Combine with another condition'}, []);
+                    combine.addEventListener('click', () => {
+                        const leaf = {selector: t.selector || '', property: t.assertproperty || 'text',
+                            matcher: t.assertmatcher || 'equals', expected: t.expected || ''};
+                        t.assertionjson = JSON.stringify({all: [leaf, blankLeaf()]});
+                        t.selector = ''; t.assertproperty = ''; t.assertmatcher = 'equals'; t.expected = '';
+                        sync(); renderWeb();
+                    });
+                    webwrap.appendChild(combine);
+                } else {
+                    let root;
+                    try { root = JSON.parse(t.assertionjson); } catch (e) { root = {all: [blankLeaf()]}; }
+                    if (!root.all && !root.any) { root = {all: [root]}; }
+                    const persist = () => { t.assertionjson = JSON.stringify(root); sync(); };
+                    const rebuild = () => { persist(); renderWeb(); };
+                    const collapse = () => {
+                        const only = (root.all || root.any)[0];
+                        t.selector = only.selector || ''; t.assertproperty = only.property || 'text';
+                        t.assertmatcher = only.matcher || 'equals'; t.expected = only.expected || '';
+                        t.assertionjson = ''; sync(); renderWeb();
+                    };
+                    webwrap.appendChild(el('span', {class: 'codeatelier-block-label', text: s.assertmust || 'Must satisfy'}, []));
+                    webwrap.appendChild(renderGroup(root, persist, rebuild, 0, collapse));
+                }
+                webwrap.appendChild(fieldRow(s.assertactions || 'Actions', textarea('actions', 2)));
+            };
+            renderWeb();
+            body.appendChild(webwrap);
         } else {
             const inputTa = textarea('input', 3);
             body.appendChild(fieldRow(s.input || 'Input', inputTa));
@@ -569,9 +764,14 @@ export const init = (params) => {
             }, []);
             const setHead = () => {
                 const vis = (Number(t.visibility) === 1) ? (s.editor_visible || 'Visible') : (s.editor_hidden || 'Hidden');
+                const meta = '   [' + vis + ' · w' + t.weight + ']';
+                // A compound web check has no single selector/expected; summarise it.
+                if (isWeb() && String(t.assertionjson || '').trim() !== '') {
+                    head.textContent = '#' + (i + 1) + '  ' + describeTree(t.assertionjson, s) + meta;
+                    return;
+                }
                 const left = isWeb() ? (t.selector || '') : (t.input || '');
-                head.textContent = '#' + (i + 1) + '  ' + preview(left) + ' → ' + preview(t.expected)
-                    + '   [' + vis + ' · w' + t.weight + ']';
+                head.textContent = '#' + (i + 1) + '  ' + preview(left) + ' → ' + preview(t.expected) + meta;
             };
             setHead();
             const body = editBody(t);

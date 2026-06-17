@@ -589,22 +589,129 @@ const renderConsole = (element, result, config, strings) => {
 };
 
 /**
- * Describe a DOM assertion in words, e.g. `#title · text equals "Todo"`.
+ * Describe one leaf condition in words, e.g. `#title · text equals "Todo"`.
+ *
+ * @param {Object} node a leaf {selector, property, matcher, expected}
+ * @param {Object} strings
+ * @return {String}
+ */
+const describeLeaf = (node, strings) => {
+    const sel = node.selector || '';
+    const prop = node.property || 'text';
+    if (prop === 'exists') {
+        const absent = /^(false|0|no)$/i.test(String(node.expected || '').trim());
+        return sel + ' ' + (absent ? (strings.assertabsent || 'is absent') : (strings.assertexists || 'exists'));
+    }
+    const matcher = node.matcher || 'equals';
+    const expected = (node.expected === null || node.expected === undefined) ? '' : node.expected;
+    return sel + ' · ' + prop + ' ' + matcher + ' ' + JSON.stringify(String(expected));
+};
+
+/**
+ * Describe an assertion node (leaf or compound) in words.
+ *
+ * @param {Object} node
+ * @param {Object} strings
+ * @return {String}
+ */
+const describeNode = (node, strings) => {
+    if (!node) {
+        return '';
+    }
+    if (node.all || node.any) {
+        const arr = node.all || node.any;
+        const word = node.all ? (strings.assertall || 'all of') : (strings.assertany || 'any of');
+        return word + ': (' + arr.map((c) => describeNode(c, strings)).join('; ') + ')';
+    }
+    if (node.not) {
+        return (strings.assertnotof || 'not') + ' (' + describeNode(node.not, strings) + ')';
+    }
+    return describeLeaf(node, strings);
+};
+
+/**
+ * Describe a test's assertion: the compound tree when present, else the flat leaf.
  *
  * @param {Object} test the assertion row
  * @param {Object} strings
  * @return {String}
  */
 const describeAssertion = (test, strings) => {
-    const sel = test.selector || '';
-    const prop = test.assertproperty || 'text';
-    if (prop === 'exists') {
-        const absent = /^(false|0|no)$/i.test(String(test.expected || '').trim());
-        return sel + ' ' + (absent ? (strings.assertabsent || 'is absent') : (strings.assertexists || 'exists'));
+    if (test.assertion && typeof test.assertion === 'object') {
+        return describeNode(test.assertion, strings);
     }
-    const matcher = test.assertmatcher || 'equals';
-    const expected = (test.expected === null || test.expected === undefined) ? '' : test.expected;
-    return sel + ' · ' + prop + ' ' + matcher + ' ' + JSON.stringify(String(expected));
+    return describeLeaf({selector: test.selector, property: test.assertproperty,
+        matcher: test.assertmatcher, expected: test.expected}, strings);
+};
+
+/**
+ * A per-condition pass/fail breakdown of a compound result, pairing the assertion
+ * tree with its evaluator result so a student sees which sub-check failed.
+ *
+ * @param {Object} node the assertion node
+ * @param {Object} result the matching evaluator result node
+ * @param {Object} strings
+ * @return {HTMLElement}
+ */
+const renderNodeBreakdown = (node, result, strings) => {
+    const list = document.createElement('ul');
+    list.className = 'codeatelier-checktree';
+    const arr = node.all || node.any || (node.not ? [node.not] : null);
+    const rarr = result && result.children ? result.children : [];
+    if (!arr) {
+        // Leaf.
+        const li = document.createElement('li');
+        li.className = (result && result.pass) ? 'codeatelier-pass' : 'codeatelier-fail';
+        li.textContent = (result && result.pass ? '✓ ' : '✗ ') + describeLeaf(node, strings);
+        list.appendChild(li);
+        return list;
+    }
+    arr.forEach((child, i) => {
+        const rchild = rarr[i];
+        const li = document.createElement('li');
+        const pass = rchild && rchild.pass;
+        li.className = pass ? 'codeatelier-pass' : 'codeatelier-fail';
+        const label = node.not ? (strings.assertnotof || 'not') : '';
+        li.appendChild(document.createTextNode((pass ? '✓ ' : '✗ ') + (label ? label + ' ' : '')));
+        if (child.all || child.any || child.not) {
+            li.appendChild(renderNodeBreakdown(child, rchild, strings));
+        } else {
+            li.appendChild(document.createTextNode(describeLeaf(child, strings)));
+        }
+        list.appendChild(li);
+    });
+    return list;
+};
+
+/**
+ * The selector of the first failing leaf in a compound result, for the highlight
+ * button.
+ *
+ * @param {Object} node
+ * @param {Object} result
+ * @return {String}
+ */
+const firstFailingSelector = (node, result) => {
+    if (!node) {
+        return '';
+    }
+    const arr = node.all || node.any;
+    if (arr) {
+        const rarr = (result && result.children) || [];
+        for (let i = 0; i < arr.length; i++) {
+            if (!rarr[i] || !rarr[i].pass) {
+                const sub = firstFailingSelector(arr[i], rarr[i]);
+                if (sub) {
+                    return sub;
+                }
+            }
+        }
+        return '';
+    }
+    if (node.not) {
+        return node.not.selector || '';
+    }
+    return node.selector || '';
 };
 
 /**
@@ -689,17 +796,24 @@ const renderWebFeedback = (element, graded, config, strings, highlight) => {
 
         const body = document.createElement('div');
         body.className = 'codeatelier-feedback-body';
+        const compound = test.assertion && typeof test.assertion === 'object';
         addBlock(body, strings.assertexpect || 'Expect', describeAssertion(test, strings));
         if (!tr.passed) {
-            const got = (tr.actual === null || tr.actual === undefined)
-                ? (strings.assertnotfound || '(element not found)') : String(tr.actual);
-            addBlock(body, strings.got || 'Got', got);
-            if (highlight && test.selector) {
+            if (compound) {
+                // Show which sub-condition failed, not a single "Got" value.
+                body.appendChild(renderNodeBreakdown(test.assertion, tr.result, strings));
+            } else {
+                const got = (tr.actual === null || tr.actual === undefined)
+                    ? (strings.assertnotfound || '(element not found)') : String(tr.actual);
+                addBlock(body, strings.got || 'Got', got);
+            }
+            const hlsel = test.selector || (compound ? firstFailingSelector(test.assertion, tr.result) : '');
+            if (highlight && hlsel) {
                 const hl = document.createElement('button');
                 hl.type = 'button';
                 hl.className = 'btn btn-link btn-sm codeatelier-highlight';
                 hl.textContent = strings.showinpreview || 'Show in preview';
-                hl.addEventListener('click', () => highlight(test.selector));
+                hl.addEventListener('click', () => highlight(hlsel));
                 body.appendChild(hl);
             }
         }

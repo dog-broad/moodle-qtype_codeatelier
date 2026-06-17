@@ -1847,6 +1847,103 @@
     margin-top: 0.25rem;
 }
 
+/* Web compound-check builder. Renders on the edit form (no .qtype_codeatelier
+   ancestor), so these rules are unprefixed like the rest of the test editor. */
+.codeatelier-webcheck {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.codeatelier-propfield {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.codeatelier-propfield .codeatelier-propsub {
+    max-width: 11rem;
+}
+
+.codeatelier-te-combine {
+    align-self: flex-start;
+    padding-left: 0;
+}
+
+.codeatelier-te-group {
+    border: 1px solid var(--ca-border-soft, #e0e3e7);
+    border-radius: 0.35rem;
+    padding: 0.5rem;
+    background: var(--ca-surface-muted, #f8f9fa);
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.codeatelier-te-grouphead {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.codeatelier-te-op {
+    max-width: 9rem;
+    font-weight: 600;
+}
+
+.codeatelier-te-cond {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+    padding: 0.3rem;
+    border-left: 3px solid var(--ca-border, #ced4da);
+    background: var(--ca-surface, #fff);
+    border-radius: 0.25rem;
+}
+
+.codeatelier-te-cond > input[type="text"] {
+    flex: 1 1 8rem;
+    min-width: 6rem;
+}
+
+.codeatelier-te-cond-group {
+    display: block;
+    border-left-color: var(--ca-focus, #0f6cbf);
+    background: transparent;
+    padding: 0;
+}
+
+.codeatelier-te-not {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+}
+
+.codeatelier-te-grouptools {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+/* Per-condition pass/fail breakdown in the student feedback (attempt page). */
+.codeatelier-checktree {
+    list-style: none;
+    margin: 0.25rem 0 0;
+    padding-left: 0.75rem;
+}
+
+.codeatelier-checktree .codeatelier-pass {
+    color: var(--ca-success, #1f7a3d);
+}
+
+.codeatelier-checktree .codeatelier-fail {
+    color: var(--ca-danger, #b02a37);
+}
+
 .codeatelier-te-pager {
     display: flex;
     align-items: center;
