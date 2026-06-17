@@ -31,6 +31,8 @@ import {tokenDiff} from 'qtype_codeatelier/diff';
 import {setup as setupProjectFiles} from 'qtype_codeatelier/projectfiles';
 import {setUserPreference} from 'core_user/repository';
 import {setupPreview, gradeWeb} from 'qtype_codeatelier/webruntime';
+import {setupFunctionArgs} from './argfields.js';
+import {resultSetTable, extraRowKeys} from './resulttable.js';
 
 /**
  * @param {String} value
@@ -89,70 +91,6 @@ const diffPre = (ops, keep) => {
 };
 
 /**
- * Build a result-set table.
- *
- * @param {Array} columns optional column names
- * @param {Array} rows array of row arrays
- * @param {Object} extrakeys set of JSON-stringified rows to highlight
- * @return {HTMLElement}
- */
-const resultSetTable = (columns, rows, extrakeys) => {
-    const table = document.createElement('table');
-    table.className = 'codeatelier-resultset';
-    if (columns && columns.length) {
-        const thead = document.createElement('thead');
-        const tr = document.createElement('tr');
-        columns.forEach((col) => {
-            const th = document.createElement('th');
-            th.textContent = col;
-            tr.appendChild(th);
-        });
-        thead.appendChild(tr);
-        table.appendChild(thead);
-    }
-    const tbody = document.createElement('tbody');
-    (rows || []).forEach((row) => {
-        const tr = document.createElement('tr');
-        if (extrakeys && extrakeys[JSON.stringify(row)]) {
-            tr.className = 'codeatelier-diff-row';
-        }
-        row.forEach((value) => {
-            const td = document.createElement('td');
-            td.textContent = (value === null) ? 'NULL' : String(value);
-            tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-    });
-    table.appendChild(tbody);
-    return table;
-};
-
-/**
- * Rows present in `rows` but not in `other` (as a multiset by JSON key).
- *
- * @param {Array} rows
- * @param {Array} other
- * @return {Object} set of JSON keys
- */
-const extraRowKeys = (rows, other) => {
-    const counts = {};
-    (other || []).forEach((row) => {
-        const key = JSON.stringify(row);
-        counts[key] = (counts[key] || 0) + 1;
-    });
-    const extra = {};
-    (rows || []).forEach((row) => {
-        const key = JSON.stringify(row);
-        if (counts[key]) {
-            counts[key]--;
-        } else {
-            extra[key] = true;
-        }
-    });
-    return extra;
-};
-
-/**
  * Render the SQL schema + sample-data viewer.
  *
  * @param {HTMLElement} element
@@ -174,7 +112,7 @@ const renderSchema = (element, info, strings) => {
         const summary = document.createElement('summary');
         summary.textContent = table.name + ' (' + table.columns.map((c) => c.name + ' ' + c.type).join(', ') + ')';
         details.appendChild(summary);
-        details.appendChild(resultSetTable(table.sampleColumns, table.sampleRows, null));
+        details.appendChild(resultSetTable(table.sampleColumns, table.sampleRows, null, {strings: strings}));
         element.appendChild(details);
     });
 };
@@ -218,7 +156,191 @@ const addBlock = (parent, label, body) => {
 };
 
 /**
- * Render the worked examples from the visible test cases.
+ * A value cell for the examples table. Short values render inline; long or
+ * multi-line values are clamped to a few lines inside a native <details> so the
+ * row stays compact but the full value is one click (and keyboard/SR) away.
+ *
+ * @param {String} text
+ * @return {HTMLElement}
+ */
+const exampleValue = (text) => {
+    const s = String(text === null || text === undefined ? '' : text);
+    const pre = document.createElement('pre');
+    pre.className = 'codeatelier-cell';
+    pre.textContent = s;
+    if (s.length <= 80 && s.indexOf('\n') < 0) {
+        return pre;
+    }
+    pre.classList.add('codeatelier-clamp');
+    const details = document.createElement('details');
+    details.className = 'codeatelier-cell-expand';
+    const summary = document.createElement('summary');
+    summary.appendChild(pre);
+    details.appendChild(summary);
+    return details;
+};
+
+/**
+ * Build the examples heading + a height-capped, scrollable, focusable region
+ * wrapping a semantic table, and return its tbody to fill.
+ *
+ * @param {HTMLElement} element the examples container
+ * @param {String} headingText e.g. "Examples (8)"
+ * @param {String} ariaLabel the scroll-region label
+ * @param {String[]|null} headers column headers, or null for a single-column table
+ * @return {HTMLElement} the tbody
+ */
+const examplesScaffold = (element, headingText, ariaLabel, headers) => {
+    const heading = document.createElement('p');
+    heading.className = 'codeatelier-examples-heading';
+    heading.textContent = headingText;
+    element.appendChild(heading);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'codeatelier-examples-wrap';
+    wrap.setAttribute('role', 'region');
+    wrap.setAttribute('aria-label', ariaLabel);
+    wrap.tabIndex = 0;
+
+    const table = document.createElement('table');
+    table.className = 'codeatelier-examples-table';
+    const caption = document.createElement('caption');
+    caption.className = 'visually-hidden';
+    caption.textContent = headingText;
+    table.appendChild(caption);
+    if (headers && headers.length) {
+        const thead = document.createElement('thead');
+        const tr = document.createElement('tr');
+        headers.forEach((h) => {
+            const th = document.createElement('th');
+            th.scope = 'col';
+            th.textContent = h;
+            tr.appendChild(th);
+        });
+        thead.appendChild(tr);
+        table.appendChild(thead);
+    }
+    const tbody = document.createElement('tbody');
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    element.appendChild(wrap);
+    return tbody;
+};
+
+/**
+ * A "Use this input" button that loads an example into the scratch box.
+ *
+ * @param {HTMLElement} scratch the scratch input
+ * @param {Object} test the test whose input loads
+ * @param {Object} strings
+ * @return {HTMLElement}
+ */
+const useInputButton = (scratch, test, strings) => {
+    const use = document.createElement('button');
+    use.type = 'button';
+    use.className = 'btn btn-link btn-sm codeatelier-use-input';
+    use.textContent = strings.useinput || 'Use this input';
+    use.addEventListener('click', () => {
+        // For a function question the scratch box is driven by per-argument fields;
+        // distribute the example's argument array into them.
+        if (typeof scratch.codeatelierSetArgs === 'function') {
+            scratch.codeatelierSetArgs(String(test.input));
+        } else {
+            scratch.value = String(test.input);
+            scratch.dispatchEvent(new Event('input', {bubbles: true}));
+            scratch.focus();
+        }
+    });
+    return use;
+};
+
+/**
+ * A "Use this dataset" button for a SQL example: loads the example's own dataset
+ * as the active Run dataset and runs the student's query against it, so the data
+ * is revealed by running rather than dumped as DDL. Drives the override exposed on
+ * the workbench root by init() (mirrors the codeatelierSetArgs pattern).
+ *
+ * @param {HTMLElement} root the workbench root carrying codeatelierUseDataset
+ * @param {Object} test the test whose dataset loads
+ * @param {String} label what to name the active dataset in the banner
+ * @param {Object} strings
+ * @return {HTMLElement}
+ */
+const useDatasetButton = (root, test, label, strings) => {
+    const use = document.createElement('button');
+    use.type = 'button';
+    use.className = 'btn btn-link btn-sm codeatelier-use-dataset';
+    use.textContent = strings.usedataset || 'Use this dataset';
+    use.addEventListener('click', () => {
+        if (typeof root.codeatelierUseDataset === 'function') {
+            root.codeatelierUseDataset(String(test.datasetsql), label);
+        }
+    });
+    return use;
+};
+
+/**
+ * A value <td>, with an optional "Use this input" button (input/call cell only).
+ *
+ * @param {String} value
+ * @param {HTMLElement|null} scratch the scratch input to load on click, or null
+ * @param {Object|null} test the test whose input loads into the scratch box
+ * @param {Object} strings
+ * @return {HTMLElement}
+ */
+const exampleCell = (value, scratch, test, strings) => {
+    const td = document.createElement('td');
+    td.appendChild(exampleValue(value));
+    if (scratch && test) {
+        td.appendChild(useInputButton(scratch, test, strings));
+    }
+    return td;
+};
+
+/**
+ * Build the examples heading + a height-capped, scrollable, focusable region for
+ * a card layout (used by the multi-line scenarios), and return the region.
+ *
+ * @param {HTMLElement} element
+ * @param {String} headingText
+ * @param {String} ariaLabel
+ * @return {HTMLElement}
+ */
+const examplesCardRegion = (element, headingText, ariaLabel) => {
+    const heading = document.createElement('p');
+    heading.className = 'codeatelier-examples-heading';
+    heading.textContent = headingText;
+    element.appendChild(heading);
+    const wrap = document.createElement('div');
+    wrap.className = 'codeatelier-examples-wrap codeatelier-examples-cards';
+    wrap.setAttribute('role', 'region');
+    wrap.setAttribute('aria-label', ariaLabel);
+    wrap.tabIndex = 0;
+    element.appendChild(wrap);
+    return wrap;
+};
+
+/**
+ * Append the "N hidden" note (below the scroll region so it is always visible).
+ *
+ * @param {HTMLElement} element
+ * @param {Number} hidden
+ * @param {Object} strings
+ */
+const hiddenNote = (element, hidden, strings) => {
+    if (!hidden) {
+        return;
+    }
+    const note = document.createElement('p');
+    note.className = 'codeatelier-hidden-note';
+    note.textContent = hidden + ' ' + (strings.hidden || 'hidden') + (hidden === 1 ? '' : 's');
+    element.appendChild(note);
+};
+
+/**
+ * Render the worked examples from the visible test cases as a compact,
+ * scenario-aware, scrollable table (function: Call|Expected; stdin: Input|
+ * Expected; sql: a result-set card per row).
  *
  * @param {HTMLElement} element
  * @param {Object} config
@@ -233,13 +355,6 @@ const renderExamples = (element, config, strings) => {
         return;
     }
 
-    if (visible.length) {
-        const heading = document.createElement('p');
-        heading.className = 'codeatelier-examples-heading';
-        heading.textContent = strings.examples || 'Examples';
-        element.appendChild(heading);
-    }
-
     // The scratch input to load an example into ("Use this input"): the judge-tier
     // run-with-my-own-input box, or the practice-tier Run box. Absent on review and
     // for SQL (no per-input scratch), so the affordance simply does not appear.
@@ -248,50 +363,61 @@ const renderExamples = (element, config, strings) => {
         ? wrapper.querySelector('[data-role="scratchinput"], [data-role="scratch"]')
         : null;
 
-    visible.forEach((test, i) => {
-        const block = document.createElement('div');
-        block.className = 'codeatelier-example';
-        const title = document.createElement('span');
-        title.className = 'codeatelier-block-label';
-        title.textContent = (strings.test || 'Test') + ' ' + (i + 1);
-        block.appendChild(title);
+    if (visible.length) {
+        const heading = (strings.examples || 'Examples') + ' (' + visible.length + ')';
+        const region = strings.examplesregion || 'Worked examples';
 
         if (config.scenario === 'function') {
-            addBlock(block, strings.call || 'Call', formatCall(config.entrypoint, test.input));
-            addBlock(block, strings.expected || 'Expected', String(test.expected));
-        } else if (config.scenario === 'sql') {
-            const rows = parseJson(test.expected) || [];
-            addBlock(block, strings.expected || 'Expected', resultSetTable(null, rows, null));
-        } else {
-            if (test.input) {
-                addBlock(block, strings.input || 'Input', String(test.input));
-            }
-            addBlock(block, strings.expected || 'Expected', String(test.expected));
-        }
-
-        // Let the student load this example's input into the scratch box with one
-        // click, so they have a correct, runnable starting point to tweak.
-        if (scratch) {
-            const use = document.createElement('button');
-            use.type = 'button';
-            use.className = 'btn btn-link btn-sm codeatelier-use-input';
-            use.textContent = strings.useinput || 'Use this input';
-            use.addEventListener('click', () => {
-                scratch.value = String(test.input);
-                scratch.dispatchEvent(new Event('input', {bubbles: true}));
-                scratch.focus();
+            // A function call and its return are short and naturally tabular.
+            const tbody = examplesScaffold(element, heading, region,
+                [strings.call || 'Call', strings.expected || 'Expected']);
+            visible.forEach((test) => {
+                const tr = document.createElement('tr');
+                tr.appendChild(exampleCell(formatCall(config.entrypoint, test.input), scratch, test, strings));
+                tr.appendChild(exampleCell(String(test.expected), null, null, strings));
+                tbody.appendChild(tr);
             });
-            block.appendChild(use);
+        } else {
+            // stdin/stdout, SQL and project I/O is multi-line, so show full-width
+            // Input / Expected boxes per example (the competitive-programming layout)
+            // instead of cramming them into table columns.
+            const wrap = examplesCardRegion(element, heading, region);
+            visible.forEach((test, i) => {
+                const card = document.createElement('div');
+                card.className = 'codeatelier-example';
+                const title = document.createElement('span');
+                title.className = 'codeatelier-block-label';
+                title.textContent = (strings.test || 'Test') + ' ' + (i + 1);
+                card.appendChild(title);
+                if (config.scenario === 'sql') {
+                    addBlock(card, strings.expected || 'Expected',
+                        resultSetTable(null, parseJson(test.expected) || [], null, {strings: strings}));
+                    // An example with its own dataset doesn't dump the DDL; instead it
+                    // offers to run the student's query against that data ("Use this
+                    // dataset"), so the data is revealed by running. Practice tier only:
+                    // the in-browser Run is what the dataset loads into, and the judge
+                    // tier has no free-form SQL run to drive (the override is wired by
+                    // the practice init, which the judge tier returns before reaching).
+                    if (wrapper && !config.readonly && !config.isjudge
+                            && test.datasetsql && String(test.datasetsql).trim() !== '') {
+                        const label = (strings.test || 'Test') + ' ' + (i + 1);
+                        card.appendChild(useDatasetButton(wrapper, test, label, strings));
+                    }
+                } else {
+                    if (test.input) {
+                        addBlock(card, strings.input || 'Input', String(test.input));
+                    }
+                    addBlock(card, strings.expected || 'Expected', String(test.expected));
+                }
+                if (scratch) {
+                    card.appendChild(useInputButton(scratch, test, strings));
+                }
+                wrap.appendChild(card);
+            });
         }
-        element.appendChild(block);
-    });
-
-    if (hidden) {
-        const note = document.createElement('p');
-        note.className = 'codeatelier-hidden-note';
-        note.textContent = hidden + ' ' + (strings.hidden || 'hidden') + (hidden === 1 ? '' : 's');
-        element.appendChild(note);
     }
+
+    hiddenNote(element, hidden, strings);
 };
 
 /**
@@ -326,6 +452,20 @@ const renderFeedback = (element, graded, results, config, strings) => {
         }
 
         const result = results[index] || {};
+        const test = config.tests[index];
+        const status = (strings.test || 'Test') + ' ' + (index + 1) + ': '
+            + (tr.passed ? (strings.pass || 'passed') : (strings.fail || 'failed'));
+        // A passed test with no error and no teacher feedback has nothing to show
+        // on expand, so render it as a plain checklist line, not an empty accordion.
+        const hasbody = !!result.error || !tr.passed || !!(test && test.feedback);
+        if (!hasbody) {
+            const line = document.createElement('p');
+            line.className = 'codeatelier-feedback-line codeatelier-pass';
+            line.textContent = status;
+            element.appendChild(line);
+            return;
+        }
+
         const details = document.createElement('details');
         details.className = 'codeatelier-feedback ' + (tr.passed ? 'codeatelier-pass' : 'codeatelier-fail');
         if (!tr.passed && !firstfailureopen) {
@@ -333,8 +473,7 @@ const renderFeedback = (element, graded, results, config, strings) => {
             firstfailureopen = true;
         }
         const summary = document.createElement('summary');
-        summary.textContent = (strings.test || 'Test') + ' ' + (index + 1) + ': '
-            + (tr.passed ? (strings.pass || 'passed') : (strings.fail || 'failed'));
+        summary.textContent = status;
         details.appendChild(summary);
 
         const body = document.createElement('div');
@@ -345,7 +484,6 @@ const renderFeedback = (element, graded, results, config, strings) => {
         } else if (!tr.passed) {
             renderMismatch(body, config, config.tests[index], result, strings);
         }
-        const test = config.tests[index];
         if (test && test.feedback) {
             addBlock(body, strings.teacherfeedback || 'Feedback', String(test.feedback));
         }
@@ -372,12 +510,29 @@ const renderFeedback = (element, graded, results, config, strings) => {
  */
 const renderMismatch = (body, config, test, result, strings) => {
     if (config.scenario === 'sql') {
+        // Label both tables with the query's column names so they line up and stay
+        // readable. The stored Expected has no column names of its own, but its rows
+        // share the query's shape, so reuse the result's columns — unless the column
+        // counts differ (a wrong-shape answer), where headers would mislabel its
+        // values, in which case Expected falls back to headerless.
         const expectedrows = parseJson(test.expected) || [];
         const actualrows = result.rows || [];
+        const cols = result.columns || null;
+        const expectedcols = (cols && expectedrows.length && expectedrows[0].length === cols.length)
+            ? cols : null;
+        // Grading feedback uses a generous cap so a differing row is never hidden
+        // by truncation (small/medium result sets show in full; scroll handles the rest).
+        const diffopts = {strings: strings, cap: 200};
         addBlock(body, strings.expected || 'Expected',
-            resultSetTable(null, expectedrows, extraRowKeys(expectedrows, actualrows)));
+            resultSetTable(expectedcols, expectedrows, extraRowKeys(expectedrows, actualrows),
+                {...diffopts, diffside: 'expected'}));
         addBlock(body, strings.got || 'Got',
-            resultSetTable(result.columns, actualrows, extraRowKeys(actualrows, expectedrows)));
+            resultSetTable(cols, actualrows, extraRowKeys(actualrows, expectedrows),
+                {...diffopts, diffside: 'got'}));
+        const legend = document.createElement('p');
+        legend.className = 'codeatelier-diff-legend';
+        legend.textContent = strings.resultdifflegend || '';
+        body.appendChild(legend);
         return;
     }
 
@@ -418,7 +573,7 @@ const renderConsole = (element, result, config, strings) => {
     if (config.scenario === 'sql') {
         const rows = result.rows || [];
         if (rows.length || (result.columns && result.columns.length)) {
-            addBlock(element, strings.output || 'Output', resultSetTable(result.columns, rows, null));
+            addBlock(element, strings.output || 'Output', resultSetTable(result.columns, rows, null, {strings: strings}));
         } else {
             addBlock(element, strings.output || 'Output', strings.noresult || '(no rows)');
         }
@@ -464,31 +619,31 @@ const renderWebExamples = (element, config, strings) => {
     const tests = config.tests || [];
     const visible = tests.filter((t) => Number(t.visibility) === 1);
     const hidden = tests.length - visible.length;
+    if (!visible.length && !hidden) {
+        return;
+    }
     if (visible.length) {
-        const heading = document.createElement('p');
-        heading.className = 'codeatelier-examples-heading';
-        heading.textContent = strings.checks || 'What is checked';
-        element.appendChild(heading);
+        const heading = (strings.checks || 'What is checked') + ' (' + visible.length + ')';
+        const tbody = examplesScaffold(element, heading, strings.checks || 'What is checked', null);
+        visible.forEach((test) => {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.appendChild(exampleValue(describeAssertion(test, strings)));
+            if (test.actions && String(test.actions).trim()) {
+                const after = document.createElement('div');
+                after.className = 'codeatelier-example-after';
+                const label = document.createElement('span');
+                label.className = 'codeatelier-block-label';
+                label.textContent = strings.assertafter || 'After doing';
+                after.appendChild(label);
+                after.appendChild(exampleValue(String(test.actions)));
+                td.appendChild(after);
+            }
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        });
     }
-    visible.forEach((test, i) => {
-        const block = document.createElement('div');
-        block.className = 'codeatelier-example';
-        const title = document.createElement('span');
-        title.className = 'codeatelier-block-label';
-        title.textContent = (strings.check || 'Check') + ' ' + (i + 1);
-        block.appendChild(title);
-        addBlock(block, strings.assertexpect || 'Expect', describeAssertion(test, strings));
-        if (test.actions && String(test.actions).trim()) {
-            addBlock(block, strings.assertafter || 'After doing', String(test.actions));
-        }
-        element.appendChild(block);
-    });
-    if (hidden) {
-        const note = document.createElement('p');
-        note.className = 'codeatelier-hidden-note';
-        note.textContent = hidden + ' ' + (strings.hidden || 'hidden') + (hidden === 1 ? '' : 's');
-        element.appendChild(note);
-    }
+    hiddenNote(element, hidden, strings);
 };
 
 /**
@@ -805,19 +960,33 @@ export const init = (params) => {
         });
     }
 
+    // Reformat: re-indent the whole document per the language's indentation rules.
+    const formatbtn = root.querySelector('[data-role="editor-format"]');
+    if (formatbtn) {
+        formatbtn.addEventListener('click', () => {
+            if (editor && typeof editor.reindent === 'function') {
+                editor.reindent();
+                markStale();
+            }
+        });
+    }
+
     // Language picker: re-mount the editor in the chosen language and record the
-    // choice for submit / run / run-examples. The starter is only swapped when the
-    // student has not typed over it, so a language switch never discards real work.
+    // choice for submit / run / run-examples. Each language keeps its OWN code in a
+    // per-language buffer (like a multi-language CP editor), so switching language
+    // never carries code across or discards it — switching back restores that
+    // language's work, and the first visit to a language shows its starter.
     if (langselect && config.scenario !== 'project') {
+        const codeByLang = {};
+        codeByLang[currentLanguage] = editor.getValue();
         langselect.addEventListener('change', () => {
             const next = langselect.value;
             if (next === currentLanguage) {
                 return;
             }
             const starters = config.starters || {};
-            const current = editor.getValue();
-            const untouched = current.trim() === '' || current === (starters[currentLanguage] || '');
-            const nextValue = untouched ? (starters[next] || '') : current;
+            codeByLang[currentLanguage] = editor.getValue();
+            const nextValue = (next in codeByLang) ? codeByLang[next] : (starters[next] || '');
             try {
                 if (editor.destroy) {
                     editor.destroy();
@@ -850,10 +1019,20 @@ export const init = (params) => {
         return;
     }
 
-    // Scenario-shaped scratch input for Run.
+    // Scenario-shaped scratch input for Run. A function question gets per-argument
+    // fields (shared with the judge tier) instead of one raw args-array box.
+    const buildArgFields = () => setupFunctionArgs(scratchinput, {
+        wrapperid: config.wrapperid,
+        entrypoint: config.entrypoint,
+        tests: config.tests,
+        strings: strings,
+    });
     if (scratchwrap) {
         if (config.scenario === 'sql') {
             scratchwrap.style.display = 'none';
+        } else if (config.scenario === 'function' && buildArgFields()) {
+            scratchwrap.style.display = '';
+            scratchlabel.textContent = strings.argsheading || 'Run with your own arguments';
         } else {
             scratchwrap.style.display = '';
             scratchlabel.textContent = (config.scenario === 'function')
@@ -869,11 +1048,20 @@ export const init = (params) => {
         }
     }
 
+    // SQL "Use this dataset": a per-run dataset override for the Run (default = the
+    // question schema). A visible example loads its own dataset here and Run executes
+    // the student's query against it; the banner shows what's active and reverts.
+    let activeDataset = null;
+    let datasetBanner = null;
+
     // Console | Tests tabs (WAI-ARIA tabs: roving tabindex + arrow-key navigation).
     const tabs = Array.prototype.slice.call(root.querySelectorAll('[data-role="tab"]'));
     const setTab = (name) => {
         if (consoleel) {
             consoleel.style.display = (name === 'console') ? '' : 'none';
+        }
+        if (datasetBanner) {
+            datasetBanner.style.display = (name === 'console' && activeDataset) ? '' : 'none';
         }
         resultsel.style.display = (name === 'tests') ? '' : 'none';
         tabs.forEach((tab) => {
@@ -903,7 +1091,31 @@ export const init = (params) => {
             }
         });
     });
-    setTab('tests');
+    // Output starts empty: hide the tabs + panels behind a single call-to-action
+    // until the first Run/Check populates a panel, so there's no empty chrome up
+    // front. revealOutput() unhides them on first use.
+    const tablistEl = root.querySelector('.codeatelier-tabs');
+    const outputEmptyEl = root.querySelector('[data-role="output-empty"]');
+    let outputRevealed = false;
+    const revealOutput = (name) => {
+        if (!outputRevealed) {
+            outputRevealed = true;
+            if (tablistEl) {
+                tablistEl.hidden = false;
+            }
+            if (outputEmptyEl) {
+                outputEmptyEl.hidden = true;
+            }
+        }
+        setTab(name);
+    };
+    if (tablistEl) {
+        tablistEl.hidden = true;
+    }
+    if (consoleel) {
+        consoleel.style.display = 'none';
+    }
+    resultsel.style.display = 'none';
 
     // Focus mode: an opt-in split-pane that fills the viewport. Implemented as a
     // class on the question root so the editor, results and form fields keep
@@ -1044,7 +1256,7 @@ export const init = (params) => {
         if (editor.clearErrors) {
             editor.clearErrors();
         }
-        setTab('tests');
+        revealOutput('tests');
         run(editor.getValue(), currentLanguage, config.tests, runOptions())
             .then((result) => {
                 if (result.aborted) {
@@ -1069,8 +1281,9 @@ export const init = (params) => {
             });
     });
 
-    // Run: execute once with the scratch input, no grading.
-    runbutton.addEventListener('click', () => {
+    // Run: execute once with the scratch input (and, for SQL, the active dataset
+    // override), no grading. Factored so "Use this dataset" can trigger it too.
+    const doRun = () => {
         setRunning(true);
         statusel.textContent = strings.running || 'Running…';
         if (consoleel) {
@@ -1079,9 +1292,13 @@ export const init = (params) => {
         if (editor.clearErrors) {
             editor.clearErrors();
         }
-        setTab('console');
+        revealOutput('console');
         const scratch = scratchinput ? scratchinput.value : '';
-        run(editor.getValue(), currentLanguage, [{input: scratch}], runOptions())
+        const onecase = {input: scratch};
+        if (config.scenario === 'sql' && activeDataset) {
+            onecase.datasetsql = activeDataset;
+        }
+        run(editor.getValue(), currentLanguage, [onecase], runOptions())
             .then((result) => {
                 const single = (result.results && result.results.length) ? result.results[0] : result;
                 renderConsole(consoleel, result.aborted ? result : single, config, strings);
@@ -1095,7 +1312,44 @@ export const init = (params) => {
             .then(() => {
                 setRunning(false);
             });
-    });
+    };
+    runbutton.addEventListener('click', doRun);
+
+    // Examples drive the SQL dataset override through a function on the workbench
+    // root (mirrors scratch.codeatelierSetArgs). Only visible examples expose the
+    // button, so a hidden test's dataset is never runnable here.
+    const showActiveDataset = (label) => {
+        if (!consoleel || !consoleel.parentNode) {
+            return;
+        }
+        if (!datasetBanner) {
+            datasetBanner = document.createElement('div');
+            datasetBanner.className = 'codeatelier-active-dataset';
+            const text = document.createElement('span');
+            text.setAttribute('data-role', 'active-dataset-text');
+            const revert = document.createElement('button');
+            revert.type = 'button';
+            revert.className = 'btn btn-link btn-sm codeatelier-use-default';
+            revert.textContent = strings.usedefaultdata || 'Use default data';
+            revert.addEventListener('click', () => {
+                activeDataset = null;
+                datasetBanner.style.display = 'none';
+                doRun();
+            });
+            datasetBanner.appendChild(text);
+            datasetBanner.appendChild(revert);
+            consoleel.parentNode.insertBefore(datasetBanner, consoleel);
+        }
+        const tpl = strings.activedataset || 'Running against {$a}\'s data';
+        datasetBanner.querySelector('[data-role="active-dataset-text"]').textContent =
+            tpl.replace('{$a}', label);
+        datasetBanner.style.display = '';
+    };
+    root.codeatelierUseDataset = (datasetsql, label) => {
+        activeDataset = datasetsql;
+        showActiveDataset(label);
+        doRun();
+    };
 
     // Stop: cancel an in-flight run.
     if (stopbutton) {

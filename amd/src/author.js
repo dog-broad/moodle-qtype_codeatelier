@@ -28,6 +28,7 @@ import {setup as setupProjectFiles} from 'qtype_codeatelier/projectfiles';
 import {setupPreview} from 'qtype_codeatelier/webruntime';
 import {render as renderTemplate} from 'core/templates';
 import Ajax from 'core/ajax';
+import {resultSetTable, parseRows} from './resulttable.js';
 
 const byId = (id) => document.getElementById(id);
 
@@ -203,74 +204,160 @@ const initSignatureBuilder = (config) => {
 };
 
 /**
- * Read the test-case rows out of the repeated form elements, skipping blank
- * rows exactly as the server-side save does.
+ * The closest Moodle form-item wrapper for an element.
+ *
+ * @param {HTMLElement} el
+ * @return {HTMLElement|null}
+ */
+const fitemOf = (el) => (el ? (el.closest('.fitem') || el.closest('.form-group') || el.parentNode) : null);
+
+/**
+ * Gate the function signature on the chosen languages, and explain the contract.
+ *
+ * A typed signature only applies to compiled languages, which must declare their
+ * argument types over a bounded grammar (scalars, list<scalar>, map<string,scalar>).
+ * Dynamic languages (Python/JavaScript/…) receive the arguments as JSON of any
+ * shape — including lists of objects — and need no signature. So for a
+ * dynamic-only function question the signature field and builder are hidden and a
+ * note explains the JSON-arguments contract; when a compiled language is allowed
+ * the builder is shown with a note about the type limits. This keeps the teacher
+ * from guessing whether a nested-type question is supportable.
+ *
+ * @param {Object} config the authoring config
+ */
+const initSignatureVisibility = (config) => {
+    const field = byId(config.functionsignatureid);
+    const host = byId(config.signaturebuilderid);
+    const scenSel = byId(config.scenarioid);
+    if (!field || !scenSel) {
+        return;
+    }
+    const langSel = byId(config.languageid);
+    const langsSel = byId(config.languagesid);
+    const str = config.sigbuilderstrings || {};
+    const staticLangs = config.staticfunctionlangs || [];
+
+    const note = document.createElement('div');
+    note.className = 'codeatelier-signote text-muted small';
+    note.setAttribute('data-role', 'signature-note');
+    const anchor = fitemOf(host) || fitemOf(field);
+    if (anchor && anchor.parentNode) {
+        anchor.parentNode.insertBefore(note, anchor.nextSibling);
+    }
+
+    const allowedLangs = () => {
+        const set = [langSel ? langSel.value : ''];
+        if (langsSel) {
+            Array.prototype.slice.call(langsSel.selectedOptions || []).forEach((o) => {
+                if (set.indexOf(o.value) === -1) {
+                    set.push(o.value);
+                }
+            });
+        }
+        return set.filter(Boolean);
+    };
+
+    const update = () => {
+        const isfunc = scenSel.value === 'function';
+        const needsSig = isfunc && allowedLangs().some((l) => staticLangs.indexOf(l) !== -1);
+        // Hide the signature field + builder for a dynamic-only function question.
+        // A class (not inline style) so it survives Moodle's hideIf re-showing the
+        // field on scenario changes — the rule carries !important.
+        const hide = isfunc && !needsSig;
+        [fitemOf(field), fitemOf(host)].forEach((item) => {
+            if (item) {
+                item.classList.toggle('codeatelier-sighide', hide);
+            }
+        });
+        note.style.display = isfunc ? '' : 'none';
+        if (isfunc) {
+            note.textContent = needsSig ? (str.staticnote || '') : (str.dynamicnote || '');
+        }
+    };
+
+    update();
+    scenSel.addEventListener('change', update);
+    if (langSel) {
+        langSel.addEventListener('change', update);
+    }
+    if (langsSel) {
+        langsSel.addEventListener('change', update);
+    }
+};
+
+/**
+ * The test-editor model API, attached to the testcasesjson field by the
+ * testeditor module. Read lazily (at click time) since both modules init
+ * independently. Null if the editor has not mounted (e.g. JS-off fallback).
+ *
+ * @return {Object|null} {getTests, setExpected, fillAssertion}
+ */
+const testEditor = () => {
+    const field = byId('id_testcasesjson');
+    return field && field.codeatelierTestEditor ? field.codeatelierTestEditor : null;
+};
+
+/**
+ * Read the test cases from the editor model, skipping blank rows exactly as the
+ * server-side save does.
  *
  * @return {Array} test-case objects shaped like the renderer ships to the grader
  */
 const gatherTests = () => {
-    const tests = [];
-    document.querySelectorAll('textarea[name^="testinput["]').forEach((ta) => {
-        const match = ta.name.match(/\[(\d+)\]/);
-        if (!match) {
-            return;
-        }
-        const i = match[1];
-        const field = (base) => {
-            const el = document.querySelector('[name="' + base + '[' + i + ']"]');
-            return el ? el.value : '';
-        };
-        const input = ta.value;
-        const expected = field('testexpected');
-        if (input.trim() === '' && expected.trim() === '') {
-            return;
-        }
-        const visibility = parseInt(field('testvisibility'), 10);
-        tests.push({
-            input: input,
-            expected: expected,
-            matchmode: field('matchmode'),
-            tolerance: field('tolerance'),
-            weight: field('testweight'),
+    const api = testEditor();
+    if (!api) {
+        return [];
+    }
+    return api.getTests().map((t) => {
+        const visibility = parseInt(t.visibility, 10);
+        return {
+            input: t.input || '',
+            expected: t.expected || '',
+            matchmode: t.matchmode,
+            tolerance: t.tolerance,
+            weight: t.weight,
             visibility: visibility,
-            checkerquery: field('checkerquery'),
+            checkerquery: t.checkerquery || '',
+            // SQL per-test dataset (replaces the question schema for this test) — must
+            // ride along or the preview runs every test on the question schema.
+            datasetsql: t.datasetsql || '',
             // Mirror the renderer: hidden tests reveal nothing client-side, feedback included.
-            feedback: visibility === 1 ? field('testfeedback') : null,
-        });
-    });
-    return tests;
+            feedback: visibility === 1 ? (t.feedback || '') : null,
+        };
+    }).filter((t) => !(t.input.trim() === '' && t.expected.trim() === ''
+        && t.checkerquery.trim() === '' && t.datasetsql.trim() === ''));
 };
 
 /**
- * The non-blank test rows with their form elements, for run-to-capture.
+ * The non-blank test cases with their model index, for run-to-capture.
  *
- * @return {Array} {input, expected, matchmode, checkerquery, expectedEl}
+ * @return {Array} {input, expected, matchmode, checkerquery, index}
  */
 const activeRows = () => {
+    const api = testEditor();
+    if (!api) {
+        return [];
+    }
     const rows = [];
-    document.querySelectorAll('textarea[name^="testinput["]').forEach((ta) => {
-        const match = ta.name.match(/\[(\d+)\]/);
-        if (!match) {
-            return;
-        }
-        const i = match[1];
-        const expectedEl = document.querySelector('[name="testexpected[' + i + ']"]');
-        const matchEl = document.querySelector('[name="matchmode[' + i + ']"]');
-        const checkerEl = document.querySelector('[name="checkerquery[' + i + ']"]');
-        const input = ta.value;
-        const expected = expectedEl ? expectedEl.value : '';
-        const checkerquery = checkerEl ? checkerEl.value : '';
+    api.getTests().forEach((t, index) => {
+        const input = t.input || '';
+        const expected = t.expected || '';
+        const checkerquery = t.checkerquery || '';
+        const datasetsql = t.datasetsql || '';
         // A row is active if any of its inputs is set (SQL SELECT rows have no
-        // stdin, so a checker query or an expected value also counts).
-        if (input.trim() === '' && expected.trim() === '' && checkerquery.trim() === '') {
+        // stdin, so a checker query, a per-test dataset, or an expected value
+        // also counts — a dataset-only row still needs its Expected captured).
+        if (input.trim() === '' && expected.trim() === ''
+                && checkerquery.trim() === '' && datasetsql.trim() === '') {
             return;
         }
         rows.push({
             input: input,
             expected: expected,
-            matchmode: matchEl ? matchEl.value : 'trimmed',
+            matchmode: t.matchmode || 'trimmed',
             checkerquery: checkerquery,
-            expectedEl: expectedEl,
+            datasetsql: datasetsql,
+            index: index,
         });
     });
     return rows;
@@ -339,6 +426,7 @@ export const init = (params) => {
     // signature string into the functionsignature field (which still accepts typed
     // input — the builder is an enhancement that keeps it in sync).
     initSignatureBuilder(config);
+    initSignatureVisibility(config);
 
     // CodeMirror on the starter-code field, re-mounted when the language changes.
     if (starterTa) {
@@ -373,32 +461,17 @@ export const init = (params) => {
         let projectEditor = null;
         let webPicker = null;
 
-        // Fill the first empty assertion row from a picked element: its selector,
-        // and sensible defaults (check the text equals the element's text).
+        // Fill an assertion from a picked element via the editor model: its
+        // selector, plus sensible defaults (check the text equals the element's).
         const fillAssertionRow = (selector, text, message) => {
-            const fields = Array.prototype.slice.call(document.querySelectorAll('[name^="selector["]'));
-            const target = fields.find((f) => !f.value.trim());
-            if (!target) {
-                if (message) {
-                    message.textContent = strings.pickaddrow || 'Add another check row, then pick again.';
-                }
+            const api = testEditor();
+            if (!api) {
                 return;
             }
-            const idx = target.name.replace(/^selector\[(\d+)\]$/, '$1');
-            const setIfEmpty = (name, value) => {
-                const el = document.querySelector('[name="' + name + '[' + idx + ']"]');
-                if (el && !String(el.value).trim()) {
-                    el.value = value;
-                }
-            };
-            target.value = selector;
-            setIfEmpty('assertproperty', 'text');
-            setIfEmpty('testexpected', text);
+            api.fillAssertion(selector, text);
             if (message) {
                 message.textContent = (strings.pickfilled || 'Added a check for') + ' ' + selector;
             }
-            target.scrollIntoView({block: 'center'});
-            target.focus();
         };
 
         // Build the "pick an element" preview + button for a web question.
@@ -673,8 +746,60 @@ export const init = (params) => {
 
     btn.addEventListener('click', () => {
         const wrapperid = config.previewid + '_wb';
+        const scen = scenSel ? scenSel.value : 'stdinstdout';
+        const entryfileField = byId(config.entryfileid);
+        const langsSel = byId(config.languagesid);
+        const tierSel = byId(config.tierid);
+        const allornothing = byId('id_allornothing');
+
+        const allowedLangs = () => {
+            const set = [langSel ? langSel.value : 'python'];
+            if (langsSel) {
+                Array.prototype.slice.call(langsSel.selectedOptions || []).forEach((o) => {
+                    if (set.indexOf(o.value) === -1) {
+                        set.push(o.value);
+                    }
+                });
+            }
+            return set;
+        };
+        let starterMap = {};
+        const startersHidden = byId(config.startersid);
+        if (startersHidden) {
+            try {
+                starterMap = JSON.parse(startersHidden.value || '{}') || {};
+            } catch (e) {
+                starterMap = {};
+            }
+        }
+
+        // control.js reads its config from the wrapper's data-config attribute (the
+        // student renderer ships it the same way), so build the full control config
+        // and hand it to the template — not as initControl params, which are ignored
+        // beyond the wrapper id.
+        const controlconfig = {
+            wrapperid: wrapperid,
+            language: langSel ? langSel.value : 'python',
+            languages: allowedLangs(),
+            starters: starterMap,
+            scenario: scen,
+            entrypoint: byId(config.entrypointid) ? byId(config.entrypointid).value : '',
+            entryfile: scen === 'web' ? 'index.html' : (entryfileField ? entryfileField.value.trim() : ''),
+            schemasql: (scen === 'sql' && schemaTa) ? schemaTa.value : null,
+            pyodidebaseurl: config.pyodidebaseurl,
+            sqljsbaseurl: config.sqljsbaseurl,
+            tests: gatherTests(),
+            timeoutms: config.timeoutms,
+            readonly: false,
+            isjudge: !!(tierSel && tierSel.value === 'judge'),
+            allornothing: !!(allornothing && allornothing.checked),
+            editortheme: 'auto',
+            strings: config.strings,
+        };
+
         const context = Object.assign({}, config.previewcontext, {
             wrapperid: wrapperid,
+            controlconfig: JSON.stringify(controlconfig),
             questiontext: byId(config.questiontextid) ? byId(config.questiontextid).value : '',
             answername: wrapperid + '_answer',
             answerid: wrapperid + '_answer',
@@ -692,22 +817,11 @@ export const init = (params) => {
             container.querySelectorAll('[data-role="answer"], [data-role="score"]').forEach((el) => {
                 el.removeAttribute('name');
             });
-            initControl({
-                wrapperid: wrapperid,
-                language: langSel ? langSel.value : 'python',
-                scenario: scenSel ? scenSel.value : 'stdinstdout',
-                entrypoint: byId(config.entrypointid) ? byId(config.entrypointid).value : '',
-                schemasql: schemaTa ? schemaTa.value : '',
-                pyodidebaseurl: config.pyodidebaseurl,
-                sqljsbaseurl: config.sqljsbaseurl,
-                tests: gatherTests(),
-                timeoutms: config.timeoutms,
-                readonly: false,
-                strings: config.strings,
-            });
+            initControl({wrapperid: wrapperid});
             return null;
-        }).catch(() => {
-            container.textContent = config.strings.runerror || 'Preview could not be rendered.';
+        }).catch((err) => {
+            container.textContent = (config.strings.runerror || 'Preview could not be rendered.')
+                + ' ' + String(err && err.message ? err.message : err);
         });
     });
 
@@ -725,10 +839,80 @@ export const init = (params) => {
         }
     };
 
+    // Per-test review panel rendered after a capture, so the author can confirm
+    // what was written into each Expected field (and which tests errored) without
+    // opening every row. Replaces itself on each capture; cleared on the next run.
+    const clearCaptureReview = () => {
+        if (!statusEl || !statusEl.parentNode) {
+            return;
+        }
+        const existing = statusEl.parentNode.querySelector('[data-role="capture-review"]');
+        if (existing) {
+            existing.remove();
+        }
+    };
+    const renderCaptureReview = (rows, items, scenario) => {
+        clearCaptureReview();
+        if (!statusEl || !statusEl.parentNode || !rows.length) {
+            return;
+        }
+        const panel = document.createElement('div');
+        panel.className = 'codeatelier-capture-review';
+        panel.setAttribute('data-role', 'capture-review');
+        const heading = document.createElement('p');
+        heading.className = 'codeatelier-block-label';
+        heading.textContent = cstr.reviewheading || 'Captured outputs — review each before saving';
+        panel.appendChild(heading);
+
+        const list = document.createElement('ul');
+        list.className = 'codeatelier-capture-list';
+        rows.forEach((row, k) => {
+            const item = items[k] || {};
+            const errored = (item.output === null || item.output === undefined);
+            const li = document.createElement('li');
+            li.className = 'codeatelier-capture-item ' + (errored ? 'codeatelier-fail' : 'codeatelier-pass');
+
+            const status = document.createElement('span');
+            status.className = 'codeatelier-test-status codeatelier-status-' + (errored ? 'fail' : 'pass');
+            status.textContent = (cstr.test || 'Test') + ' ' + (row.index + 1) + ': '
+                + (errored ? (cstr.itemerror || 'Could not run') : (cstr.itemok || 'Captured'));
+            li.appendChild(status);
+
+            if (errored) {
+                if (item.error) {
+                    const err = document.createElement('pre');
+                    err.className = 'codeatelier-test-error';
+                    err.textContent = String(item.error);
+                    li.appendChild(err);
+                }
+            } else {
+                const label = document.createElement('span');
+                label.className = 'codeatelier-diff-label';
+                label.textContent = cstr.expected || 'Expected';
+                li.appendChild(label);
+                const sqlrows = (scenario === 'sql') ? parseRows(item.output) : null;
+                if (sqlrows !== null) {
+                    const cols = item.columns ? parseRows(item.columns) : null;
+                    li.appendChild(resultSetTable(cols, sqlrows, null, {strings: {rowsnote: cstr.rowsnote}}));
+                } else {
+                    const pre = document.createElement('pre');
+                    pre.className = 'codeatelier-diff-value';
+                    pre.textContent = String(item.output);
+                    li.appendChild(pre);
+                }
+            }
+            list.appendChild(li);
+        });
+        panel.appendChild(list);
+        statusEl.parentNode.insertBefore(panel, statusEl.nextSibling);
+    };
+
     // Run the reference in-browser; one captured-output string (or null) per row.
     const capturePractice = (code, rows) => {
         const scenario = scenSel ? scenSel.value : 'stdinstdout';
-        const cases = rows.map((row) => ({input: row.input, checkerquery: row.checkerquery}));
+        const cases = rows.map((row) => ({
+            input: row.input, checkerquery: row.checkerquery, datasetsql: row.datasetsql,
+        }));
         return runCode(code, langSel ? langSel.value : 'python', cases, {
             scenario: scenario,
             entrypoint: byId(config.entrypointid) ? byId(config.entrypointid).value : '',
@@ -738,7 +922,14 @@ export const init = (params) => {
             timeoutMs: config.timeoutms,
         }).then((res) => {
             const results = res.results || [];
-            return rows.map((row, k) => capturedExpected(results[k], scenario));
+            return rows.map((row, k) => {
+                const r = results[k];
+                return {
+                    output: capturedExpected(r, scenario),
+                    error: (r && r.error) ? String(r.error) : null,
+                    columns: (scenario === 'sql' && r && r.columns) ? JSON.stringify(r.columns) : '',
+                };
+            });
         });
     };
 
@@ -762,20 +953,32 @@ export const init = (params) => {
                     input: row.input,
                     matchmode: row.matchmode,
                     checkerquery: row.checkerquery,
+                    datasetsql: row.datasetsql,
                 })),
             },
-        }])[0].then((res) => (res.results || []).map((r) => (r.ok ? r.output : null)));
+        }])[0].then((res) => (res.results || []).map((r) => ({
+            output: r.ok ? r.output : null,
+            error: r.ok ? null : (r.error || r.message || null),
+            columns: r.columns || '',
+        })));
     };
 
-    const reportCapture = (ok, failed, total) => {
+    const reportCapture = (ok, failed, total, firsterror) => {
         if (failed === 0) {
             setStatus((cstr.capturedone || 'Captured {$a} test(s).').replace('{$a}', String(ok)));
-        } else {
-            const tmpl = cstr.captureerrors || 'Captured {$a->ok} of {$a->total}; {$a->failed} errored.';
-            setStatus(tmpl.replace('{$a->ok}', String(ok))
-                .replace('{$a->total}', String(total))
-                .replace('{$a->failed}', String(failed)));
+            return;
         }
+        const tmpl = cstr.captureerrors || 'Captured {$a->ok} of {$a->total}; {$a->failed} errored.';
+        let msg = tmpl.replace('{$a->ok}', String(ok))
+            .replace('{$a->total}', String(total))
+            .replace('{$a->failed}', String(failed));
+        // Surface the first underlying error so the teacher can fix the cause (a
+        // common one for function questions: the Input must be the JSON argument
+        // list, so a single list argument is wrapped — [[...]], not [...]).
+        if (firsterror) {
+            msg += ' ' + (cstr.capturefirsterror || 'First error: {$a}').replace('{$a}', firsterror);
+        }
+        setStatus(msg);
     };
 
     if (captureBtn) {
@@ -791,21 +994,28 @@ export const init = (params) => {
                 return;
             }
             setStatus(cstr.running || 'Running…');
+            clearCaptureReview();
             captureBtn.disabled = true;
-            (isJudge() ? captureJudge(code, rows) : capturePractice(code, rows)).then((outputs) => {
+            const api = testEditor();
+            const scenario = scenSel ? scenSel.value : 'stdinstdout';
+            (isJudge() ? captureJudge(code, rows) : capturePractice(code, rows)).then((items) => {
                 let ok = 0;
                 let failed = 0;
+                let firsterror = null;
                 rows.forEach((row, k) => {
-                    const out = outputs[k];
-                    if (out === null || out === undefined || !row.expectedEl) {
+                    const item = items[k] || {};
+                    if (item.output === null || item.output === undefined || !api) {
                         failed++;
+                        if (!firsterror && item.error) {
+                            firsterror = item.error;
+                        }
                         return;
                     }
-                    row.expectedEl.value = out;
-                    row.expectedEl.dispatchEvent(new Event('change', {bubbles: true}));
+                    api.setExpected(row.index, item.output);
                     ok++;
                 });
-                reportCapture(ok, failed, rows.length);
+                reportCapture(ok, failed, rows.length, firsterror);
+                renderCaptureReview(rows, items, scenario);
                 return null;
             }).catch((err) => {
                 setStatus(String(err && err.message ? err.message : err));

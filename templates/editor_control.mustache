@@ -86,6 +86,7 @@
                     <option value="hc">{{themehighcontrast}}</option>
                 </select>
                 <button type="button" class="btn btn-link btn-sm codeatelier-editor-find" data-role="editor-find">{{findlabel}}</button>
+                <button type="button" class="btn btn-link btn-sm codeatelier-editor-format" data-role="editor-format">{{formatlabel}}</button>
                 <details class="codeatelier-shortcuts">
                     <summary>{{shortcutstitle}}</summary>
                     <div class="codeatelier-shortcuts-body">{{{shortcutshtml}}}</div>
@@ -138,12 +139,14 @@
                 aria-controls="{{wrapperid}}_panel_tests" aria-selected="true"
                 data-role="tab" data-tab="tests">{{testslabel}}</button>
         </div>
+        <p class="codeatelier-output-empty" data-role="output-empty">{{outputempty}}</p>
         {{/isjudge}}
         {{#isjudge}}
         <p class="codeatelier-judgenote small">{{judgenote}}</p>
         {{#canrunexamples}}
         <div class="codeatelier-actions">
             <button type="button" class="btn btn-secondary" data-role="runexamples">{{runexampleslabel}}</button>
+            <button type="button" class="btn btn-link btn-sm" data-role="runexamples-clear" hidden></button>
         </div>
         <div class="codeatelier-runresults" data-role="runresults" aria-live="polite"></div>
         {{/canrunexamples}}

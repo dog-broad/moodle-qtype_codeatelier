@@ -24,6 +24,8 @@
  */
 
 import Ajax from 'core/ajax';
+import {setupFunctionArgs} from './argfields.js';
+import {resultSetTable, extraRowKeys, parseRows} from './resulttable.js';
 
 /**
  * @param {Object} config
@@ -46,7 +48,28 @@ export const init = (config) => {
     const langField = root.querySelector('[data-role="language"]');
     const strings = config.strings || {};
 
+    // The scenario (from the workbench config) decides how to render a result:
+    // a SQL example's expected/actual arrive as JSON row arrays, rendered as a
+    // table for parity with the practice tier rather than dumped as raw text.
+    let scenario = '';
+    try {
+        scenario = JSON.parse(root.dataset.config || '{}').scenario || '';
+    } catch (e) {
+        scenario = '';
+    }
+
     const language = () => (langField && langField.value) ? langField.value : config.language;
+
+    // A compact Clear sits next to the Run button (shown only when there are
+    // results) so dismissing them costs no vertical space.
+    const clearBtn = root.querySelector('[data-role="runexamples-clear"]');
+    if (clearBtn) {
+        clearBtn.textContent = strings.clear || 'Clear';
+        clearBtn.addEventListener('click', () => {
+            out.textContent = '';
+            clearBtn.hidden = true;
+        });
+    }
 
     button.addEventListener('click', () => {
         button.disabled = true;
@@ -55,11 +78,17 @@ export const init = (config) => {
             methodname: 'qtype_codeatelier_run_examples',
             args: {questionid: config.questionid, code: answer.value, language: language()},
         }])[0].then((result) => {
-            render(out, result, strings);
+            render(out, result, strings, scenario);
+            if (clearBtn) {
+                clearBtn.hidden = false;
+            }
             button.disabled = false;
             return result;
         }).catch((error) => {
             out.textContent = (error && error.message) ? error.message : String(error);
+            if (clearBtn) {
+                clearBtn.hidden = false;
+            }
             button.disabled = false;
         });
     });
@@ -71,6 +100,31 @@ export const init = (config) => {
     const scratchIn = root.querySelector('[data-role="scratchinput"]');
     const scratchOut = root.querySelector('[data-role="scratchoutput"]');
     if (scratchBtn && scratchIn && scratchOut) {
+        // Function questions get the same per-argument fields as the practice tier
+        // (so a single list argument is [1, 2, 3], not [[1, 2, 3]]); the assembled
+        // args array lands in scratchIn, which the run reads. The example tests and
+        // entrypoint come from the workbench config on the wrapper.
+        let wcfg = {};
+        try {
+            wcfg = JSON.parse(root.dataset.config || '{}');
+        } catch (e) {
+            wcfg = {};
+        }
+        if (wcfg.scenario === 'function') {
+            const built = setupFunctionArgs(scratchIn, {
+                wrapperid: config.wrapperid,
+                entrypoint: wcfg.entrypoint,
+                tests: wcfg.tests,
+                strings: strings,
+            });
+            const label = scratchIn.closest('.codeatelier-scratch-judge');
+            if (built && label) {
+                const heading = label.querySelector('label');
+                if (heading) {
+                    heading.textContent = strings.argsheading || 'Run with your own arguments';
+                }
+            }
+        }
         scratchBtn.addEventListener('click', () => {
             scratchBtn.disabled = true;
             scratchOut.textContent = strings.running || 'Running…';
@@ -131,8 +185,9 @@ const renderScratch = (out, result, strings) => {
  * @param {HTMLElement} out
  * @param {Object} result
  * @param {Object} strings
+ * @param {String} scenario the question scenario (sql renders result tables)
  */
-const render = (out, result, strings) => {
+const render = (out, result, strings, scenario) => {
     out.textContent = '';
     if (result.verdict === 'CE' && result.compileoutput) {
         compileBlock(out, result.compileoutput, strings);
@@ -141,17 +196,48 @@ const render = (out, result, strings) => {
     const list = document.createElement('ul');
     list.className = 'codeatelier-judge-tests';
     result.examples.forEach((ex) => {
-        list.appendChild(renderExample(ex, strings));
+        list.appendChild(renderExample(ex, strings, scenario));
     });
     out.appendChild(list);
 };
 
 /**
+ * A labelled SQL result-set table diff row (expected or got), with the rows that
+ * differ from the other side highlighted — the same rendering the practice tier
+ * uses, so both tiers show an identical table instead of raw CSV/JSON text.
+ *
+ * @param {String} label
+ * @param {String} rowsjson the side's rows as a JSON array string
+ * @param {String} otherjson the other side's rows (for diff highlighting)
+ * @param {Array|null} columns the result's column names (header), or null
+ * @param {String} side 'expected' | 'got' (drives the per-side row marker)
+ * @param {Object} strings
+ * @return {HTMLElement|null} null when the value is not a JSON row array
+ */
+const sqlDiffRow = (label, rowsjson, otherjson, columns, side, strings) => {
+    const rows = parseRows(rowsjson);
+    if (rows === null) {
+        return null;
+    }
+    const other = parseRows(otherjson);
+    const row = document.createElement('div');
+    row.className = 'codeatelier-diff-row';
+    const l = document.createElement('span');
+    l.className = 'codeatelier-diff-label';
+    l.textContent = label;
+    row.appendChild(l);
+    row.appendChild(resultSetTable(columns, rows, other !== null ? extraRowKeys(rows, other) : null,
+        {strings: strings, diffside: side}));
+    return row;
+};
+
+/**
  * @param {Object} ex one example result
  * @param {Object} strings
+ * @param {String} scenario the question scenario
  * @return {HTMLElement}
  */
-const renderExample = (ex, strings) => {
+const renderExample = (ex, strings, scenario) => {
     const li = document.createElement('li');
     li.className = 'codeatelier-judge-test ' + (ex.passed ? 'codeatelier-pass' : 'codeatelier-fail');
 
@@ -167,11 +253,30 @@ const renderExample = (ex, strings) => {
         } else {
             const diff = document.createElement('div');
             diff.className = 'codeatelier-test-diff';
-            if (ex.input && ex.input.trim() !== '') {
-                diff.appendChild(diffRow(strings.input || 'Input', ex.input));
+            // SQL: expected/actual are JSON row arrays — render result tables (with
+            // differing rows highlighted + column headers), matching the practice tier.
+            // Fall back to text if they are not parseable rows.
+            const cols = (scenario === 'sql') ? parseRows(ex.columns) : null;
+            const exprow = (scenario === 'sql')
+                ? sqlDiffRow(strings.expected || 'Expected', ex.expected, ex.actual, cols, 'expected', strings) : null;
+            const gotrow = (scenario === 'sql')
+                ? sqlDiffRow(strings.got || 'Got', ex.actual, ex.expected, cols, 'got', strings) : null;
+            if (exprow && gotrow) {
+                diff.appendChild(exprow);
+                diff.appendChild(gotrow);
+                if (strings.resultdifflegend) {
+                    const legend = document.createElement('p');
+                    legend.className = 'codeatelier-diff-legend';
+                    legend.textContent = strings.resultdifflegend;
+                    diff.appendChild(legend);
+                }
+            } else {
+                if (ex.input && ex.input.trim() !== '') {
+                    diff.appendChild(diffRow(strings.input || 'Input', ex.input));
+                }
+                diff.appendChild(diffRow(strings.expected || 'Expected', ex.expected));
+                diff.appendChild(diffRow(strings.got || 'Got', ex.actual));
             }
-            diff.appendChild(diffRow(strings.expected || 'Expected', ex.expected));
-            diff.appendChild(diffRow(strings.got || 'Got', ex.actual));
             li.appendChild(diff);
         }
     }

@@ -181,6 +181,37 @@ class qtype_codeatelier extends question_type {
             'id ASC'
         );
 
+        // Test cases arrive from the editor as one JSON field. Expand it into the
+        // per-field arrays the loop below already consumes, so the record build +
+        // insert/update/delete path is reused unchanged.
+        if (isset($question->testcasesjson)) {
+            $decoded = json_decode((string) $question->testcasesjson, true);
+            foreach (['testinput', 'testexpected', 'matchmode', 'tolerance', 'testweight',
+                    'testvisibility', 'checkerquery', 'testdatasetsql', 'testfeedback', 'selector',
+                    'assertproperty', 'assertmatcher', 'actions', 'subtask'] as $arrayfield) {
+                $question->$arrayfield = [];
+            }
+            foreach (is_array($decoded) ? $decoded : [] as $test) {
+                if (!is_array($test)) {
+                    continue;
+                }
+                $question->testinput[] = (string) ($test['input'] ?? '');
+                $question->testexpected[] = (string) ($test['expected'] ?? '');
+                $question->matchmode[] = (string) ($test['matchmode'] ?? 'trimmed');
+                $question->tolerance[] = (string) ($test['tolerance'] ?? '');
+                $question->testweight[] = (string) ($test['weight'] ?? '1');
+                $question->testvisibility[] = (int) ($test['visibility'] ?? 1);
+                $question->checkerquery[] = (string) ($test['checkerquery'] ?? '');
+                $question->testdatasetsql[] = (string) ($test['datasetsql'] ?? '');
+                $question->testfeedback[] = (string) ($test['feedback'] ?? '');
+                $question->selector[] = (string) ($test['selector'] ?? '');
+                $question->assertproperty[] = (string) ($test['assertproperty'] ?? '');
+                $question->assertmatcher[] = (string) ($test['assertmatcher'] ?? '');
+                $question->actions[] = (string) ($test['actions'] ?? '');
+                $question->subtask[] = (int) ($test['subtask'] ?? 0);
+            }
+        }
+
         $sortorder = 0;
         $isweb = (($question->scenario ?? '') === 'web');
         $inputs = isset($question->testinput) ? $question->testinput : [];
@@ -216,6 +247,11 @@ class qtype_codeatelier extends question_type {
             $record->weight = $question->testweight[$key];
             $record->visibility = $question->testvisibility[$key];
             $record->checkerquery = isset($question->checkerquery[$key]) ? $question->checkerquery[$key] : null;
+            // SQL scenario: an optional per-test dataset (replaces the question schema
+            // for this test). Stored null when empty so grading falls back cleanly.
+            $record->datasetsql = (isset($question->testdatasetsql[$key])
+                    && trim((string) $question->testdatasetsql[$key]) !== '')
+                ? $question->testdatasetsql[$key] : null;
             $record->feedback = isset($question->testfeedback[$key]) ? $question->testfeedback[$key] : null;
             // Web scenario: the DOM assertion (selector + property + matcher) and
             // optional interaction actions. Null for every other scenario.
@@ -347,7 +383,7 @@ class qtype_codeatelier extends question_type {
             $output .= "    <testcase>\n";
             foreach (
                 ['input', 'expected', 'matchmode', 'tolerance', 'weight',
-                    'visibility', 'checkerquery', 'feedback',
+                    'visibility', 'checkerquery', 'datasetsql', 'feedback',
                     'selector', 'assertproperty', 'assertmatcher', 'actions', 'subtask'] as $field
             ) {
                 $value = isset($test->$field) ? $test->$field : '';
@@ -410,7 +446,7 @@ class qtype_codeatelier extends question_type {
 
         foreach (
             ['testinput', 'testexpected', 'matchmode', 'tolerance',
-                'testweight', 'testvisibility', 'checkerquery', 'testfeedback',
+                'testweight', 'testvisibility', 'checkerquery', 'testdatasetsql', 'testfeedback',
                 'selector', 'assertproperty', 'assertmatcher', 'actions', 'subtask'] as $arr
         ) {
             $qo->$arr = [];
@@ -424,6 +460,7 @@ class qtype_codeatelier extends question_type {
             $qo->testweight[] = $format->getpath($tc, ['#', 'weight', 0, '#'], '1');
             $qo->testvisibility[] = $format->getpath($tc, ['#', 'visibility', 0, '#'], 1);
             $qo->checkerquery[] = $format->getpath($tc, ['#', 'checkerquery', 0, '#'], '');
+            $qo->testdatasetsql[] = $format->getpath($tc, ['#', 'datasetsql', 0, '#'], '');
             $qo->testfeedback[] = $format->getpath($tc, ['#', 'feedback', 0, '#'], '');
             $qo->selector[] = $format->getpath($tc, ['#', 'selector', 0, '#'], '');
             $qo->assertproperty[] = $format->getpath($tc, ['#', 'assertproperty', 0, '#'], '');
@@ -491,16 +528,24 @@ class qtype_codeatelier extends question_type {
             'score' => 'result_score',
             'schematables' => 'schematables',
             'examples' => 'examples',
+            'examplesregion' => 'examplesregion',
             'input' => 'input',
             'expected' => 'expected',
             'call' => 'result_call',
             'got' => 'result_got',
             'argslabel' => 'scratchargs',
+            'argn' => 'argn',
+            'argsheading' => 'argsheading',
             'scratchplaceholderfn' => 'scratchplaceholderfn',
             'scratchplaceholderio' => 'scratchplaceholderio',
             'output' => 'output',
             'stopped' => 'stopped',
             'noresult' => 'noresult',
+            'rowsnote' => 'rowsnote',
+            'resultdifflegend' => 'resultdifflegend',
+            'usedataset' => 'usedataset',
+            'usedefaultdata' => 'usedefaultdata',
+            'activedataset' => 'activedataset',
             'teacherfeedback' => 'result_feedback',
             'stale' => 'stale',
             'degraded' => 'degraded',
@@ -552,8 +597,10 @@ class qtype_codeatelier extends question_type {
             'consolelabel' => get_string('consolelabel', 'qtype_codeatelier'),
             'testslabel' => get_string('testslabel', 'qtype_codeatelier'),
             'outputtabslabel' => get_string('outputtabs', 'qtype_codeatelier'),
+            'outputempty' => get_string('outputempty', 'qtype_codeatelier'),
             'practicenote' => get_string('practicenote', 'qtype_codeatelier'),
             'findlabel' => get_string('editorfind', 'qtype_codeatelier'),
+            'formatlabel' => get_string('editorformat', 'qtype_codeatelier'),
             'shortcutstitle' => get_string('editorshortcutstitle', 'qtype_codeatelier'),
             'shortcutshtml' => get_string('editorshortcuts', 'qtype_codeatelier'),
             'themelabel' => get_string('editortheme', 'qtype_codeatelier'),

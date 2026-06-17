@@ -49,6 +49,24 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             );
         }
 
+        // How to put syntax-highlighted code in the question text. The attempt page
+        // highlights any language-tagged <pre><code> block; this points authors at
+        // the editor's HTML view, which works regardless of the editor's toolbar.
+        $codeblocklangs = 'python, sql, javascript, typescript, c, cpp, java, go, rust, php, csharp, html, css';
+        $codeblocksnippet = "<pre><code class=\"language-python\">\n"
+            . "def add(a, b):\n    return a + b\n</code></pre>";
+        $codeblockhelp = html_writer::start_tag('details', ['class' => 'codeatelier-codeblockhelp'])
+            . html_writer::tag('summary', get_string('codeblockhelp', 'qtype_codeatelier'))
+            . html_writer::tag('p', get_string('codeblockhelp_body', 'qtype_codeatelier', $codeblocklangs))
+            . html_writer::tag('pre', s($codeblocksnippet))
+            . html_writer::end_tag('details');
+        $mform->addElement('static', 'codeblockhelp', '', $codeblockhelp);
+        // The guidance is about the question text, so sit it right above that field
+        // (which the parent form added before definition_inner ran).
+        if ($mform->elementExists('questiontext')) {
+            $mform->insertElementBefore($mform->removeElement('codeblockhelp', false), 'questiontext');
+        }
+
         $mform->addElement(
             'select',
             'tier',
@@ -178,6 +196,16 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         $mform->addHelpButton('schemasql', 'schemasql', 'qtype_codeatelier');
         $mform->hideIf('schemasql', 'scenario', 'neq', 'sql');
 
+        // A soft reminder (not a hard requirement — a query may legitimately need
+        // no tables, e.g. SELECT without FROM). Shown only for the SQL format.
+        $mform->addElement(
+            'static',
+            'schemanote',
+            '',
+            html_writer::div(get_string('schemanote', 'qtype_codeatelier'), 'small text-muted')
+        );
+        $mform->hideIf('schemanote', 'scenario', 'neq', 'sql');
+
         // Project scenario (multi-file, judge tier only): the entry/main file name
         // and the starter file set. The file set is a JS-managed file-tab editor
         // (the same one the student attempt uses) that keeps this textarea synced
@@ -213,6 +241,9 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         // language set and single-field reference solution do not apply.
         $mform->hideIf('languages', 'scenario', 'eq', 'project');
         $mform->hideIf('languages', 'scenario', 'eq', 'web');
+        // SQL is single-language (schema + one query), so additional languages
+        // never apply — hide the picker rather than only rejecting it on save.
+        $mform->hideIf('languages', 'scenario', 'eq', 'sql');
 
         // A reference solution (in the primary language). The authoring JS can run
         // it to capture the Expected outputs and to validate the question; on the
@@ -358,12 +389,19 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             ],
             'functionsignatureid' => 'id_functionsignature',
             'signaturebuilderid' => 'id_signaturebuilder',
+            // The compiled languages: their function questions need a typed signature
+            // and so are bounded to the flat type grammar. The JS uses this to gate the
+            // signature UI on the chosen languages (dynamic languages take JSON args of
+            // any shape and need no signature).
+            'staticfunctionlangs' => \qtype_codeatelier\judge\function_harness::STATIC,
             'sigbuilderstrings' => [
                 'returns' => get_string('sigbuilder_returns', 'qtype_codeatelier'),
                 'addparam' => get_string('sigbuilder_addparam', 'qtype_codeatelier'),
                 'removeparam' => get_string('sigbuilder_removeparam', 'qtype_codeatelier'),
                 'noparams' => get_string('sigbuilder_noparams', 'qtype_codeatelier'),
                 'param' => get_string('sigbuilder_param', 'qtype_codeatelier'),
+                'dynamicnote' => get_string('sigbuilder_dynamicnote', 'qtype_codeatelier'),
+                'staticnote' => get_string('sigbuilder_staticnote', 'qtype_codeatelier'),
             ],
             'questiontextid' => 'id_questiontext',
             'previewbtnid' => $previewid . '_btn',
@@ -381,6 +419,13 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                 'capturenoreference' => get_string('capturenoreference', 'qtype_codeatelier'),
                 'referencewarning' => get_string('referencewarning', 'qtype_codeatelier'),
                 'referenceverifyfail' => get_string('referenceverifyfail', 'qtype_codeatelier'),
+                'capturefirsterror' => get_string('capturefirsterror', 'qtype_codeatelier'),
+                'reviewheading' => get_string('capturereviewheading', 'qtype_codeatelier'),
+                'itemok' => get_string('captureitemok', 'qtype_codeatelier'),
+                'itemerror' => get_string('captureitemerror', 'qtype_codeatelier'),
+                'test' => get_string('result_test', 'qtype_codeatelier'),
+                'expected' => get_string('expected', 'qtype_codeatelier'),
+                'rowsnote' => get_string('rowsnote', 'qtype_codeatelier'),
             ],
             'pyodidebaseurl' => get_config('qtype_codeatelier', 'pyodidebaseurl'),
             'sqljsbaseurl' => get_config('qtype_codeatelier', 'sqljsbaseurl'),
@@ -407,150 +452,72 @@ class qtype_codeatelier_edit_form extends question_edit_form {
     }
 
     /**
-     * Add the repeated test-case rows.
+     * Add the test-case authoring field (one JSON field, enhanced by JS into a
+     * scalable editor).
      *
      * @param MoodleQuickForm $mform the form being built
      */
     protected function add_test_case_fields($mform) {
-        $repeated = [];
-        // The repeat engine substitutes {no} only in an element's label (or a
-        // header's text), never in static body text — so the label carries it.
-        $repeated[] = $mform->createElement(
-            'static',
-            'testcaselabel',
-            get_string('testcaseno', 'qtype_codeatelier', '{no}'),
-            ''
-        );
-        $repeated[] = $mform->createElement(
+        global $PAGE;
+        // Test cases are authored as a single JSON field rather than ~14 form
+        // inputs per case: testeditor.js enhances this textarea into a scalable
+        // editor (paginated, searchable, with spreadsheet/CSV/JSON bulk import).
+        // One field has no per-test field-count ceiling, so large sets save
+        // reliably — the old per-row repeat form silently dropped fields once PHP's
+        // max_input_vars was exceeded (~65 tests). With JS off the raw JSON in the
+        // textarea is still editable.
+        $config = [
+            'scenarioid' => 'id_scenario',
+            'entrypointid' => 'id_entrypoint',
+            'matchmodes' => $this->matchmode_options(),
+            'visibilities' => $this->visibility_options(),
+            'assertmatchers' => $this->assertmatcher_options(),
+            'strings' => $this->testeditor_strings(),
+        ];
+        $mform->addElement(
             'textarea',
-            'testinput',
-            get_string('input', 'qtype_codeatelier'),
-            ['rows' => 3, 'cols' => 60]
+            'testcasesjson',
+            get_string('testcases', 'qtype_codeatelier'),
+            [
+                'rows' => 8,
+                'class' => 'codeatelier-testcases-json',
+                'data-role' => 'testcases-json',
+                'data-config' => json_encode($config),
+                'spellcheck' => 'false',
+            ]
         );
-        $repeated[] = $mform->createElement(
-            'textarea',
-            'testexpected',
-            get_string('expected', 'qtype_codeatelier'),
-            ['rows' => 3, 'cols' => 60]
-        );
-        // Web scenario: one DOM assertion per row (selector + property + matcher),
-        // with the value compared in the Expected field above. Shown only for web.
-        $repeated[] = $mform->createElement(
-            'text',
-            'selector',
-            get_string('assertselector', 'qtype_codeatelier'),
-            ['size' => 40]
-        );
-        $repeated[] = $mform->createElement(
-            'text',
-            'assertproperty',
-            get_string('assertproperty', 'qtype_codeatelier'),
-            ['size' => 24]
-        );
-        $repeated[] = $mform->createElement(
-            'select',
-            'assertmatcher',
-            get_string('assertmatcher', 'qtype_codeatelier'),
-            $this->assertmatcher_options()
-        );
-        $repeated[] = $mform->createElement(
-            'textarea',
-            'actions',
-            get_string('assertactions', 'qtype_codeatelier'),
-            ['rows' => 2, 'cols' => 60]
-        );
-        $repeated[] = $mform->createElement(
-            'select',
-            'matchmode',
-            get_string('matchmode', 'qtype_codeatelier'),
-            $this->matchmode_options()
-        );
-        $repeated[] = $mform->createElement(
-            'text',
-            'tolerance',
-            get_string('tolerance', 'qtype_codeatelier'),
-            ['size' => 10]
-        );
-        $repeated[] = $mform->createElement(
-            'text',
-            'testweight',
-            get_string('weight', 'qtype_codeatelier'),
-            ['size' => 10]
-        );
-        $repeated[] = $mform->createElement(
-            'select',
-            'testvisibility',
-            get_string('visibility', 'qtype_codeatelier'),
-            $this->visibility_options()
-        );
-        $repeated[] = $mform->createElement(
-            'text',
-            'subtask',
-            get_string('subtask', 'qtype_codeatelier'),
-            ['size' => 6]
-        );
-        $repeated[] = $mform->createElement(
-            'textarea',
-            'checkerquery',
-            get_string('checkerquery', 'qtype_codeatelier'),
-            ['rows' => 2, 'cols' => 60]
-        );
-        $repeated[] = $mform->createElement(
-            'textarea',
-            'testfeedback',
-            get_string('testfeedback', 'qtype_codeatelier'),
-            ['rows' => 2, 'cols' => 60]
-        );
+        $mform->setType('testcasesjson', PARAM_RAW);
 
-        // Note: do not set a 'default' for the matchmode/testweight/testvisibility
-        // elements here. For repeated elements a default overrides the values
-        // loaded by data_preprocessing(), so an edited question would silently
-        // reset them. The selects fall back to their first option for new rows;
-        // weight is author-entered and checked in validation().
-        $repeatedoptions = [];
-        $repeatedoptions['testinput']['type'] = PARAM_RAW;
-        // The stdin input is not used by a web (DOM-assertion) question.
-        $repeatedoptions['testinput']['hideif'] = ['scenario', 'eq', 'web'];
-        $repeatedoptions['testexpected']['type'] = PARAM_RAW;
-        $repeatedoptions['matchmode']['type'] = PARAM_ALPHANUMEXT;
-        $repeatedoptions['matchmode']['hideif'] = ['scenario', 'eq', 'web'];
-        $repeatedoptions['tolerance']['type'] = PARAM_RAW_TRIMMED;
-        $repeatedoptions['tolerance']['disabledif'] = ['matchmode', 'neq', 'float'];
-        $repeatedoptions['tolerance']['hideif'] = ['scenario', 'eq', 'web'];
-        $repeatedoptions['testweight']['type'] = PARAM_RAW_TRIMMED;
-        $repeatedoptions['testvisibility']['type'] = PARAM_INT;
-        // Subtask group id (0 = ungrouped). Not used by web (DOM-assertion) questions.
-        $repeatedoptions['subtask']['type'] = PARAM_INT;
-        $repeatedoptions['subtask']['hideif'] = ['scenario', 'eq', 'web'];
-        $repeatedoptions['checkerquery']['type'] = PARAM_RAW;
-        $repeatedoptions['checkerquery']['hideif'] = ['scenario', 'neq', 'sql'];
-        $repeatedoptions['testfeedback']['type'] = PARAM_RAW;
-        // Web assertion fields: shown only for the web scenario.
-        $repeatedoptions['selector']['type'] = PARAM_RAW_TRIMMED;
-        $repeatedoptions['selector']['hideif'] = ['scenario', 'neq', 'web'];
-        $repeatedoptions['assertproperty']['type'] = PARAM_RAW_TRIMMED;
-        $repeatedoptions['assertproperty']['hideif'] = ['scenario', 'neq', 'web'];
-        $repeatedoptions['assertmatcher']['type'] = PARAM_ALPHA;
-        $repeatedoptions['assertmatcher']['hideif'] = ['scenario', 'neq', 'web'];
-        $repeatedoptions['actions']['type'] = PARAM_RAW;
-        $repeatedoptions['actions']['hideif'] = ['scenario', 'neq', 'web'];
+        $PAGE->requires->js_call_amd('qtype_codeatelier/testeditor', 'init', [[
+            'fieldid' => 'id_testcasesjson',
+        ]]);
+    }
 
-        if (!empty($this->question->options->tests)) {
-            $repeats = count($this->question->options->tests);
-        } else {
-            $repeats = 2;
+    /**
+     * Localised strings handed to the test-case editor JS (via data-config).
+     *
+     * Column labels reuse the existing field strings; the rest are editor chrome.
+     *
+     * @return array string key => localised text
+     */
+    protected function testeditor_strings() {
+        $keys = [
+            'input', 'expected', 'matchmode', 'tolerance', 'weight', 'visibility',
+            'callpreview', 'callpreviewhint',
+            'subtask', 'checkerquery', 'testdataset', 'testfeedback', 'assertselector',
+            'assertproperty', 'assertmatcher', 'assertactions',
+            'editor_addtest', 'editor_edit', 'editor_delete', 'editor_moveup',
+            'editor_movedown', 'editor_search', 'editor_count', 'editor_page',
+            'editor_empty', 'editor_import', 'editor_importformat', 'editor_importhelp',
+            'editor_template', 'editor_format_tsv', 'editor_format_csv', 'editor_format_json',
+            'editor_paste', 'editor_upload', 'editor_append', 'editor_replace', 'editor_export',
+            'editor_importok', 'editor_importerror', 'editor_done', 'editor_visible', 'editor_hidden',
+        ];
+        $strings = [];
+        foreach ($keys as $key) {
+            $strings[$key] = get_string($key, 'qtype_codeatelier');
         }
-
-        $this->repeat_elements(
-            $repeated,
-            $repeats,
-            $repeatedoptions,
-            'option_repeats',
-            'option_add_tests',
-            1,
-            get_string('addmoretestcases', 'qtype_codeatelier'),
-            true
-        );
+        return $strings;
     }
 
     /**
@@ -695,39 +662,29 @@ class qtype_codeatelier_edit_form extends question_edit_form {
         );
         $question->datafiles = $draftid;
 
-        if (empty($question->options->tests)) {
-            return $question;
+        // Serialise the saved test cases into the single JSON field the editor
+        // reads (one form input, not ~14 per case — see add_test_case_fields).
+        $tests = [];
+        foreach (array_values($question->options->tests ?? []) as $test) {
+            $tests[] = [
+                'input' => (string) $test->input,
+                'expected' => (string) $test->expected,
+                'matchmode' => (string) $test->matchmode,
+                'tolerance' => ($test->tolerance === null || $test->tolerance === '')
+                    ? '' : (string) (0 + $test->tolerance),
+                'weight' => 0 + $test->weight,
+                'visibility' => (int) $test->visibility,
+                'feedback' => (string) $test->feedback,
+                'checkerquery' => (string) $test->checkerquery,
+                'datasetsql' => (string) ($test->datasetsql ?? ''),
+                'selector' => (string) $test->selector,
+                'assertproperty' => (string) $test->assertproperty,
+                'assertmatcher' => (string) $test->assertmatcher,
+                'actions' => (string) $test->actions,
+                'subtask' => isset($test->subtask) ? (int) $test->subtask : 0,
+            ];
         }
-
-        $question->testinput = [];
-        $question->testexpected = [];
-        $question->matchmode = [];
-        $question->tolerance = [];
-        $question->testweight = [];
-        $question->testvisibility = [];
-        $question->checkerquery = [];
-        $question->testfeedback = [];
-        $question->selector = [];
-        $question->assertproperty = [];
-        $question->assertmatcher = [];
-        $question->actions = [];
-        $question->subtask = [];
-
-        foreach (array_values($question->options->tests) as $i => $test) {
-            $question->testinput[$i] = $test->input;
-            $question->testexpected[$i] = $test->expected;
-            $question->matchmode[$i] = $test->matchmode;
-            $question->tolerance[$i] = $test->tolerance;
-            $question->testweight[$i] = 0 + $test->weight;
-            $question->testvisibility[$i] = $test->visibility;
-            $question->checkerquery[$i] = $test->checkerquery;
-            $question->testfeedback[$i] = $test->feedback;
-            $question->selector[$i] = $test->selector;
-            $question->assertproperty[$i] = $test->assertproperty;
-            $question->assertmatcher[$i] = $test->assertmatcher;
-            $question->actions[$i] = $test->actions;
-            $question->subtask[$i] = isset($test->subtask) ? (int) $test->subtask : 0;
-        }
+        $question->testcasesjson = json_encode($tests);
 
         return $question;
     }
@@ -795,7 +752,11 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                     if ($sig === '') {
                         $errors['functionsignature'] = get_string('signaturerequired', 'qtype_codeatelier');
                     } else if (!\qtype_codeatelier\judge\signature::is_valid($sig)) {
-                        $errors['functionsignature'] = get_string('signatureinvalid', 'qtype_codeatelier');
+                        // A nested type (e.g. list<map<...>>) is the common reason a
+                        // signature is rejected; point at the dynamic-language path.
+                        $errors['functionsignature'] = preg_match('/<[^>]*</', $sig)
+                            ? get_string('signaturenested', 'qtype_codeatelier')
+                            : get_string('signatureinvalid', 'qtype_codeatelier');
                     } else if (array_intersect($allowed, \qtype_codeatelier\judge\function_harness::SCALAR_ONLY)) {
                         // C grades scalar parameters/return only (arrays are awkward in C).
                         $parsed = \qtype_codeatelier\judge\signature::parse($sig);
@@ -879,50 +840,53 @@ class qtype_codeatelier_edit_form extends question_edit_form {
             }
         }
 
+        // Test cases arrive as one JSON field (see add_test_case_fields). Decode
+        // and validate it; all test-case errors attach to that single field.
         $count = 0;
         $isweb = ($scenario === 'web');
-        foreach ($data['testinput'] as $key => $input) {
+        $rawjson = (string) ($data['testcasesjson'] ?? '');
+        $tests = ($rawjson === '') ? [] : json_decode($rawjson, true);
+        if (!is_array($tests)) {
+            $errors['testcasesjson'] = get_string('testcasesjsoninvalid', 'qtype_codeatelier');
+            $tests = [];
+        }
+        foreach ($tests as $test) {
+            if (!is_array($test)) {
+                $errors['testcasesjson'] = get_string('testcasesjsoninvalid', 'qtype_codeatelier');
+                break;
+            }
             if ($isweb) {
-                // A web row is a DOM assertion keyed by its selector.
-                $selector = isset($data['selector'][$key]) ? trim((string) $data['selector'][$key]) : '';
-                if ($selector === '') {
+                if (trim((string) ($test['selector'] ?? '')) === '') {
                     continue;
                 }
                 $count++;
-                if (trim($data['testweight'][$key]) === '' || !is_numeric($data['testweight'][$key])) {
-                    $errors["testweight[$key]"] = get_string('weightnumeric', 'qtype_codeatelier');
+                if (!self::valid_assert_property(trim((string) ($test['assertproperty'] ?? '')))) {
+                    $errors['testcasesjson'] = get_string('assertpropertyinvalid', 'qtype_codeatelier');
                 }
-                $property = isset($data['assertproperty'][$key]) ? trim((string) $data['assertproperty'][$key]) : '';
-                if (!self::valid_assert_property($property)) {
-                    $errors["assertproperty[$key]"] = get_string('assertpropertyinvalid', 'qtype_codeatelier');
+            } else {
+                if (trim((string) ($test['input'] ?? '')) === '' && trim((string) ($test['expected'] ?? '')) === '') {
+                    continue;
                 }
-                continue;
-            }
-            $expected = $data['testexpected'][$key];
-            if (trim($input) === '' && trim($expected) === '') {
-                continue;
-            }
-            $count++;
-
-            if (trim($data['testweight'][$key]) === '' || !is_numeric($data['testweight'][$key])) {
-                $errors["testweight[$key]"] = get_string('weightnumeric', 'qtype_codeatelier');
-            }
-            if ($data['matchmode'][$key] === 'float') {
-                $tolerance = $data['tolerance'][$key];
-                if (trim($tolerance) === '' || !is_numeric($tolerance)) {
-                    $errors["tolerance[$key]"] = get_string('tolerancenumeric', 'qtype_codeatelier');
+                $count++;
+                if (($test['matchmode'] ?? '') === 'float') {
+                    $tolerance = $test['tolerance'] ?? '';
+                    if (trim((string) $tolerance) === '' || !is_numeric($tolerance)) {
+                        $errors['testcasesjson'] = get_string('tolerancenumeric', 'qtype_codeatelier');
+                    }
                 }
+            }
+            $weight = $test['weight'] ?? '';
+            if (trim((string) $weight) === '' || !is_numeric($weight)) {
+                $errors['testcasesjson'] = get_string('weightnumeric', 'qtype_codeatelier');
             }
         }
 
         // Every gradable question needs at least one test case (a web question, at
         // least one DOM assertion).
         if ($count === 0) {
-            if ($isweb) {
-                $errors['selector[0]'] = get_string('noassertions', 'qtype_codeatelier');
-            } else {
-                $errors['testinput[0]'] = get_string('notenoughtests', 'qtype_codeatelier');
-            }
+            $errors['testcasesjson'] = $isweb
+                ? get_string('noassertions', 'qtype_codeatelier')
+                : get_string('notenoughtests', 'qtype_codeatelier');
         }
 
         $hasreference = ($scenario === 'project')
@@ -1059,27 +1023,42 @@ class qtype_codeatelier_edit_form extends question_edit_form {
 
     /**
      * Build test-case objects from the submitted form data, skipping blank rows
-     * exactly as {@see qtype_codeatelier::save_question_options()} does.
+     * exactly as {@see qtype_codeatelier::save_question_options()} does. Test
+     * cases arrive as one JSON field (see add_test_case_fields).
      *
      * @param array $data the submitted form data
      * @return array test-case stdClass objects
      */
     protected function tests_from_form($data) {
+        $decoded = json_decode((string) ($data['testcasesjson'] ?? ''), true);
+        $isweb = (($data['scenario'] ?? '') === 'web');
         $tests = [];
-        foreach ($data['testinput'] as $key => $input) {
-            $expected = $data['testexpected'][$key];
-            if (trim($input) === '' && trim($expected) === '') {
+        foreach (is_array($decoded) ? $decoded : [] as $test) {
+            if (!is_array($test)) {
+                continue;
+            }
+            $input = (string) ($test['input'] ?? '');
+            $expected = (string) ($test['expected'] ?? '');
+            $selector = trim((string) ($test['selector'] ?? ''));
+            // A web assertion row is keyed by its selector; every other scenario
+            // by its input/expected.
+            if ($isweb ? ($selector === '') : (trim($input) === '' && trim($expected) === '')) {
                 continue;
             }
             $tests[] = (object) [
                 'input' => $input,
                 'expected' => $expected,
-                'matchmode' => $data['matchmode'][$key],
-                'tolerance' => isset($data['tolerance'][$key]) ? $data['tolerance'][$key] : null,
-                'weight' => $data['testweight'][$key],
-                'visibility' => $data['testvisibility'][$key],
-                'checkerquery' => isset($data['checkerquery'][$key]) ? $data['checkerquery'][$key] : null,
-                'subtask' => isset($data['subtask'][$key]) ? (int) $data['subtask'][$key] : 0,
+                'matchmode' => (string) ($test['matchmode'] ?? 'trimmed'),
+                'tolerance' => ($test['tolerance'] ?? '') === '' ? null : $test['tolerance'],
+                'weight' => $test['weight'] ?? 1,
+                'visibility' => (int) ($test['visibility'] ?? 1),
+                'checkerquery' => ($test['checkerquery'] ?? '') === '' ? null : (string) $test['checkerquery'],
+                'datasetsql' => ($test['datasetsql'] ?? '') === '' ? null : (string) $test['datasetsql'],
+                'selector' => $selector,
+                'assertproperty' => (string) ($test['assertproperty'] ?? ''),
+                'assertmatcher' => (string) ($test['assertmatcher'] ?? ''),
+                'actions' => (string) ($test['actions'] ?? ''),
+                'subtask' => (int) ($test['subtask'] ?? 0),
             ];
         }
         return $tests;

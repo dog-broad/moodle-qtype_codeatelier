@@ -27,7 +27,7 @@ import {EditorView, basicSetup} from 'codemirror';
 import {EditorState, Prec, Compartment} from '@codemirror/state';
 import {keymap} from '@codemirror/view';
 import {HighlightStyle, syntaxHighlighting} from '@codemirror/language';
-import {indentWithTab} from '@codemirror/commands';
+import {indentWithTab, indentSelection} from '@codemirror/commands';
 import {lintGutter, setDiagnostics} from '@codemirror/lint';
 import {openSearchPanel} from '@codemirror/search';
 import {python} from '@codemirror/lang-python';
@@ -332,7 +332,10 @@ export const highlightWithin = (root) => {
         if (!parser) {
             return;
         }
-        const text = code.textContent;
+        // Trim one leading newline and trailing whitespace so the natural
+        // <pre><code>\n ... \n</code></pre> authoring style doesn't render a blank
+        // first/last line.
+        const text = code.textContent.replace(/^\n/, '').replace(/\s+$/, '');
         const tree = parser.parse(text);
         let html = '';
         let pos = 0;
@@ -451,7 +454,7 @@ export const sandboxClipboard = (onExternal) => EditorView.domEventHandlers({
  * @param {String} language the syntax-highlighting language
  * @param {Object} options optional {readonly: bool, onChange: function,
  *   sandbox: bool, onExternal: function, theme: 'light'|'dark'|'hc'}
- * @return {Object} {getValue, openSearch, destroy, clearErrors, setTheme, showError}
+ * @return {Object} {getValue, openSearch, reindent, destroy, clearErrors, setTheme, showError}
  */
 export const create = (textarea, language, options) => {
     const opts = options || {};
@@ -511,6 +514,18 @@ export const create = (textarea, language, options) => {
         openSearch: () => {
             view.focus();
             openSearchPanel(view);
+        },
+        /**
+         * Re-indent the whole document per the active language's indentation rules
+         * (a light, dependency-free format that works for every supported language;
+         * it fixes indentation, not spacing or line length). A no-op for languages
+         * with no indentation service.
+         */
+        reindent: () => {
+            view.focus();
+            view.dispatch({selection: {anchor: 0, head: view.state.doc.length}});
+            indentSelection(view);
+            view.dispatch({selection: {anchor: 0}});
         },
         /**
          * Tear the editor down and reveal the backing textarea again. Used when

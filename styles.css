@@ -532,6 +532,126 @@
     margin: 0.4rem 0;
 }
 
+/* Compact, scrollable worked-examples table. Height-capped so many examples
+ * occupy a fixed footprint; the header sticks while the body scrolls. */
+.qtype_codeatelier .codeatelier-examples-wrap {
+    max-height: 22rem;
+    overflow: auto;
+    border: 1px solid var(--ca-border);
+    border-radius: 0.375rem;
+    margin: 0 0 0.25rem;
+}
+
+/* Card layout (stdin/SQL/project): full-width Input/Expected boxes per example. */
+.qtype_codeatelier .codeatelier-examples-cards {
+    padding: 0.25rem 0.6rem;
+}
+
+.qtype_codeatelier .codeatelier-examples-cards .codeatelier-example:first-child {
+    margin-top: 0.15rem;
+}
+
+.qtype_codeatelier .codeatelier-examples-wrap:focus-visible {
+    outline: 2px solid var(--ca-focus);
+    outline-offset: -2px;
+}
+
+.qtype_codeatelier .codeatelier-examples-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.qtype_codeatelier .codeatelier-examples-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    text-align: left;
+    background: var(--ca-surface-alt);
+    color: var(--ca-text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.3rem 0.5rem;
+    border-bottom: 1px solid var(--ca-border);
+}
+
+.qtype_codeatelier .codeatelier-examples-table td {
+    vertical-align: top;
+    padding: 0.35rem 0.5rem;
+    border-bottom: 1px solid var(--ca-border-soft);
+    overflow-wrap: anywhere;
+}
+
+.qtype_codeatelier .codeatelier-examples-table tr:last-child td {
+    border-bottom: 0;
+}
+
+.qtype_codeatelier .codeatelier-cell {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.qtype_codeatelier .codeatelier-clamp {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+@supports not ((-webkit-line-clamp: 3)) {
+    .qtype_codeatelier .codeatelier-clamp {
+        max-height: 4.2em;
+        overflow: hidden;
+    }
+}
+
+.qtype_codeatelier .codeatelier-cell-expand[open] .codeatelier-clamp {
+    -webkit-line-clamp: unset;
+    /* Expanded: bounded so one very long value scrolls in its own box instead of
+     * dominating the examples region and pushing other rows out of view. */
+    max-height: 16rem;
+    overflow: auto;
+}
+
+.qtype_codeatelier .codeatelier-cell-expand > summary {
+    cursor: pointer;
+}
+
+.qtype_codeatelier .codeatelier-example-after {
+    margin-top: 0.3rem;
+}
+
+.qtype_codeatelier .codeatelier-use-input,
+.qtype_codeatelier .codeatelier-use-dataset {
+    padding: 0;
+    font-size: 0.8rem;
+}
+
+/* Banner above the Run console showing which dataset the Run is using, with a
+   control to revert to the question's default schema. */
+.qtype_codeatelier .codeatelier-active-dataset {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 0 0 0.4rem;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--ca-border);
+    border-radius: 0.3rem;
+    background: var(--ca-surface-alt);
+    font-size: 0.82rem;
+}
+
+.qtype_codeatelier .codeatelier-use-default {
+    padding: 0;
+    font-size: 0.8rem;
+}
+
 .qtype_codeatelier .codeatelier-block {
     margin: 0.2rem 0;
 }
@@ -551,7 +671,10 @@
     font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 0.85rem;
     white-space: pre-wrap;
-    overflow-x: auto;
+    /* Bounded so a long input/expected/output in feedback or the console scrolls
+     * in place instead of producing a very tall block. */
+    max-height: 22rem;
+    overflow: auto;
 }
 
 .qtype_codeatelier .codeatelier-diff-del {
@@ -583,11 +706,37 @@
     color: var(--ca-danger);
 }
 
+/* A passed test with nothing extra to disclose: a plain checklist line (no
+ * expandable accordion), aligned with the feedback accordions above. */
+.qtype_codeatelier .codeatelier-feedback-line {
+    margin: 0.25rem 0;
+    padding: 0.3rem 0.5rem;
+    font-weight: 700;
+    border-top: 1px solid var(--ca-border-soft);
+}
+
+.qtype_codeatelier .codeatelier-feedback-line:first-child {
+    border-top: 0;
+}
+
+.qtype_codeatelier .codeatelier-feedback-line.codeatelier-pass {
+    color: var(--ca-success);
+}
+
 .qtype_codeatelier .codeatelier-feedback-body {
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
     margin-top: 0.4rem;
+}
+
+/* A result set is wrapped so a wide table scrolls sideways and a tall one
+   scrolls down, bounded like the diff/console blocks (22rem) instead of
+   stretching the pane. */
+.qtype_codeatelier .codeatelier-table-scroll {
+    max-height: 22rem;
+    max-width: 100%;
+    overflow: auto;
 }
 
 .qtype_codeatelier .codeatelier-resultset {
@@ -601,14 +750,76 @@
     border: 1px solid var(--ca-border);
     padding: 0.2rem 0.5rem;
     text-align: left;
+    overflow-wrap: anywhere;
 }
 
 .qtype_codeatelier .codeatelier-resultset th {
     background: var(--ca-surface-alt);
+    /* Keep the header visible while scrolling a tall result set. */
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
-.qtype_codeatelier .codeatelier-resultset .codeatelier-diff-row td {
+/* A differing row in a result-set diff. Its own class (NOT codeatelier-diff-row,
+   which is the display:flex label row) so a highlighted <tr> keeps table layout. */
+.qtype_codeatelier .codeatelier-resultset .codeatelier-row-diff td {
     background: var(--ca-danger-strong-bg);
+}
+
+.qtype_codeatelier .codeatelier-resultset .codeatelier-row-diff td:first-child {
+    border-left: 3px solid var(--ca-danger);
+}
+
+/* A per-side marker so the highlight is not colour-only: − for an expected row
+   missing from the result, + for a produced row that was not expected. */
+.qtype_codeatelier .codeatelier-resultset-expected .codeatelier-row-diff td:first-child::before {
+    content: "\2212\00a0";
+    font-weight: 700;
+    color: var(--ca-danger);
+}
+
+.qtype_codeatelier .codeatelier-resultset-got .codeatelier-row-diff td:first-child::before {
+    content: "+\00a0";
+    font-weight: 700;
+    color: var(--ca-danger);
+}
+
+.qtype_codeatelier .codeatelier-diff-legend {
+    margin: 0.2rem 0 0;
+    font-size: 0.78rem;
+    color: var(--ca-text-muted);
+}
+
+.qtype_codeatelier .codeatelier-rows-note {
+    margin: 0.15rem 0 0;
+    font-size: 0.78rem;
+    color: var(--ca-text-muted);
+}
+
+/* Post-capture review: a per-test list of what was written into each Expected
+   field (SQL as a table), so the author confirms before saving. */
+.qtype_codeatelier .codeatelier-capture-review {
+    margin-top: 0.5rem;
+    max-height: 28rem;
+    overflow: auto;
+}
+
+.qtype_codeatelier .codeatelier-capture-list {
+    list-style: none;
+    margin: 0.25rem 0 0;
+    padding: 0;
+}
+
+.qtype_codeatelier .codeatelier-capture-item {
+    margin: 0.3rem 0;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--ca-border-soft);
+    border-radius: 0.3rem;
+}
+
+.qtype_codeatelier .codeatelier-capture-item.codeatelier-fail {
+    border-color: var(--ca-danger);
 }
 
 .qtype_codeatelier .codeatelier-hidden-note {
@@ -651,6 +862,42 @@
     font-size: 0.85rem;
 }
 
+/* Per-argument Run inputs for a function question: one field per argument, each
+ * holding the value directly (so a single list argument is [1, 2, 3], not
+ * [[1, 2, 3]]), with a live preview of the call they assemble. */
+.qtype_codeatelier .codeatelier-argfields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin: 0.3rem 0;
+}
+
+.qtype_codeatelier .codeatelier-argfield {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.qtype_codeatelier .codeatelier-arg-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--ca-border);
+    border-radius: 0.375rem;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.85rem;
+    background: var(--ca-surface);
+    color: var(--ca-text);
+}
+
+.qtype_codeatelier .codeatelier-arg-callpreview {
+    margin: 0.1rem 0 0;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.85rem;
+    color: var(--ca-text-muted);
+    overflow-wrap: anywhere;
+}
+
 .qtype_codeatelier .codeatelier-tabs {
     display: flex;
     gap: 0.25rem;
@@ -675,6 +922,18 @@
 
 .qtype_codeatelier .codeatelier-console {
     margin-top: 0.5rem;
+}
+
+/* The output area before the first Run/Check: a single muted call-to-action
+ * instead of empty tabs. Hidden (and the tabs revealed) once a panel fills. */
+.qtype_codeatelier .codeatelier-output-empty {
+    margin: 0.5rem 0;
+    padding: 0.6rem 0.75rem;
+    border: 1px dashed var(--ca-border);
+    border-radius: 0.375rem;
+    background: var(--ca-surface-muted);
+    color: var(--ca-text-muted);
+    font-size: 0.9rem;
 }
 
 .qtype_codeatelier .codeatelier-stale {
@@ -784,6 +1043,23 @@
 }
 
 /*
+ * Default reference-rail layout: on a wide enough page, place the problem pane
+ * (question + examples) beside the work pane (editor + run + output) so the
+ * examples stay visible while the student codes. Narrow pages keep the stacked
+ * flow (no change). Gated conservatively on viewport width; the quiz attempt
+ * page is typically full-width so the column is wide here. Focus mode is
+ * excluded — it has its own fixed-overlay grid. Breakpoint is tunable.
+ */
+@media (min-width: 75rem) {
+    .qtype_codeatelier:not(.codeatelier-focus) {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+        gap: 0 1.75rem;
+        align-items: start;
+    }
+}
+
+/*
  * The tier notes sit on a tinted pane background where Bootstrap's .text-muted
  * (#6a737b) drops to 4.22:1 contrast — under WCAG AA. Pin an explicit darker
  * slate so the note clears 4.5:1 on the tint (and on white). The template drops
@@ -871,7 +1147,8 @@
     font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 0.82rem;
     white-space: pre-wrap;
-    overflow-x: auto;
+    max-height: 22rem;
+    overflow: auto;
 }
 
 .qtype_codeatelier .codeatelier-judge-tests {
@@ -881,12 +1158,16 @@
 }
 
 .qtype_codeatelier .codeatelier-judge-test {
-    padding: 0.4rem 0;
-    border-top: 1px solid var(--ca-border-faint);
+    padding: 0.45rem 0;
+    border-top: 1px solid var(--ca-border-soft);
+}
+
+.qtype_codeatelier .codeatelier-judge-test:first-child {
+    border-top: 0;
 }
 
 .qtype_codeatelier .codeatelier-test-status {
-    font-weight: 600;
+    font-weight: 700;
 }
 
 .qtype_codeatelier .codeatelier-status-pass {
@@ -929,6 +1210,9 @@
 
 .qtype_codeatelier .codeatelier-diff-value {
     flex: 1 1 auto;
+    /* Shrink within the flex row so a long value scrolls internally rather than
+       widening (and overflowing) the row. */
+    min-width: 0;
     margin: 0;
     padding: 0.3rem 0.5rem;
     background: var(--ca-surface-muted);
@@ -937,7 +1221,20 @@
     font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 0.82rem;
     white-space: pre-wrap;
-    overflow-x: auto;
+    max-height: 22rem;
+    overflow: auto;
+}
+
+/* A SQL result table sits in a flex diff-row (Expected/Got) on both tiers; let it
+   shrink so a wide table scrolls inside its own container instead of overflowing
+   the row. The block also never exceeds its container in non-flex contexts. */
+.qtype_codeatelier .codeatelier-resultset-block {
+    max-width: 100%;
+}
+
+.qtype_codeatelier .codeatelier-diff-row .codeatelier-resultset-block {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .qtype_codeatelier .codeatelier-diff-expected .codeatelier-diff-value {
@@ -953,10 +1250,19 @@
 /* Judge-tier formative run-against-examples output. */
 .qtype_codeatelier .codeatelier-runresults {
     margin-top: 0.5rem;
+    /* Bounded so a long set of example results scrolls in place rather than
+     * pushing the "run your own input" section below the fold. */
+    max-height: 24rem;
+    overflow: auto;
 }
 
 .qtype_codeatelier .codeatelier-runresults:empty {
     display: none;
+}
+
+.qtype_codeatelier .codeatelier-scratchoutput {
+    max-height: 24rem;
+    overflow: auto;
 }
 
 /* Soft anti-cheat: the in-attempt note and the review activity summary. */
@@ -1100,7 +1406,8 @@
  */
 :where(.qtype_codeatelier .form-select),
 :where(.codeatelier-sigparam .form-select),
-:where(.codeatelier-sigreturn .form-select) {
+:where(.codeatelier-sigreturn .form-select),
+:where(.codeatelier-testeditor .form-select) {
     display: block;
     width: 100%;
     padding: 0.375rem 2.25rem 0.375rem 0.75rem;
@@ -1118,8 +1425,226 @@
 
 :where(.qtype_codeatelier .form-select-sm),
 :where(.codeatelier-sigparam .form-select-sm),
-:where(.codeatelier-sigreturn .form-select-sm) {
+:where(.codeatelier-sigreturn .form-select-sm),
+:where(.codeatelier-testeditor .form-select-sm) {
     padding: 0.25rem 2rem 0.25rem 0.5rem;
     font-size: 0.875rem;
     border-radius: 0.25rem;
+}
+
+/*
+ * Scalable test-case editor (the question edit form). Test cases live in one
+ * JSON field enhanced into this paginated, searchable list — so a question can
+ * carry hundreds of cases without crossing PHP's max_input_vars cap. Styled with
+ * form-theme-neutral colours (this is the teacher edit form, not the student
+ * attempt, so the --ca-* attempt tokens do not apply here).
+ */
+.codeatelier-testeditor {
+    margin-top: 0.5rem;
+}
+
+.codeatelier-te-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.codeatelier-te-toolbar .codeatelier-te-count {
+    font-weight: 600;
+    margin-right: auto;
+}
+
+.codeatelier-te-toolbar input[type="search"] {
+    max-width: 16rem;
+}
+
+.codeatelier-te-import {
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.codeatelier-te-import > summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.codeatelier-te-importbody {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.codeatelier-te-importbody > .form-select {
+    max-width: 16rem;
+}
+
+.codeatelier-te-importhelp {
+    margin-bottom: 0.25rem;
+}
+
+/* The live "Call preview" under a function test's Input: shows the literal call
+ * the JSON-array Input produces, so a wrong nesting is visible before saving. */
+.codeatelier-te-callpreview-label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.8125rem;
+}
+
+.codeatelier-te-callpreview {
+    display: block;
+    padding: 0.3rem 0.5rem;
+    border-radius: 0.25rem;
+    background: #f1f3f5;
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+    /* Bounded so a huge argument array shows its shape (the point of the preview)
+     * and scrolls rather than making the row enormous. */
+    max-height: 7rem;
+    overflow: auto;
+}
+
+.codeatelier-te-callpreview-hint {
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Authoring help: how to add a highlighted code block to the question text. */
+.codeatelier-codeblockhelp > summary {
+    cursor: pointer;
+}
+
+.codeatelier-codeblockhelp pre {
+    margin: 0.5rem 0 0;
+    padding: 0.5rem 0.75rem;
+    background: #f1f3f5;
+    border-radius: 0.25rem;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+}
+
+/* The function-signature contract note on the edit form (explains JSON args vs
+ * a typed signature, gated on the chosen languages). */
+.codeatelier-signote {
+    margin: 0 0 1rem;
+    max-width: 60rem;
+}
+
+/* Hide the signature field + builder for a dynamic-only function question.
+ * !important so it survives Moodle's hideIf re-showing the field inline. */
+.codeatelier-sighide {
+    display: none !important;
+}
+
+.codeatelier-te-importactions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.codeatelier-te-mode {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.codeatelier-te-mode label {
+    margin: 0;
+}
+
+.codeatelier-te-status {
+    color: #495057;
+}
+
+.codeatelier-te-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+}
+
+.codeatelier-te-row {
+    border-bottom: 1px solid #dee2e6;
+}
+
+.codeatelier-te-row:last-child {
+    border-bottom: 0;
+}
+
+.codeatelier-te-empty {
+    padding: 1rem;
+    color: #6c757d;
+    text-align: center;
+}
+
+.codeatelier-te-head {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    padding: 0.5rem 0.75rem;
+    font-family: var(--ca-mono, monospace);
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.codeatelier-te-head:hover,
+.codeatelier-te-head:focus {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+.codeatelier-te-head[aria-expanded="true"] {
+    background-color: rgba(0, 0, 0, 0.06);
+    font-weight: 600;
+}
+
+.codeatelier-te-body {
+    padding: 0.5rem 0.75rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.codeatelier-te-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.codeatelier-te-field > label {
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.8125rem;
+}
+
+.codeatelier-te-field textarea {
+    font-family: var(--ca-mono, monospace);
+    font-size: 0.875rem;
+}
+
+.codeatelier-te-rowtools {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.codeatelier-te-pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .codeatelier-te-head {
+        transition: none;
+    }
 }
