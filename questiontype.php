@@ -565,6 +565,7 @@ class qtype_codeatelier extends question_type {
             'solutionlayer' => 'projectlayersolution',
             'entryis' => 'projectentryis',
             'setentry' => 'projectsetentry',
+            'servedpage' => 'projectservedpage',
         ];
         $strings = [];
         foreach ($keys as $jskey => $stringid) {

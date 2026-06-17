@@ -24,7 +24,6 @@ import {create as createEditor} from 'qtype_codeatelier/editor';
 import {init as initControl} from 'qtype_codeatelier/control';
 import {run as runCode} from 'qtype_codeatelier/runner';
 import {grade} from 'qtype_codeatelier/grader';
-import {setup as setupProjectFiles} from 'qtype_codeatelier/projectfiles';
 import {setup as setupProjectWorkspace} from 'qtype_codeatelier/projectworkspace';
 import {setupPreview} from 'qtype_codeatelier/webruntime';
 import {render as renderTemplate} from 'core/templates';
@@ -479,7 +478,7 @@ export const init = (params) => {
         const buildWebPicker = () => {
             const fitem = projectfilesTa.closest('.fitem') || projectfilesTa.parentNode;
             const wrap = document.createElement('div');
-            wrap.className = 'codeatelier-webpicker form-group';
+            wrap.className = 'codeatelier-webpicker';
             const label = document.createElement('span');
             label.className = 'codeatelier-block-label';
             label.textContent = strings.previewpick || 'Preview — pick an element to add a check';
@@ -543,8 +542,20 @@ export const init = (params) => {
             if (scen !== 'project' && scen !== 'web') {
                 return;
             }
-            if (scen === 'web' && projectfilesTa.value.trim() === '') {
-                projectfilesTa.value = WEB_STARTER;
+            // Seed the HTML/CSS/JS scaffold for web unless the field already holds a
+            // real web file set — so a fresh web question, or one switched in from
+            // another scenario (whose field holds a project blob, not a flat set),
+            // starts from the helpful three-file starter rather than a bare file.
+            if (scen === 'web') {
+                let flat = null;
+                try {
+                    flat = JSON.parse(projectfilesTa.value || 'null');
+                } catch (e) {
+                    flat = null;
+                }
+                if (!Array.isArray(flat) || !flat.length) {
+                    projectfilesTa.value = WEB_STARTER;
+                }
             }
             // For web, refresh the picker preview as the starter files change.
             const onChange = scen === 'web'
@@ -577,9 +588,12 @@ export const init = (params) => {
                     readonly: false,
                 }, config.strings || {});
             } else {
-                // The web (frontend) scenario keeps the flat single-language file set.
-                const fbentry = entryfileField ? entryfileField.value.trim() : 'main';
-                projectEditor = setupProjectFiles(null, projectfilesTa, {
+                // The web (frontend) scenario is a single, flat HTML/CSS/JS file set
+                // (no language choice, no Starter|Solution layer — web grades against
+                // DOM assertions). The explorer workspace in its flat mode (no author
+                // blob) is exactly that; index.html stays the served page by convention.
+                projectEditor = setupProjectWorkspace(null, projectfilesTa, {
+                    web: true,
                     language: 'html',
                     entryfile: 'index.html',
                     readonly: false,

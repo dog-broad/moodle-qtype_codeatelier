@@ -1538,6 +1538,7 @@
 /* Web scenario: the author's pick-an-element preview on the edit form. */
 .codeatelier-webpicker {
     margin-top: 0.5rem;
+    margin-bottom: 1rem;
 }
 
 .codeatelier-webpicker .codeatelier-preview-host {
@@ -1556,9 +1557,7 @@
  * own surfaces so it never touches the rest of the page. Values match the
  * Bootstrap spacing/weight scale, so the rendering is identical on both
  * versions. Remove once Moodle 4.x support is dropped (use BS5 names directly).
- * (The styled `<select>`s deliberately keep `.custom-select`: a `.form-select`
- * backfill would mean re-implementing the arrow control + theming it, i.e. the
- * heavy hand-written CSS we want to avoid; it works on both, deprecated to 6.0.)
+ * (The styled `<select>`s use `.form-select`, backfilled for 4.x further down.)
  */
 .qtype_codeatelier .visually-hidden,
 .qtype_codeatelier-report .visually-hidden {

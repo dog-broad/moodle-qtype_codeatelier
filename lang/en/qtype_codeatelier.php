@@ -259,6 +259,7 @@ $string['projectlayer'] = 'Editing layer';
 $string['projectlayersolution'] = 'Solution';
 $string['projectlayerstarter'] = 'Starter';
 $string['projectentryis'] = 'Entry file (runs first)';
+$string['projectservedpage'] = 'Served page (loads in the browser)';
 $string['projectsetentry'] = 'Set as the entry file';
 $string['pyodidebaseurl'] = 'Pyodide base URL';
 $string['pyodidebaseurl_desc'] = 'Where the browser loads the Python (Pyodide) runtime from for Practice-mode Python questions. The default is a pinned public CDN; point it at a local mirror for offline or locked-down sites. Must end with a trailing slash.';

@@ -51,16 +51,9 @@ export default [
         plugins: [nodeResolve(), terser()],
     },
     {
-        // The multi-file project editor: a file-tab list over one CodeMirror,
-        // reusing the editor as an AMD module (kept external).
-        input: 'amd/src/projectfiles.js',
-        external: (id) => id.startsWith('qtype_codeatelier/'),
-        output: {file: 'amd/build/projectfiles.min.js', format: 'amd', sourcemap: true, sourcemapExcludeSources: true},
-        plugins: [nodeResolve(), terser()],
-    },
-    {
-        // The project workspace: a two-pane file explorer + editor with a language
-        // switch and Starter|Solution layer toggle (authoring) reused for attempts.
+        // The multi-file editor: a two-pane file explorer + one CodeMirror, with a
+        // language switch and Starter|Solution layer toggle for project authoring,
+        // reused in a flat single-file-set mode for web questions and all attempts.
         input: 'amd/src/projectworkspace.js',
         external: (id) => id.startsWith('qtype_codeatelier/'),
         output: {file: 'amd/build/projectworkspace.min.js', format: 'amd', sourcemap: true, sourcemapExcludeSources: true},

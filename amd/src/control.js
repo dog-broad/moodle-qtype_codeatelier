@@ -28,7 +28,7 @@ import {create, highlightWithin, resolveAutoTheme} from 'qtype_codeatelier/edito
 import {run, describe, stop} from 'qtype_codeatelier/runner';
 import {grade} from 'qtype_codeatelier/grader';
 import {tokenDiff} from 'qtype_codeatelier/diff';
-import {setup as setupProjectFiles} from 'qtype_codeatelier/projectfiles';
+import {setup as setupProjectWorkspace} from 'qtype_codeatelier/projectworkspace';
 import {setUserPreference} from 'core_user/repository';
 import {setupPreview, gradeWeb} from 'qtype_codeatelier/webruntime';
 import {setupFunctionArgs} from './argfields.js';
@@ -833,7 +833,7 @@ export const init = (params) => {
                 resultsel.appendChild(note);
             }
         };
-        const webeditor = setupProjectFiles(root, textarea, config, strings, () => {
+        const webeditor = setupProjectWorkspace(root, textarea, config, strings, () => {
             if (preview) {
                 preview.scheduleRefresh();
             }
@@ -933,9 +933,10 @@ export const init = (params) => {
     };
     let editor;
     if (config.scenario === 'project') {
-        // A multi-file project: the editor is a file-tab list over one CodeMirror,
-        // keeping the hidden answer field synced to the canonical JSON file set.
-        editor = setupProjectFiles(root, textarea, config, strings, null, () => themeCtl.currentEffective());
+        // A multi-file project: the editor is a two-pane file explorer over one
+        // CodeMirror, keeping the hidden answer field synced to the canonical JSON
+        // file set.
+        editor = setupProjectWorkspace(root, textarea, config, strings, null, () => themeCtl.currentEffective());
     } else {
         try {
             editor = create(textarea, currentLanguage, editorOptions);
@@ -1032,7 +1033,7 @@ export const init = (params) => {
                 langhidden.value = next;
             }
             const cfg = Object.assign({}, config, {language: next});
-            editor = setupProjectFiles(root, textarea, cfg, strings, null, () => themeCtl.currentEffective());
+            editor = setupProjectWorkspace(root, textarea, cfg, strings, null, () => themeCtl.currentEffective());
             themeCtl.setEditor(editor);
             markStale();
         });

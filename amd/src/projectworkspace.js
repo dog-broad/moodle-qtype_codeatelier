@@ -176,6 +176,7 @@ const parseFlat = (json) => {
 export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
     const readonly = !!config.readonly;
     const author = !!config.author && !readonly;
+    const isweb = !!config.web || config.scenario === 'web';
     const sandbox = !!config.isjudge && !readonly;
     const onExternal = sandbox
         ? (type) => root.dispatchEvent(new CustomEvent('codeatelier:clip-external', {detail: {type: type}}))
@@ -438,7 +439,11 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
                 const marker = document.createElement('span');
                 marker.className = 'codeatelier-entry-badge codeatelier-entry-active';
                 marker.textContent = '▸︎';
-                marker.title = strings.entryis || 'Entry file (runs first)';
+                // Web grades the served page (index.html by convention), not a "run
+                // first" entry — label it for what it is in that scenario.
+                marker.title = isweb
+                    ? (strings.servedpage || 'Served page (loads in the browser)')
+                    : (strings.entryis || 'Entry file (runs first)');
                 marker.setAttribute('aria-label', marker.title);
                 row.appendChild(marker);
             }
@@ -504,8 +509,11 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
     // ---- toolbar (language switch + layer toggle) -----------------------------
     const buildToolbar = () => {
         toolbar.textContent = '';
-        // Language switch — only when more than one language is allowed.
-        if (langs.length > 1) {
+        // Language switch — author only, and only when more than one language is
+        // allowed. In an attempt the student's language is chosen by the question's
+        // own language picker (which re-mounts this workspace with that env), so an
+        // in-workspace switch here would be a dead, duplicate control.
+        if (author && langs.length > 1) {
             const langwrap = document.createElement('div');
             langwrap.className = 'codeatelier-lang-switch';
             langwrap.setAttribute('role', 'group');
@@ -541,6 +549,9 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
                 });
             toolbar.appendChild(toggle);
         }
+        // No switch and no toggle (a single-language attempt / web): drop the empty
+        // toolbar bar so the explorer + editor sit flush.
+        toolbar.style.display = toolbar.children.length ? '' : 'none';
     };
 
     function switchLanguage(lang) {
