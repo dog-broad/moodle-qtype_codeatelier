@@ -88,58 +88,143 @@ const rootHtml = (files) => {
 };
 
 /**
+ * The canonical DOM-assertion evaluator + action runner, as a source string.
+ *
+ * This is the single source of truth for what an assertion *means*: the practice
+ * tier inlines it into the in-frame harness (below), and the secure judge is sent
+ * this exact text in its grade request and injects it into the Playwright page —
+ * so a given assertion produces the same verdict on both tiers by construction,
+ * not by hand-kept mirrors. It is pure browser code with no closure over this
+ * module. Functions are `ca`-prefixed so they cannot collide with student code.
+ *
+ * An assertion is a tree: `{all:[…]}` (AND) / `{any:[…]}` (OR) / `{not: node}`
+ * over leaves; a node carrying a `selector` is a leaf
+ * (`{selector, property, matcher, expected}`). A bare leaf is a one-node tree.
+ */
+export const WEB_EVAL_SOURCE = `
+  function caQ(s){ try { return document.querySelector(s); } catch(e){ return null; } }
+  function caQa(s){ try { return Array.prototype.slice.call(document.querySelectorAll(s)); } catch(e){ return []; } }
+  function caVisible(el){
+    if (!el || el.hidden) return false;
+    var s = getComputedStyle(el);
+    if (s.display === 'none' || s.visibility === 'hidden' || parseFloat(s.opacity) === 0) return false;
+    return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+  }
+  function caGetProp(el, prop){
+    if (prop === 'text') return (el.textContent || '').trim();
+    if (prop === 'html') return el.innerHTML;
+    if (prop === 'value') return ('value' in el) ? el.value : '';
+    if (prop === 'checked') return !!el.checked;
+    if (prop === 'disabled') return !!el.disabled;
+    if (prop === 'visible') return caVisible(el);
+    if (prop === 'classlist') return Array.prototype.slice.call(el.classList || []).join(' ');
+    if (prop.indexOf('attr:') === 0) return el.getAttribute(prop.slice(5));
+    if (prop.indexOf('style:') === 0) return getComputedStyle(el)[prop.slice(6)];
+    return null;
+  }
+  function caCmp(actual, matcher, expected){
+    if (matcher === 'gt' || matcher === 'lt' || matcher === 'gte' || matcher === 'lte'){
+      var na = parseFloat(actual), ne = parseFloat(expected);
+      if (isNaN(na) || isNaN(ne)) return false;
+      if (matcher === 'gt') return na > ne;
+      if (matcher === 'lt') return na < ne;
+      if (matcher === 'gte') return na >= ne;
+      return na <= ne;
+    }
+    var a = String(actual === null || actual === undefined ? '' : actual);
+    var e = String(expected === null || expected === undefined ? '' : expected);
+    if (matcher === 'contains') return a.indexOf(e) !== -1;
+    if (matcher === 'not-contains') return a.indexOf(e) === -1;
+    if (matcher === 'not-equals') return a !== e;
+    if (matcher === 'has-class') return (' ' + a + ' ').indexOf(' ' + e + ' ') !== -1;
+    if (matcher === 'regex') { try { return new RegExp(e).test(a); } catch(x){ return false; } }
+    return a === e;
+  }
+  function caEvalLeaf(t){
+    var prop = (t.property || 'text');
+    var matcher = (t.matcher || 'equals');
+    try {
+      if (prop === 'exists') {
+        var present = !!caQ(t.selector);
+        var expectPresent = !/^(false|0|no)$/i.test(String(t.expected == null ? '' : t.expected).trim());
+        return { actual: present ? 'present' : 'absent', pass: present === expectPresent };
+      }
+      if (prop === 'count') {
+        var n = caQa(t.selector).length;
+        return { actual: n, pass: caCmp(n, matcher, t.expected) };
+      }
+      var el = caQ(t.selector);
+      if (!el) return { actual: null, pass: false, missing: true };
+      var actual = caGetProp(el, prop);
+      return { actual: actual, pass: caCmp(actual, matcher, t.expected) };
+    } catch (err) {
+      return { actual: null, pass: false, error: String(err && err.message || err) };
+    }
+  }
+  // Recursive boolean composition. Returns {pass, op?, children?} for a node, or a
+  // leaf result {pass, actual, missing?, error?}.
+  function caEvalNode(node){
+    if (node && Array.isArray(node.all)){
+      var rall = node.all.map(caEvalNode);
+      return { op: 'all', pass: rall.every(function(r){ return r.pass; }), children: rall };
+    }
+    if (node && Array.isArray(node.any)){
+      var rany = node.any.map(caEvalNode);
+      return { op: 'any', pass: rany.some(function(r){ return r.pass; }), children: rany };
+    }
+    if (node && node.not){
+      var rnot = caEvalNode(node.not);
+      return { op: 'not', pass: !rnot.pass, children: [rnot] };
+    }
+    return caEvalLeaf(node || {});
+  }
+  function caWait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+  function caWaitFor(selector, timeout){
+    return new Promise(function(res){
+      var t0 = Date.now();
+      (function poll(){
+        if (caQ(selector)) return res(true);
+        if (Date.now() - t0 >= timeout) return res(false);
+        setTimeout(poll, 50);
+      })();
+    });
+  }
+  function caRunAction(a){
+    if (a.type === 'wait') return caWait(Math.max(0, parseInt(a.ms, 10) || 0));
+    if (a.type === 'wait-for') return caWaitFor(a.selector, Math.max(0, parseInt(a.ms, 10) || 3000));
+    var el = caQ(a.selector);
+    if (!el) return Promise.resolve();
+    if (a.type === 'click') { el.click(); }
+    else if (a.type === 'type') { el.value = a.value; el.dispatchEvent(new Event('input', {bubbles:true})); }
+    else if (a.type === 'select') { el.value = a.value; el.dispatchEvent(new Event('change', {bubbles:true})); }
+    else if (a.type === 'check') { el.checked = (a.value !== 'false'); el.dispatchEvent(new Event('change', {bubbles:true})); }
+    else if (a.type === 'submit') { if (el.requestSubmit) { el.requestSubmit(); } else if (el.submit) { el.submit(); } }
+    else if (a.type === 'key') {
+      el.dispatchEvent(new KeyboardEvent('keydown', {key: a.value, bubbles:true}));
+      el.dispatchEvent(new KeyboardEvent('keyup', {key: a.value, bubbles:true}));
+    }
+    return Promise.resolve();
+  }
+  function caRunActions(actions){
+    return (actions || []).reduce(function(p, a){
+      return p.then(function(){ return caRunAction(a); });
+    }, Promise.resolve());
+  }
+`;
+
+/**
  * The trusted in-frame harness for DOM-assertion grading. Injected before the
- * student code so it captures a reference to postMessage first; it evaluates a
- * declarative assertion against the rendered document and posts the result back
- * to the parent. The SAME declarative spec is what the secure (Playwright) tier
- * will evaluate in page context, so the shape is parity-ready. Kept as a string
+ * student code so it captures a reference to postMessage first; it runs the
+ * assertion's actions (awaiting waits) then evaluates the assertion tree against
+ * the rendered document and posts the result back to the parent. The evaluator is
+ * {@link WEB_EVAL_SOURCE}, shared verbatim with the judge. Kept as a string
  * because it runs inside the sandboxed frame, not in this module.
  */
 const HARNESS = `
 (function(){
   var send = window.parent.postMessage.bind(window.parent);
-  function q(s){ try { return document.querySelector(s); } catch(e){ return null; } }
-  function qa(s){ try { return Array.prototype.slice.call(document.querySelectorAll(s)); } catch(e){ return []; } }
-  function getProp(el, prop){
-    if (prop === 'text') return (el.textContent || '').trim();
-    if (prop.indexOf('attr:') === 0) return el.getAttribute(prop.slice(5));
-    if (prop.indexOf('style:') === 0) return getComputedStyle(el)[prop.slice(6)];
-    return null;
-  }
-  function cmp(actual, matcher, expected){
-    var a = String(actual === null || actual === undefined ? '' : actual);
-    var e = String(expected === null || expected === undefined ? '' : expected);
-    if (matcher === 'contains') return a.indexOf(e) !== -1;
-    if (matcher === 'regex') { try { return new RegExp(e).test(a); } catch(x){ return false; } }
-    return a === e;
-  }
-  function evalAssertion(t){
-    var prop = (t.property || 'text');
-    var matcher = (t.matcher || 'equals');
-    try {
-      if (prop === 'exists') {
-        var present = !!q(t.selector);
-        var expectPresent = !/^(false|0|no)$/i.test(String(t.expected || '').trim());
-        return { actual: present ? 'present' : 'absent', pass: present === expectPresent };
-      }
-      if (prop === 'count') {
-        var n = qa(t.selector).length;
-        return { actual: n, pass: cmp(n, matcher, t.expected) };
-      }
-      var el = q(t.selector);
-      if (!el) return { actual: null, pass: false, missing: true };
-      var actual = getProp(el, prop);
-      return { actual: actual, pass: cmp(actual, matcher, t.expected) };
-    } catch (err) {
-      return { actual: null, pass: false, error: String(err && err.message || err) };
-    }
-  }
-  function runAction(a){
-    var el = q(a.selector);
-    if (!el) return;
-    if (a.type === 'click') { el.click(); }
-    else if (a.type === 'type') { el.value = a.value; el.dispatchEvent(new Event('input', {bubbles:true})); }
-  }
+  ${WEB_EVAL_SOURCE}
+  var q = caQ, qa = caQa;
   // Build a reasonably stable CSS selector for an element: prefer its id, then a
   // unique class, then a path of tag:nth-of-type steps up to an id or the body.
   function selectorFor(el){
@@ -203,8 +288,8 @@ const HARNESS = `
   window.addEventListener('message', function(ev){
     var msg = ev.data || {};
     if (msg.kind === 'grade') {
-      try { (msg.actions || []).forEach(runAction); } catch(e){}
-      send({ kind: 'results', results: (msg.assertions || []).map(evalAssertion) }, '*');
+      var report = function(){ send({ kind: 'results', results: (msg.assertions || []).map(caEvalNode) }, '*'); };
+      caRunActions(msg.actions).then(report, report);
     } else if (msg.kind === 'pickmode') {
       setPick(!!msg.on);
     } else if (msg.kind === 'highlight') {
@@ -254,28 +339,45 @@ export const compose = (files, options) => {
 };
 
 /**
- * Parse the actions DSL (one per line): `click <selector>` or
- * `type <selector> <value>`. Lines may also be separated by ';'.
+ * Parse the actions DSL (one per line, or ';'-separated). Verbs:
+ *   click <selector>                 — click an element
+ *   type <selector> <value>          — set an input's value (fires input)
+ *   select <selector> <value>        — set a select's value (fires change)
+ *   check <selector> [true|false]    — set a checkbox (default true, fires change)
+ *   submit <selector>                — submit a form
+ *   key <selector> <Key>             — dispatch keydown/keyup of <Key>
+ *   wait <ms>                        — pause before the next step
+ *   wait-for <selector> [ms]         — wait until a selector appears (default 3000ms)
  *
  * @param {String} text
- * @return {Array} array of {type, selector, value?}
+ * @return {Array} array of {type, selector?, value?, ms?}
  */
 export const parseActions = (text) => {
     if (!text) {
         return [];
     }
+    // Split "verb rest" and "verb a b" forms.
+    const head = (rest) => {
+        const sp = rest.indexOf(' ');
+        return sp === -1 ? [rest, ''] : [rest.slice(0, sp), rest.slice(sp + 1).trim()];
+    };
     return String(text).split(/[\n;]+/).map((line) => line.trim()).filter(Boolean).map((line) => {
         const space = line.indexOf(' ');
         const verb = (space === -1 ? line : line.slice(0, space)).toLowerCase();
         const rest = space === -1 ? '' : line.slice(space + 1).trim();
-        if (verb === 'click') {
-            return {type: 'click', selector: rest};
+        if (verb === 'click' || verb === 'submit') {
+            return {type: verb, selector: rest};
         }
-        if (verb === 'type') {
-            const sp2 = rest.indexOf(' ');
-            return (sp2 === -1)
-                ? {type: 'type', selector: rest, value: ''}
-                : {type: 'type', selector: rest.slice(0, sp2), value: rest.slice(sp2 + 1)};
+        if (verb === 'type' || verb === 'select' || verb === 'check' || verb === 'key') {
+            const [sel, val] = head(rest);
+            return {type: verb, selector: sel, value: val};
+        }
+        if (verb === 'wait') {
+            return {type: 'wait', ms: rest};
+        }
+        if (verb === 'wait-for') {
+            const [sel, ms] = head(rest);
+            return {type: 'wait-for', selector: sel, ms: ms};
         }
         return null;
     }).filter(Boolean);
@@ -315,10 +417,30 @@ const gradeOne = (iframe, doc, assertion, actions) => new Promise((resolve) => {
             finish((msg.results && msg.results[0]) || {pass: false, error: 'no result'});
         }
     };
-    const timer = setTimeout(() => finish({pass: false, error: 'timed out'}), 4000);
+    const timer = setTimeout(() => finish({pass: false, error: 'timed out'}), 10000);
     window.addEventListener('message', onMessage);
     iframe.srcdoc = doc;
 });
+
+/**
+ * The assertion tree for a test row. A compound check carries a parsed tree on
+ * `assertion` (`{all|any|not|leaf}`); otherwise the flat columns form the single
+ * leaf — so existing (flat) web questions keep working with no change.
+ *
+ * @param {Object} t a test row
+ * @return {Object} an assertion node
+ */
+const assertionTree = (t) => {
+    if (t.assertion && typeof t.assertion === 'object') {
+        return t.assertion;
+    }
+    return {
+        selector: t.selector,
+        property: t.assertproperty || 'text',
+        matcher: t.assertmatcher || 'equals',
+        expected: t.expected,
+    };
+};
 
 /**
  * Grade a web answer (file set) against its DOM assertions. Each assertion runs
@@ -346,12 +468,7 @@ export const gradeWeb = (files, tests, options) => {
         const testresults = [];
         for (let i = 0; i < tests.length; i++) {
             const t = tests[i];
-            const assertion = {
-                selector: t.selector,
-                property: t.assertproperty || 'text',
-                matcher: t.assertmatcher || 'equals',
-                expected: t.expected,
-            };
+            const assertion = assertionTree(t);
             const r = await gradeOne(iframe, doc, assertion, parseActions(t.actions));
             const weight = parseFloat(t.weight) || 0;
             totalweight += weight;
