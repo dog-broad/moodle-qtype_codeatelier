@@ -64,7 +64,7 @@ class web_judge_grader {
         $files = self::decode_files($answerjson);
         $assertions = [];
         foreach (array_values($tests) as $test) {
-            $assertions[] = [
+            $assertion = [
                 'selector' => (string) $test->selector,
                 'property' => (string) ($test->assertproperty !== null ? $test->assertproperty : 'text'),
                 'matcher' => (string) ($test->assertmatcher !== null && $test->assertmatcher !== ''
@@ -72,6 +72,15 @@ class web_judge_grader {
                 'expected' => (string) $test->expected,
                 'actions' => isset($test->actions) ? (string) $test->actions : '',
             ];
+            // A compound check ships its decoded tree on `assertion`; the service
+            // evaluates that when present, else the flat leaf above.
+            if (isset($test->assertionjson) && trim((string) $test->assertionjson) !== '') {
+                $tree = json_decode((string) $test->assertionjson, true);
+                if (is_array($tree)) {
+                    $assertion['assertion'] = $tree;
+                }
+            }
+            $assertions[] = $assertion;
         }
 
         $response = $this->runner->grade($files, $assertions, $this->timeoutms);
