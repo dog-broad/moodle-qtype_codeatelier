@@ -125,13 +125,15 @@ final class project_packager_test extends \advanced_testcase {
         $this->assertStringContainsString('/usr/local/go-*/bin', $go['compile']);
         $this->assertStringContainsString('go build', $go['compile']);
 
-        // Kotlin runs the entry file's JVM class name (Main.kt -> MainKt).
+        // Kotlin runs the entry file's JVM class name (Main.kt -> MainKt), the
+        // package resolved from the entry at run time.
         $kt = $this->zip_entries(project_packager::package(
             'kotlin',
             ['Main.kt' => "fun main(){}\n"],
             'Main.kt'
         ));
-        $this->assertStringContainsString("java -cp a.jar 'MainKt'", $kt['run']);
+        $this->assertStringContainsString("CLASS='MainKt'", $kt['run']);
+        $this->assertStringContainsString('java -cp a.jar', $kt['run']);
 
         // PHP/Ruby run the entry file directly via the located interpreter.
         $rb = $this->zip_entries(project_packager::package(
@@ -168,10 +170,39 @@ final class project_packager_test extends \advanced_testcase {
             ['Main.java' => "public class Main{}\n", 'Helper.java' => "class Helper{}\n"],
             'Main.java'
         ));
-        $this->assertStringContainsString('javac', $entries['compile']);
-        // The run command launches the entry file's class, not the .java file name.
-        $this->assertStringContainsString("java 'Main'", $entries['run']);
-        $this->assertStringNotContainsString('Main.java', $entries['run']);
+        $this->assertStringContainsString('javac -d out', $entries['compile']);
+        // The run launches the entry's class (default package -> the bare basename).
+        $this->assertStringContainsString("CLASS='Main'", $entries['run']);
+        $this->assertStringContainsString('java -cp out', $entries['run']);
+    }
+
+    public function test_package_compiles_sources_in_subdirectories(): void {
+        // Recursive discovery: a file under src/ is found by the compile script, its
+        // path is preserved in the zip, and the Java run uses the entry's basename
+        // (not the src/ path) as the class.
+        $entries = $this->zip_entries(project_packager::package(
+            'java',
+            ['src/Main.java' => "public class Main{}\n", 'src/Util.java' => "class Util{}\n"],
+            'src/Main.java'
+        ));
+        $this->assertArrayHasKey('src/Main.java', $entries);
+        $this->assertStringContainsString("find . -type f -name '*.java'", $entries['compile']);
+        $this->assertStringContainsString('javac -d out', $entries['compile']);
+        $this->assertStringContainsString("CLASS='Main'", $entries['run']);
+        $this->assertStringContainsString('java -cp out', $entries['run']);
+    }
+
+    public function test_package_merges_support_files(): void {
+        // Support/data files are placed in the box alongside the sources, paths kept.
+        $entries = $this->zip_entries(project_packager::package(
+            'python',
+            ['main.py' => "print(1)\n"],
+            'main.py',
+            ['data/fixture.txt' => "hello\n"]
+        ));
+        $this->assertArrayHasKey('data/fixture.txt', $entries);
+        $this->assertSame("hello\n", $entries['data/fixture.txt']);
+        $this->assertArrayHasKey('main.py', $entries);
     }
 
     public function test_package_python_runs_the_entry_file(): void {
