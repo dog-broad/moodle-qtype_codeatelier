@@ -519,6 +519,25 @@
     cursor: pointer;
 }
 
+/* Folder rows in the project explorer tree (folders are derived from file paths). */
+.codeatelier-folderrow {
+    list-style: none;
+    padding: 0.05rem 0.15rem;
+}
+
+.codeatelier-folder-toggle {
+    border: 0;
+    background: transparent;
+    color: var(--ca-text-muted, #5c6770);
+    padding: 0.2rem 0.3rem;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    width: 100%;
+}
+
 .codeatelier-filename-label {
     overflow: hidden;
     text-overflow: ellipsis;

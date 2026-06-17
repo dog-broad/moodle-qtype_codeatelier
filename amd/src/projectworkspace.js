@@ -317,7 +317,16 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
     }
 
     const nameTaken = (name, except) => files().some((f, i) => i !== except && f.name === name);
-    const validName = (name, except) => name !== '' && !/[\\/]/.test(name) && !nameTaken(name, except);
+    // A name is one or more `/`-separated path segments. Each segment is non-empty
+    // and not `.`/`..`; no backslash, no leading/trailing slash, no `//`. So
+    // `src/Main.java` is valid; `/x`, `x/`, `a//b`, `../x`, `a\b` are not.
+    const validPath = (name) => {
+        if (name === '' || /\\/.test(name) || name.indexOf('/') === 0 || /\/$/.test(name)) {
+            return false;
+        }
+        return name.split('/').every((seg) => seg !== '' && seg !== '.' && seg !== '..');
+    };
+    const validName = (name, except) => validPath(name) && !nameTaken(name, except);
 
     /**
      * Begin an inline rename on a file row's label.
@@ -364,106 +373,161 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
         input.addEventListener('blur', () => commit(true));
     };
 
+    // Collapsed folder paths (persist across renders); folders default to expanded.
+    const collapsed = {};
+
     /**
-     * Render the file rows for the current environment.
+     * Build one file row <li>: the file button (label = its basename within the
+     * tree), the entry badge, and delete. Operations key off the full file.name.
+     *
+     * @param {Object} file the file object
+     * @param {Number} index its index in files()
+     * @param {String} label the basename to display
+     * @param {Number} depth the tree depth, for indentation
+     * @return {HTMLElement}
+     */
+    function buildFileRow(file, index, label, depth) {
+        const row = document.createElement('li');
+        row.className = 'codeatelier-filerow' + (index === active ? ' codeatelier-filerow-active' : '');
+        row.style.paddingLeft = (depth * 0.9) + 'rem';
+
+        const tab = document.createElement('button');
+        tab.type = 'button';
+        tab.className = 'codeatelier-fileitem';
+        // File buttons carry roving tabindex + arrow-key nav (not an ARIA tablist —
+        // the buttons sit inside <li>s); aria-current marks the open file.
+        if (index === active) {
+            tab.setAttribute('aria-current', 'true');
+        }
+        tab.tabIndex = index === active ? 0 : -1;
+
+        const name = document.createElement('span');
+        name.className = 'codeatelier-filename-label';
+        name.textContent = label;
+        tab.appendChild(name);
+        tab.addEventListener('click', () => selectFile(index));
+        tab.addEventListener('dblclick', () => beginRename(name, index));
+        tab.addEventListener('keydown', (e) => {
+            const rows = rowEls();
+            const at = rows.indexOf(tab);
+            let target = null;
+            if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                target = rows[(at + 1) % rows.length];
+            } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                target = rows[(at - 1 + rows.length) % rows.length];
+            } else if (e.key === 'Home') {
+                target = rows[0];
+            } else if (e.key === 'End') {
+                target = rows[rows.length - 1];
+            } else if ((e.key === 'F2') && !readonly) {
+                e.preventDefault();
+                beginRename(name, index);
+                return;
+            }
+            if (target) {
+                e.preventDefault();
+                selectFile(rows.indexOf(target));
+                target.focus();
+            }
+        });
+        row.appendChild(tab);
+
+        // The entry/main file badge. In author mode it sets the entry; in attempt
+        // mode it is a static marker on the author's entry file.
+        const isentry = env().entry === file.name;
+        if (author) {
+            const badge = document.createElement('button');
+            badge.type = 'button';
+            badge.className = 'codeatelier-entry-badge' + (isentry ? ' codeatelier-entry-active' : '');
+            badge.title = isentry
+                ? (strings.entryis || 'Entry file (runs first)')
+                : (strings.setentry || 'Set as the entry file');
+            badge.setAttribute('aria-label', badge.title);
+            badge.setAttribute('aria-pressed', isentry ? 'true' : 'false');
+            badge.textContent = '▸︎';
+            badge.addEventListener('click', () => {
+                env().entry = file.name;
+                renderFiles();
+                serialise();
+            });
+            row.appendChild(badge);
+        } else if (isentry) {
+            const marker = document.createElement('span');
+            marker.className = 'codeatelier-entry-badge codeatelier-entry-active';
+            marker.textContent = '▸︎';
+            marker.title = isweb
+                ? (strings.servedpage || 'Served page (loads in the browser)')
+                : (strings.entryis || 'Entry file (runs first)');
+            marker.setAttribute('aria-label', marker.title);
+            row.appendChild(marker);
+        }
+
+        if (!readonly) {
+            const del = document.createElement('button');
+            del.type = 'button';
+            del.className = 'codeatelier-filedelete';
+            del.textContent = '×';
+            del.title = strings.deletefile || 'Delete file';
+            del.setAttribute('aria-label', (strings.deletefile || 'Delete file') + ': ' + file.name);
+            del.disabled = files().length <= 1 || isentry;
+            del.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteFile(index);
+            });
+            row.appendChild(del);
+        }
+        return row;
+    }
+
+    /**
+     * Render the current environment as a folder tree: folders are derived from the
+     * `/`-separated file paths (never stored) and are collapsible; files render
+     * under their folder with their basename as the label.
      */
     function renderFiles() {
         filelist.textContent = '';
+        const root = {folders: {}, files: []};
         files().forEach((file, index) => {
-            const row = document.createElement('li');
-            row.className = 'codeatelier-filerow' + (index === active ? ' codeatelier-filerow-active' : '');
-
-            const tab = document.createElement('button');
-            tab.type = 'button';
-            tab.className = 'codeatelier-fileitem';
-            // A list of file buttons (not an ARIA tablist — the buttons sit inside
-            // <li>s, which a tablist forbids). Roving tabindex + arrow keys for quick
-            // nav; aria-current marks the open file.
-            if (index === active) {
-                tab.setAttribute('aria-current', 'true');
+            const parts = String(file.name).split('/');
+            let node = root;
+            for (let i = 0; i < parts.length - 1; i++) {
+                node.folders[parts[i]] = node.folders[parts[i]] || {folders: {}, files: []};
+                node = node.folders[parts[i]];
             }
-            tab.tabIndex = index === active ? 0 : -1;
+            node.files.push({file: file, index: index, base: parts[parts.length - 1]});
+        });
 
-            const name = document.createElement('span');
-            name.className = 'codeatelier-filename-label';
-            name.textContent = file.name;
-            tab.appendChild(name);
-            tab.addEventListener('click', () => selectFile(index));
-            tab.addEventListener('dblclick', () => beginRename(name, index));
-            tab.addEventListener('keydown', (e) => {
-                const rows = rowEls();
-                const at = rows.indexOf(tab);
-                let target = null;
-                if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
-                    target = rows[(at + 1) % rows.length];
-                } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
-                    target = rows[(at - 1 + rows.length) % rows.length];
-                } else if (e.key === 'Home') {
-                    target = rows[0];
-                } else if (e.key === 'End') {
-                    target = rows[rows.length - 1];
-                } else if ((e.key === 'F2') && !readonly) {
-                    e.preventDefault();
-                    beginRename(name, index);
-                    return;
-                }
-                if (target) {
-                    e.preventDefault();
-                    selectFile(rows.indexOf(target));
-                    target.focus();
+        const renderNode = (node, depth, prefix) => {
+            Object.keys(node.folders).sort().forEach((folder) => {
+                const path = prefix + folder + '/';
+                const open = !collapsed[path];
+                const frow = document.createElement('li');
+                frow.className = 'codeatelier-folderrow';
+                frow.style.paddingLeft = (depth * 0.9) + 'rem';
+                const toggle = document.createElement('button');
+                toggle.type = 'button';
+                toggle.className = 'codeatelier-folder-toggle';
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                toggle.textContent = (open ? '▾ ' : '▸ ') + folder + '/';
+                toggle.addEventListener('click', () => {
+                    if (collapsed[path]) {
+                        delete collapsed[path];
+                    } else {
+                        collapsed[path] = true;
+                    }
+                    renderFiles();
+                });
+                frow.appendChild(toggle);
+                filelist.appendChild(frow);
+                if (open) {
+                    renderNode(node.folders[folder], depth + 1, path);
                 }
             });
-            row.appendChild(tab);
-
-            // The entry/main file badge. In author mode it is a button that sets the
-            // entry; in attempt mode it is a static marker on the author's entry file.
-            const isentry = env().entry === file.name;
-            if (author) {
-                const badge = document.createElement('button');
-                badge.type = 'button';
-                badge.className = 'codeatelier-entry-badge'
-                    + (isentry ? ' codeatelier-entry-active' : '');
-                badge.title = isentry
-                    ? (strings.entryis || 'Entry file (runs first)')
-                    : (strings.setentry || 'Set as the entry file');
-                badge.setAttribute('aria-label', badge.title);
-                badge.setAttribute('aria-pressed', isentry ? 'true' : 'false');
-                badge.textContent = '▸︎';
-                badge.addEventListener('click', () => {
-                    env().entry = file.name;
-                    renderFiles();
-                    serialise();
-                });
-                row.appendChild(badge);
-            } else if (isentry) {
-                const marker = document.createElement('span');
-                marker.className = 'codeatelier-entry-badge codeatelier-entry-active';
-                marker.textContent = '▸︎';
-                // Web grades the served page (index.html by convention), not a "run
-                // first" entry — label it for what it is in that scenario.
-                marker.title = isweb
-                    ? (strings.servedpage || 'Served page (loads in the browser)')
-                    : (strings.entryis || 'Entry file (runs first)');
-                marker.setAttribute('aria-label', marker.title);
-                row.appendChild(marker);
-            }
-
-            if (!readonly) {
-                const del = document.createElement('button');
-                del.type = 'button';
-                del.className = 'codeatelier-filedelete';
-                del.textContent = '×';
-                del.title = strings.deletefile || 'Delete file';
-                del.setAttribute('aria-label', (strings.deletefile || 'Delete file') + ': ' + file.name);
-                del.disabled = files().length <= 1 || isentry;
-                del.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    deleteFile(index);
-                });
-                row.appendChild(del);
-            }
-            filelist.appendChild(row);
-        });
+            node.files.slice().sort((a, b) => a.base.localeCompare(b.base)).forEach((f) => {
+                filelist.appendChild(buildFileRow(f.file, f.index, f.base, depth));
+            });
+        };
+        renderNode(root, 0, '');
     }
 
     const errorEl = document.createElement('span');
@@ -471,11 +535,15 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
     errorEl.setAttribute('role', 'alert');
 
     const addFile = () => {
+        // Seed the new file into the active file's folder, so "New file" inside
+        // src/ starts at src/. The author edits the full path in the rename.
+        const cur = files()[active];
+        const dir = cur ? String(cur.name).replace(/[^/]*$/, '') : '';
         let n = files().length + 1;
-        let name = 'file' + n;
+        let name = dir + 'file' + n;
         while (files().some((f) => f.name === name)) {
             n++;
-            name = 'file' + n;
+            name = dir + 'file' + n;
         }
         const blank = author ? {name: name, starter: '', solution: ''} : {name: name, content: ''};
         files().push(blank);
@@ -483,9 +551,9 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
         renderFiles();
         mountActive();
         serialise();
-        // Drop straight into a rename so the author names the new file.
-        const last = rowEls()[active];
-        const label = last && last.querySelector('.codeatelier-filename-label');
+        // Drop straight into a rename so the author names the new file. The active
+        // row is found by class (tree order is not files() order).
+        const label = filelist.querySelector('.codeatelier-filerow-active .codeatelier-filename-label');
         if (label) {
             beginRename(label, active);
         }
