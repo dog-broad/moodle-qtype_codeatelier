@@ -877,7 +877,10 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
     let importPanel = null;
     if (author) {
         importPanel = buildImportPanel(readPicked);
-        wrap.insertBefore(importPanel, body);
+        // Mount the panel above the workspace box rather than inside it: the box is
+        // `overflow: hidden` (for its rounded two-pane frame), which would clip the
+        // panel's lower controls (the file picker, status) once the disclosure opens.
+        wrap.parentNode.insertBefore(importPanel, wrap);
         // The explorer is a drop target: drop files / a folder / a .zip onto the tree.
         explorer.addEventListener('dragover', (e) => {
             e.preventDefault();
@@ -953,6 +956,9 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
         destroy: () => {
             if (cm && cm.destroy) {
                 cm.destroy();
+            }
+            if (importPanel && importPanel.parentNode) {
+                importPanel.parentNode.removeChild(importPanel);
             }
             if (wrap.parentNode) {
                 wrap.parentNode.removeChild(wrap);

@@ -547,7 +547,7 @@
 
 /* Import disclosure: a full-width panel under the toolbar, matching the explorer. */
 .codeatelier-import {
-    margin: 0.4rem 0.5rem 0;
+    margin: 0 0 0.5rem;
     border: 1px solid var(--ca-border-soft, #e0e3e7);
     border-radius: 0.35rem;
     background: var(--ca-surface-muted, #f8f9fa);
