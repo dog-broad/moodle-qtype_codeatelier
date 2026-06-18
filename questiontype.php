@@ -586,6 +586,20 @@ class qtype_codeatelier extends question_type {
             'entryis' => 'projectentryis',
             'setentry' => 'projectsetentry',
             'servedpage' => 'projectservedpage',
+            'import' => 'projectimport',
+            'importplaceholder' => 'projectimportplaceholder',
+            'importhelp' => 'projectimporthelp',
+            'importadd' => 'projectimportadd',
+            'importreplace' => 'projectimportreplace',
+            'importdo' => 'projectimportdo',
+            'importexamples' => 'projectimportexamples',
+            'importextree' => 'projectimportextree',
+            'importexfiles' => 'projectimportexfiles',
+            'importorpick' => 'projectimportorpick',
+            'importok' => 'projectimportok',
+            'importskipped' => 'projectimportskipped',
+            'importempty' => 'projectimportempty',
+            'importreading' => 'projectimportreading',
         ];
         $strings = [];
         foreach ($keys as $jskey => $stringid) {
