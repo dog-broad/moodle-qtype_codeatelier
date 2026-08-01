@@ -31,7 +31,7 @@
  * @return {String}
  */
 export const sanitisePath = (name) => {
-    let p = String(name == null ? '' : name).trim().replace(/\\/g, '/');
+    let p = String(name ?? '').trim().replace(/\\/g, '/');
     p = p.replace(/^\.\//, '').replace(/^\/+/, '').replace(/\/{2,}/g, '/').replace(/\/+$/, '');
     if (p === '' || p.split('/').some((seg) => seg === '' || seg === '.' || seg === '..')) {
         return '';
@@ -56,7 +56,7 @@ export const parseTree = (text) => {
     let skipped = 0;
     const stack = []; // folders forming the current path: {indent, name}
 
-    String(text == null ? '' : text).replace(/\r\n?/g, '\n').split('\n').forEach((line) => {
+    String(text ?? '').replace(/\r\n?/g, '\n').split('\n').forEach((line) => {
         if (line.trim() === '') {
             return;
         }
@@ -131,7 +131,7 @@ const headingPath = (s) => {
  * @return {Array<{name: String, content: String}>}
  */
 export const parseFilesWithContent = (text) => {
-    const lines = String(text == null ? '' : text).replace(/\r\n?/g, '\n').split('\n');
+    const lines = String(text ?? '').replace(/\r\n?/g, '\n').split('\n');
     const out = [];
     let heading = '';
     let i = 0;
@@ -174,7 +174,7 @@ export const parseFilesWithContent = (text) => {
  * @return {String} 'files' | 'tree'
  */
 export const detectPasteFormat = (text) => {
-    return /^\s*(`{3,}|~{3,})/m.test(String(text == null ? '' : text)) ? 'files' : 'tree';
+    return /^\s*(`{3,}|~{3,})/m.test(String(text ?? '')) ? 'files' : 'tree';
 };
 
 /** @var {String} a directory-tree example for the import help. */

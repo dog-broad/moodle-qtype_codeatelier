@@ -149,8 +149,10 @@ class qtype_codeatelier extends question_type {
         // resolve a run target and the question would grade against nothing. Reject it
         // here (the import and restore paths land here too) rather than store a
         // question that silently cannot run.
-        if ($scenario === 'project' && $question->projectfiles !== null
-                && !\qtype_codeatelier\judge\project_packager::is_env_blob($question->projectfiles)) {
+        if (
+            $scenario === 'project' && $question->projectfiles !== null
+                && !\qtype_codeatelier\judge\project_packager::is_env_blob($question->projectfiles)
+        ) {
             throw new \moodle_exception('projectflatblob', 'qtype_codeatelier');
         }
         $question->entryfile = ($scenario !== 'project'
@@ -184,9 +186,11 @@ class qtype_codeatelier extends question_type {
         // insert/update/delete path is reused unchanged.
         if (isset($question->testcasesjson)) {
             $decoded = json_decode((string) $question->testcasesjson, true);
-            foreach (['testinput', 'testexpected', 'matchmode', 'tolerance', 'testweight',
+            foreach (
+                ['testinput', 'testexpected', 'matchmode', 'tolerance', 'testweight',
                     'testvisibility', 'checkerquery', 'testdatasetsql', 'testfeedback', 'selector',
-                    'assertproperty', 'assertmatcher', 'actions', 'assertionjson', 'subtask'] as $arrayfield) {
+                    'assertproperty', 'assertmatcher', 'actions', 'assertionjson', 'subtask'] as $arrayfield
+            ) {
                 $question->$arrayfield = [];
             }
             foreach (is_array($decoded) ? $decoded : [] as $test) {

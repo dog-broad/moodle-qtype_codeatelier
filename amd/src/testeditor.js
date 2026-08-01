@@ -411,7 +411,14 @@ const formatCall = (entrypoint, input) => {
     return (entrypoint || 'solve') + '(' + args.map((a) => JSON.stringify(a)).join(', ') + ')';
 };
 
-/** Small DOM builder. */
+/**
+ * Small DOM builder.
+ *
+ * @param {String} tag the element tag name
+ * @param {Object} attrs attributes; `text` and `html` set content, the rest are set as attributes
+ * @param {Array} children child nodes to append
+ * @returns {Element} the built element
+ */
 const el = (tag, attrs, children) => {
     const node = document.createElement(tag);
     Object.keys(attrs || {}).forEach((k) => {
@@ -575,7 +582,13 @@ export const init = (params) => {
                 const sub = el('input', {type: 'text', class: 'form-control form-control-sm codeatelier-propsub'}, []);
                 const cur = String(obj[key] || 'text');
                 let base = cur;
-                if (cur.indexOf('attr:') === 0) { base = 'attr'; sub.value = cur.slice(5); } else if (cur.indexOf('style:') === 0) { base = 'style'; sub.value = cur.slice(6); }
+                if (cur.indexOf('attr:') === 0) {
+                    base = 'attr';
+                    sub.value = cur.slice(5);
+                } else if (cur.indexOf('style:') === 0) {
+                    base = 'style';
+                    sub.value = cur.slice(6);
+                }
                 sel.value = (opts[base] !== undefined || base === 'attr' || base === 'style') ? base : 'text';
                 const apply = () => {
                     if (sel.value === 'attr') {
@@ -672,7 +685,10 @@ export const init = (params) => {
                 if (String(t.assertionjson || '').trim() === '') {
                     webwrap.appendChild(fieldRow(s.assertselector || 'Selector', textInput('selector')));
                     webwrap.appendChild(fieldRow(s.assertproperty || 'Property', propertyControl(t, 'assertproperty', sync)));
-                    webwrap.appendChild(fieldRow(s.assertmatcher || 'Compare', select('assertmatcher', config.assertmatchers || {})));
+                    webwrap.appendChild(fieldRow(
+                        s.assertmatcher || 'Compare',
+                        select('assertmatcher', config.assertmatchers || {})
+                    ));
                     webwrap.appendChild(fieldRow(s.expected || 'Expected', textarea('expected', 2)));
                     const combine = el('button', {type: 'button', class: 'btn btn-link btn-sm codeatelier-te-combine',
                         text: s.assertcombine || '+ Combine with another condition'}, []);
@@ -735,7 +751,10 @@ export const init = (params) => {
             }
         }
         body.appendChild(fieldRow(s.weight || 'Weight', textInput('weight')));
-        body.appendChild(fieldRow(s.visibility || 'Visibility', select('visibility', config.visibilities || {1: 'Visible', 0: 'Hidden'})));
+        body.appendChild(fieldRow(
+            s.visibility || 'Visibility',
+            select('visibility', config.visibilities || {1: 'Visible', 0: 'Hidden'})
+        ));
         body.appendChild(fieldRow(s.testfeedback || 'Feedback', textarea('feedback', 2)));
         return body;
     };

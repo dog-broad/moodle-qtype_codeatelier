@@ -1102,7 +1102,8 @@ class qtype_codeatelier_edit_form extends question_edit_form {
                     : (reset($envs) ?: null);
             $referencecode = $env
                     ? \qtype_codeatelier\judge\project_packager::encode_files(
-                        \qtype_codeatelier\judge\project_packager::reference_files($env))
+                        \qtype_codeatelier\judge\project_packager::reference_files($env)
+                    )
                     : '[]';
         } else {
             $referencecode = $data['referencesolution'];

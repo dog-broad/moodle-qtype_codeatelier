@@ -1272,11 +1272,13 @@ export const init = (params) => {
     }
     resultsel.style.display = 'none';
 
-    // Focus mode: an opt-in split-pane that fills the viewport. Implemented as a
-    // class on the question root so the editor, results and form fields keep
-    // their DOM position (the score/answer fields must stay inside the quiz
-    // form) and CodeMirror is never remounted. A hoisted function so the web
-    // branch — which returns before this point — can wire it up as well.
+    /**
+     * Focus mode: an opt-in split-pane that fills the viewport. Implemented as a
+     * class on the question root so the editor, results and form fields keep
+     * their DOM position (the score/answer fields must stay inside the quiz
+     * form) and CodeMirror is never remounted. A hoisted function so the web
+     * branch — which returns before this point — can wire it up as well.
+     */
     function setupFocusMode() {
     const focusbutton = root.querySelector('[data-role="focus"]');
     if (focusbutton) {

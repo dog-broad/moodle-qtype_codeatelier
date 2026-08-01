@@ -82,6 +82,7 @@ const splitSigParams = (list) => {
  * A type <select> preset to the given value.
  *
  * @param {String} value the selected type
+ * @param {String} labelId id of the visible row label, associated for an accessible name
  * @return {HTMLSelectElement}
  */
 const sigTypeSelect = (value, labelId) => {

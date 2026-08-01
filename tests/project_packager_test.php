@@ -93,12 +93,14 @@ final class project_packager_test extends \advanced_testcase {
         // The workspace blob carries an envs map; anything else (the legacy flat
         // file set, junk, empty) does not and cannot yield a run entry.
         $this->assertTrue(project_packager::is_env_blob(
-            '{"version":2,"envs":{"python":{"entry":"main.py","files":[]}}}'));
+            '{"version":2,"envs":{"python":{"entry":"main.py","files":[]}}}'
+        ));
         // An envs map with no languages yet is still the right shape.
         $this->assertTrue(project_packager::is_env_blob('{"version":2,"envs":{}}'));
 
         $this->assertFalse(project_packager::is_env_blob(
-            '[{"name":"main.cpp","content":"int main(){}"}]'));
+            '[{"name":"main.cpp","content":"int main(){}"}]'
+        ));
         $this->assertFalse(project_packager::is_env_blob('{"version":2}'));
         $this->assertFalse(project_packager::is_env_blob('not json'));
         $this->assertFalse(project_packager::is_env_blob(''));

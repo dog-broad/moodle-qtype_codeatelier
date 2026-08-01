@@ -542,9 +542,10 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
         // src/ starts at src/. The author edits the full path in the rename.
         const cur = files()[active];
         const dir = cur ? String(cur.name).replace(/[^/]*$/, '') : '';
+        const taken = (candidate) => files().some((f) => f.name === candidate);
         let n = files().length + 1;
         let name = dir + 'file' + n;
-        while (files().some((f) => f.name === name)) {
+        while (taken(name)) {
             n++;
             name = dir + 'file' + n;
         }
@@ -562,7 +563,14 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
         }
     };
 
-    /** Small DOM builder (text/html/class attrs + children). */
+    /**
+     * Small DOM builder (text/html/class attrs + children).
+     *
+     * @param {String} tag the element tag name
+     * @param {Object} attrs attributes; `text` and `html` set content, the rest are set as attributes
+     * @param {Array} children child nodes to append
+     * @returns {Element} the built element
+     */
     const el = (tag, attrs, children) => {
         const node = document.createElement(tag);
         Object.keys(attrs || {}).forEach((k) => {
@@ -722,6 +730,12 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
         ]);
     }
 
+    /**
+     * Remove a file from the current environment. The last remaining file and the
+     * entry file are never deleted — the environment must stay runnable.
+     *
+     * @param {Number} index position in the current environment's file list
+     */
     function deleteFile(index) {
         if (files().length <= 1 || env().entry === files()[index].name) {
             return;
@@ -785,6 +799,12 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
         toolbar.style.display = toolbar.children.length ? '' : 'none';
     };
 
+    /**
+     * Switch to another language's file environment, flushing the open editor
+     * into the model first so nothing typed is lost.
+     *
+     * @param {String} lang the language code to switch to
+     */
     function switchLanguage(lang) {
         if (lang === currentLang || !model.envs[lang]) {
             return;
@@ -799,6 +819,12 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
         mountActive();
     }
 
+    /**
+     * Switch between the Starter and Solution editing layers, flushing the open
+     * editor into the current layer first.
+     *
+     * @param {String} key either 'starter' or 'solution'
+     */
     function switchLayer(key) {
         if (key === layer) {
             return;
