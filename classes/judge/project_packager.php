@@ -84,6 +84,27 @@ class project_packager {
     }
 
     /**
+     * Whether a projectfiles blob is in the language-keyed workspace format
+     * (`{envs: {...}}`) rather than the flat `[{name, content}]` array that
+     * predates the workspace.
+     *
+     * The distinction is load-bearing: a project's run entry lives per-language
+     * inside the envs blob, so a flat blob has no entry to resolve and cannot be
+     * graded. Callers reject rather than guess.
+     *
+     * @param string $json the projectfiles blob
+     * @return bool true if the blob carries an envs map
+     */
+    public static function is_env_blob(string $json): bool {
+        $json = trim($json);
+        if ($json === '') {
+            return false;
+        }
+        $decoded = json_decode($json, true);
+        return is_array($decoded) && isset($decoded['envs']) && is_array($decoded['envs']);
+    }
+
+    /**
      * Decode the language-keyed project workspace blob
      * `{envs: {<lang>: {entry, files: [{name, starter, solution}]}}}` into a map
      * `[lang => ['entry' => string, 'files' => [name => ['starter','solution']]]]`,

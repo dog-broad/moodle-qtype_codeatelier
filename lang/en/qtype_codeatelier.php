@@ -287,6 +287,7 @@ $string['projectfiles'] = 'Project files';
 $string['projectfilesempty'] = 'Add at least one project file.';
 $string['projectfilesform'] = 'Project files';
 $string['projectfilesform_help'] = 'The multi-file environment the student works in. Use the file explorer to add, rename (double-click) and delete files; mark the entry/main file the program runs from with the ▸ run badge. The Starter layer is what the student begins with; the Solution layer is your reference (used to capture expected outputs and validate the question). When you allow several languages, each has its own file environment — switch between them with the language buttons. Projects run in Secure mode.';
+$string['projectflatblob'] = 'This project question is stored in an older file format that does not record which file runs first, so it could not be saved. Re-create the project in the file explorer, or import a copy exported from a current version of the plugin.';
 $string['projectjudgeonly'] = 'A multi-file project runs in Secure mode. Set the grading mode to Secure.';
 $string['projectlanguageset'] = 'A project runs on the server: set Language (and any allowed languages) to project languages — C, C++, Java, Python, JavaScript, Go, Rust, PHP, TypeScript, C#, Kotlin or Ruby.';
 $string['projectlayer'] = 'Editing layer';

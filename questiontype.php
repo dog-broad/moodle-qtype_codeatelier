@@ -145,6 +145,14 @@ class qtype_codeatelier extends question_type {
         // when the blob/file set is blank.
         $pf = isset($question->projectfiles) ? trim((string) $question->projectfiles) : '';
         $question->projectfiles = ($pf !== '' && $pf !== '[]' && $pf !== '{}') ? $pf : null;
+        // A flat pre-workspace blob carries no per-language entry, so nothing could
+        // resolve a run target and the question would grade against nothing. Reject it
+        // here (the import and restore paths land here too) rather than store a
+        // question that silently cannot run.
+        if ($scenario === 'project' && $question->projectfiles !== null
+                && !\qtype_codeatelier\judge\project_packager::is_env_blob($question->projectfiles)) {
+            throw new \moodle_exception('projectflatblob', 'qtype_codeatelier');
+        }
         $question->entryfile = ($scenario !== 'project'
                 && isset($question->entryfile) && trim((string) $question->entryfile) !== '')
                 ? (string) $question->entryfile : null;

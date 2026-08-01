@@ -89,6 +89,21 @@ final class project_packager_test extends \advanced_testcase {
         $this->assertSame([], project_packager::decode_envs('[{"name":"a"}]'));
     }
 
+    public function test_is_env_blob_separates_workspace_blobs_from_flat_sets(): void {
+        // The workspace blob carries an envs map; anything else (the legacy flat
+        // file set, junk, empty) does not and cannot yield a run entry.
+        $this->assertTrue(project_packager::is_env_blob(
+            '{"version":2,"envs":{"python":{"entry":"main.py","files":[]}}}'));
+        // An envs map with no languages yet is still the right shape.
+        $this->assertTrue(project_packager::is_env_blob('{"version":2,"envs":{}}'));
+
+        $this->assertFalse(project_packager::is_env_blob(
+            '[{"name":"main.cpp","content":"int main(){}"}]'));
+        $this->assertFalse(project_packager::is_env_blob('{"version":2}'));
+        $this->assertFalse(project_packager::is_env_blob('not json'));
+        $this->assertFalse(project_packager::is_env_blob(''));
+    }
+
     public function test_starter_and_reference_files(): void {
         $envs = project_packager::decode_envs(json_encode(['envs' => ['python' => [
             'entry' => 'main.py',
