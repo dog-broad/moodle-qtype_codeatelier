@@ -10,8 +10,8 @@ CodeAtelier runs a question in one of two tiers:
 
 | Tier | Where code runs | Languages | Best for |
 |---|---|---|---|
-| **Practice** | the student's browser (WebAssembly) | Python, SQL, JavaScript | instant practice and formative feedback, with **no server to deploy** |
-| **Judge** | a server sandbox | Python, JavaScript, C, C++, Java | authoritative grading with real time/memory limits and secret tests |
+| **Practice** | the student's browser (WebAssembly, sandboxed iframe) | Python, SQL, JavaScript, HTML/CSS/JS | instant practice and formative feedback, with **no server to deploy** |
+| **Judge** | a server sandbox (Judge0; a headless-browser service for web questions) | C, C++, C#, Java, Kotlin, Go, Rust, Python, JavaScript, TypeScript, PHP, Ruby, SQL, HTML/CSS/JS | authoritative grading with real time/memory limits and secret tests |
 
 **The practice tier is for practice.** Because the test cases are sent to the browser to run the code, a determined student can read them — so the in-browser tier is never used for real grading. Graded assessment runs on the judge tier, where tests stay on the server and the result is computed where it can't be tampered with.
 
@@ -31,12 +31,27 @@ The established option for code questions in Moodle is powerful but shows its ag
 
 ## Status
 
-Active development. Both tiers are implemented:
+Beta. Tested on Moodle 4.5 and 5.2 (PostgreSQL).
 
-- **Practice tier** — a modern in-browser code question (Python, SQL, JavaScript) with instant feedback and no execution server.
-- **Judge tier** — authoritative server-side grading through a sandbox (Judge0): compiled languages (C, C++, Java) alongside Python and JavaScript, real time and memory limits, secret server-side tests, the full verdict taxonomy (Accepted / Wrong Answer / Time Limit Exceeded / Memory Limit Exceeded / Runtime Error / Compile Error), per-test diffs, and a formative "run against examples" loop.
+**Question scenarios**, each gradable on the tier(s) shown:
 
-In progress: scaling for large cohorts (asynchronous grading) and a more flexible model — student language choice, per-question limits, and secure server-side SQL.
+| Scenario | Practice | Judge |
+|---|---|---|
+| Standard input / output (complete program) | yes | yes |
+| Function / unit-test (harness calls the student's function) | yes | yes, all languages, with typed signatures for static languages |
+| SQL result set (including mutation + checker query) | yes | yes |
+| Multi-file project (folder tree, file import, separate compilation) | — | yes |
+| Web frontend (HTML/CSS/JS with declarative DOM assertions) | yes | yes |
+
+**Grading.** Weighted test cases with partial credit; a declarative matching spec (exact, trimmed, regex, numeric tolerance, structured deep-equal, SQL result set) interpreted identically by the browser and server graders; the full verdict taxonomy (Accepted / Wrong Answer / Time Limit Exceeded / Memory Limit Exceeded / Runtime Error / Compile Error); per-question time and memory limits; custom checkers for problems with many valid answers; IOI-style subtasks with grouped partial scoring; student language choice.
+
+**Scale.** Judge-tier grading is asynchronous: submitting an attempt never waits on the sandbox, a scheduled task drains the queue, and identical resubmissions are served from a result cache. Load-tested at 1000 simultaneous submissions. If the sandbox is unreachable the attempt stays *needs grading* — a grade is never faked.
+
+**Authoring.** A test-case table instead of execution templates, live student preview, run-to-capture of expected outputs from a reference solution, bulk test-case import and large data files, per-test SQL datasets, and an author-by-example builder for web assertions.
+
+**Teacher insight & integrity.** A submissions report per question and per quiz (score and verdict distributions, per-test pass rates, language breakdown, attempt drill-down); cohort similarity detection (fingerprint-based, run in-process, surfaced as clusters); a server-side proctor log of focus loss and blocked clipboard use on graded questions.
+
+**Editor.** CodeMirror 6 with find/replace, multi-cursor and folding, focus mode, and selectable Auto / Light / Dark / High-contrast themes.
 
 ## Editor
 
@@ -56,16 +71,23 @@ A teacher writes the prompt in Moodle's normal question-text editor, then fills 
 
 ## Requirements
 
-- Moodle 4.x or 5.x.
-- For the judge tier: a code-execution sandbox (configured per site).
+- Moodle 4.5 or later (tested on 4.5 and 5.2).
+- Practice tier: nothing beyond Moodle.
+- Judge tier: a [Judge0](https://judge0.com/) instance (tested with v1.13.1), set under the plugin's admin settings.
+- Web questions on the judge tier: the companion [codeatelier-webjudge](https://github.com/dog-broad/codeatelier-webjudge) service.
 
 ## Installation
 
-Copy this plugin into `question/type/codeatelier/` in your Moodle tree (the directory **must** be named `codeatelier`), then visit **Site administration → Notifications** to complete the install.
+Copy this plugin into `question/type/codeatelier/` in your Moodle tree (the directory **must** be named `codeatelier`; on Moodle 5.1+ the tree lives under `public/`), then visit **Site administration → Notifications** to complete the install.
 
 ```
 git clone https://github.com/dog-broad/moodle-qtype_codeatelier.git question/type/codeatelier
 ```
+
+Optional companion plugins add entry points to the submissions report:
+
+- [`qbank_codeatelierreport`](https://github.com/dog-broad/codeatelier-qbank) — a question-bank action.
+- [`quiz_codeatelier`](https://github.com/dog-broad/codeatelier-quizreport) — a quiz report tab.
 
 ## Accessibility
 
