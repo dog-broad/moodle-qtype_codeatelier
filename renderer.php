@@ -598,7 +598,7 @@ class qtype_codeatelier_renderer extends qtype_renderer {
             foreach ((array) $row as $value) {
                 $cells .= html_writer::tag('td', $value === null ? 'NULL' : s((string) $value));
             }
-            // codeatelier-row-diff (NOT codeatelier-diff-row, which is display:flex).
+            // Note codeatelier-row-diff, NOT codeatelier-diff-row, which is display:flex.
             $trclass = !empty($extrakeys[json_encode($row)]) ? 'codeatelier-row-diff' : '';
             $body .= html_writer::tag('tr', $cells, $trclass ? ['class' => $trclass] : []);
         }

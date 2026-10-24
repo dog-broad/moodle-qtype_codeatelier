@@ -29,12 +29,15 @@
  *    the `answer` field (the canonical JSON the judge grades) — explorer only, no
  *    layers, entry read-only.
  *
- * Deliberately not an IDE: a flat file list, no tree, no terminal.
+ * Deliberately not an IDE: a folder-tree file list, no terminal.
  *
  * @module qtype_codeatelier/projectworkspace
  */
 
 import {create} from 'qtype_codeatelier/editor';
+import {parseTree, parseFilesWithContent, detectPasteFormat, sanitisePath,
+    EXAMPLE_TREE, EXAMPLE_FILES} from './projectimport.js';
+import {unzip} from './unzip.js';
 
 /** @var {Object} file extension to CodeMirror highlighting language. */
 const EXT_LANGUAGE = {
@@ -317,7 +320,16 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
     }
 
     const nameTaken = (name, except) => files().some((f, i) => i !== except && f.name === name);
-    const validName = (name, except) => name !== '' && !/[\\/]/.test(name) && !nameTaken(name, except);
+    // A name is one or more `/`-separated path segments. Each segment is non-empty
+    // and not `.`/`..`; no backslash, no leading/trailing slash, no `//`. So
+    // `src/Main.java` is valid; `/x`, `x/`, `a//b`, `../x`, `a\b` are not.
+    const validPath = (name) => {
+        if (name === '' || /\\/.test(name) || name.indexOf('/') === 0 || /\/$/.test(name)) {
+            return false;
+        }
+        return name.split('/').every((seg) => seg !== '' && seg !== '.' && seg !== '..');
+    };
+    const validName = (name, except) => validPath(name) && !nameTaken(name, except);
 
     /**
      * Begin an inline rename on a file row's label.
@@ -364,106 +376,161 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
         input.addEventListener('blur', () => commit(true));
     };
 
+    // Collapsed folder paths (persist across renders); folders default to expanded.
+    const collapsed = {};
+
     /**
-     * Render the file rows for the current environment.
+     * Build one file row <li>: the file button (label = its basename within the
+     * tree), the entry badge, and delete. Operations key off the full file.name.
+     *
+     * @param {Object} file the file object
+     * @param {Number} index its index in files()
+     * @param {String} label the basename to display
+     * @param {Number} depth the tree depth, for indentation
+     * @return {HTMLElement}
+     */
+    function buildFileRow(file, index, label, depth) {
+        const row = document.createElement('li');
+        row.className = 'codeatelier-filerow' + (index === active ? ' codeatelier-filerow-active' : '');
+        row.style.paddingLeft = (depth * 0.9) + 'rem';
+
+        const tab = document.createElement('button');
+        tab.type = 'button';
+        tab.className = 'codeatelier-fileitem';
+        // File buttons carry roving tabindex + arrow-key nav (not an ARIA tablist —
+        // the buttons sit inside <li>s); aria-current marks the open file.
+        if (index === active) {
+            tab.setAttribute('aria-current', 'true');
+        }
+        tab.tabIndex = index === active ? 0 : -1;
+
+        const name = document.createElement('span');
+        name.className = 'codeatelier-filename-label';
+        name.textContent = label;
+        tab.appendChild(name);
+        tab.addEventListener('click', () => selectFile(index));
+        tab.addEventListener('dblclick', () => beginRename(name, index));
+        tab.addEventListener('keydown', (e) => {
+            const rows = rowEls();
+            const at = rows.indexOf(tab);
+            let target = null;
+            if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                target = rows[(at + 1) % rows.length];
+            } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                target = rows[(at - 1 + rows.length) % rows.length];
+            } else if (e.key === 'Home') {
+                target = rows[0];
+            } else if (e.key === 'End') {
+                target = rows[rows.length - 1];
+            } else if ((e.key === 'F2') && !readonly) {
+                e.preventDefault();
+                beginRename(name, index);
+                return;
+            }
+            if (target) {
+                e.preventDefault();
+                selectFile(rows.indexOf(target));
+                target.focus();
+            }
+        });
+        row.appendChild(tab);
+
+        // The entry/main file badge. In author mode it sets the entry; in attempt
+        // mode it is a static marker on the author's entry file.
+        const isentry = env().entry === file.name;
+        if (author) {
+            const badge = document.createElement('button');
+            badge.type = 'button';
+            badge.className = 'codeatelier-entry-badge' + (isentry ? ' codeatelier-entry-active' : '');
+            badge.title = isentry
+                ? (strings.entryis || 'Entry file (runs first)')
+                : (strings.setentry || 'Set as the entry file');
+            badge.setAttribute('aria-label', badge.title);
+            badge.setAttribute('aria-pressed', isentry ? 'true' : 'false');
+            badge.textContent = '▸︎';
+            badge.addEventListener('click', () => {
+                env().entry = file.name;
+                renderFiles();
+                serialise();
+            });
+            row.appendChild(badge);
+        } else if (isentry) {
+            const marker = document.createElement('span');
+            marker.className = 'codeatelier-entry-badge codeatelier-entry-active';
+            marker.textContent = '▸︎';
+            marker.title = isweb
+                ? (strings.servedpage || 'Served page (loads in the browser)')
+                : (strings.entryis || 'Entry file (runs first)');
+            marker.setAttribute('aria-label', marker.title);
+            row.appendChild(marker);
+        }
+
+        if (!readonly) {
+            const del = document.createElement('button');
+            del.type = 'button';
+            del.className = 'codeatelier-filedelete';
+            del.textContent = '×';
+            del.title = strings.deletefile || 'Delete file';
+            del.setAttribute('aria-label', (strings.deletefile || 'Delete file') + ': ' + file.name);
+            del.disabled = files().length <= 1 || isentry;
+            del.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteFile(index);
+            });
+            row.appendChild(del);
+        }
+        return row;
+    }
+
+    /**
+     * Render the current environment as a folder tree: folders are derived from the
+     * `/`-separated file paths (never stored) and are collapsible; files render
+     * under their folder with their basename as the label.
      */
     function renderFiles() {
         filelist.textContent = '';
+        const root = {folders: {}, files: []};
         files().forEach((file, index) => {
-            const row = document.createElement('li');
-            row.className = 'codeatelier-filerow' + (index === active ? ' codeatelier-filerow-active' : '');
-
-            const tab = document.createElement('button');
-            tab.type = 'button';
-            tab.className = 'codeatelier-fileitem';
-            // A list of file buttons (not an ARIA tablist — the buttons sit inside
-            // <li>s, which a tablist forbids). Roving tabindex + arrow keys for quick
-            // nav; aria-current marks the open file.
-            if (index === active) {
-                tab.setAttribute('aria-current', 'true');
+            const parts = String(file.name).split('/');
+            let node = root;
+            for (let i = 0; i < parts.length - 1; i++) {
+                node.folders[parts[i]] = node.folders[parts[i]] || {folders: {}, files: []};
+                node = node.folders[parts[i]];
             }
-            tab.tabIndex = index === active ? 0 : -1;
+            node.files.push({file: file, index: index, base: parts[parts.length - 1]});
+        });
 
-            const name = document.createElement('span');
-            name.className = 'codeatelier-filename-label';
-            name.textContent = file.name;
-            tab.appendChild(name);
-            tab.addEventListener('click', () => selectFile(index));
-            tab.addEventListener('dblclick', () => beginRename(name, index));
-            tab.addEventListener('keydown', (e) => {
-                const rows = rowEls();
-                const at = rows.indexOf(tab);
-                let target = null;
-                if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
-                    target = rows[(at + 1) % rows.length];
-                } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
-                    target = rows[(at - 1 + rows.length) % rows.length];
-                } else if (e.key === 'Home') {
-                    target = rows[0];
-                } else if (e.key === 'End') {
-                    target = rows[rows.length - 1];
-                } else if ((e.key === 'F2') && !readonly) {
-                    e.preventDefault();
-                    beginRename(name, index);
-                    return;
-                }
-                if (target) {
-                    e.preventDefault();
-                    selectFile(rows.indexOf(target));
-                    target.focus();
+        const renderNode = (node, depth, prefix) => {
+            Object.keys(node.folders).sort().forEach((folder) => {
+                const path = prefix + folder + '/';
+                const open = !collapsed[path];
+                const frow = document.createElement('li');
+                frow.className = 'codeatelier-folderrow';
+                frow.style.paddingLeft = (depth * 0.9) + 'rem';
+                const toggle = document.createElement('button');
+                toggle.type = 'button';
+                toggle.className = 'codeatelier-folder-toggle';
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                toggle.textContent = (open ? '▾ ' : '▸ ') + folder + '/';
+                toggle.addEventListener('click', () => {
+                    if (collapsed[path]) {
+                        delete collapsed[path];
+                    } else {
+                        collapsed[path] = true;
+                    }
+                    renderFiles();
+                });
+                frow.appendChild(toggle);
+                filelist.appendChild(frow);
+                if (open) {
+                    renderNode(node.folders[folder], depth + 1, path);
                 }
             });
-            row.appendChild(tab);
-
-            // The entry/main file badge. In author mode it is a button that sets the
-            // entry; in attempt mode it is a static marker on the author's entry file.
-            const isentry = env().entry === file.name;
-            if (author) {
-                const badge = document.createElement('button');
-                badge.type = 'button';
-                badge.className = 'codeatelier-entry-badge'
-                    + (isentry ? ' codeatelier-entry-active' : '');
-                badge.title = isentry
-                    ? (strings.entryis || 'Entry file (runs first)')
-                    : (strings.setentry || 'Set as the entry file');
-                badge.setAttribute('aria-label', badge.title);
-                badge.setAttribute('aria-pressed', isentry ? 'true' : 'false');
-                badge.textContent = '▸︎';
-                badge.addEventListener('click', () => {
-                    env().entry = file.name;
-                    renderFiles();
-                    serialise();
-                });
-                row.appendChild(badge);
-            } else if (isentry) {
-                const marker = document.createElement('span');
-                marker.className = 'codeatelier-entry-badge codeatelier-entry-active';
-                marker.textContent = '▸︎';
-                // Web grades the served page (index.html by convention), not a "run
-                // first" entry — label it for what it is in that scenario.
-                marker.title = isweb
-                    ? (strings.servedpage || 'Served page (loads in the browser)')
-                    : (strings.entryis || 'Entry file (runs first)');
-                marker.setAttribute('aria-label', marker.title);
-                row.appendChild(marker);
-            }
-
-            if (!readonly) {
-                const del = document.createElement('button');
-                del.type = 'button';
-                del.className = 'codeatelier-filedelete';
-                del.textContent = '×';
-                del.title = strings.deletefile || 'Delete file';
-                del.setAttribute('aria-label', (strings.deletefile || 'Delete file') + ': ' + file.name);
-                del.disabled = files().length <= 1 || isentry;
-                del.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    deleteFile(index);
-                });
-                row.appendChild(del);
-            }
-            filelist.appendChild(row);
-        });
+            node.files.slice().sort((a, b) => a.base.localeCompare(b.base)).forEach((f) => {
+                filelist.appendChild(buildFileRow(f.file, f.index, f.base, depth));
+            });
+        };
+        renderNode(root, 0, '');
     }
 
     const errorEl = document.createElement('span');
@@ -471,11 +538,16 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
     errorEl.setAttribute('role', 'alert');
 
     const addFile = () => {
+        // Seed the new file into the active file's folder, so "New file" inside
+        // src/ starts at src/. The author edits the full path in the rename.
+        const cur = files()[active];
+        const dir = cur ? String(cur.name).replace(/[^/]*$/, '') : '';
+        const taken = (candidate) => files().some((f) => f.name === candidate);
         let n = files().length + 1;
-        let name = 'file' + n;
-        while (files().some((f) => f.name === name)) {
+        let name = dir + 'file' + n;
+        while (taken(name)) {
             n++;
-            name = 'file' + n;
+            name = dir + 'file' + n;
         }
         const blank = author ? {name: name, starter: '', solution: ''} : {name: name, content: ''};
         files().push(blank);
@@ -483,14 +555,187 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
         renderFiles();
         mountActive();
         serialise();
-        // Drop straight into a rename so the author names the new file.
-        const last = rowEls()[active];
-        const label = last && last.querySelector('.codeatelier-filename-label');
+        // Drop straight into a rename so the author names the new file. The active
+        // row is found by class (tree order is not files() order).
+        const label = filelist.querySelector('.codeatelier-filerow-active .codeatelier-filename-label');
         if (label) {
             beginRename(label, active);
         }
     };
 
+    /**
+     * Small DOM builder (text/html/class attrs + children).
+     *
+     * @param {String} tag the element tag name
+     * @param {Object} attrs attributes; `text` and `html` set content, the rest are set as attributes
+     * @param {Array} children child nodes to append
+     * @returns {Element} the built element
+     */
+    const el = (tag, attrs, children) => {
+        const node = document.createElement(tag);
+        Object.keys(attrs || {}).forEach((k) => {
+            if (k === 'text') {
+                node.textContent = attrs[k];
+            } else if (k === 'class') {
+                node.className = attrs[k];
+            } else {
+                node.setAttribute(k, attrs[k]);
+            }
+        });
+        (children || []).forEach((c) => node.appendChild(c));
+        return node;
+    };
+
+    /**
+     * Add many files to the current env + current layer. Tree entries carry no
+     * content (empty files); content entries fill the active layer. Replace clears
+     * the env's files first. Returns the number of files added/updated.
+     *
+     * @param {Array<{name: String, content?: String}>} entries
+     * @param {Boolean} replace
+     * @return {Number}
+     */
+    const importFiles = (entries, replace) => {
+        const list = files();
+        if (replace) {
+            list.length = 0;
+        }
+        let added = 0;
+        entries.forEach((e) => {
+            const path = sanitisePath(e.name);
+            if (path === '') {
+                return;
+            }
+            let f = list.find((x) => x.name === path);
+            if (!f) {
+                f = author ? {name: path, starter: '', solution: ''} : {name: path, content: ''};
+                list.push(f);
+            }
+            if (typeof e.content === 'string') {
+                setLayerOf(f, e.content);
+            }
+            added++;
+        });
+        if (!list.length) {
+            // Never leave an env with no files.
+            list.push(author ? {name: 'main', starter: '', solution: ''} : {name: 'main', content: ''});
+        }
+        if (!env().entry || !list.some((f) => f.name === env().entry)) {
+            const main = list.find((f) => /(^|\/)(main|index|program)\.\w+$/i.test(f.name));
+            env().entry = (main || list[0]).name;
+        }
+        active = 0;
+        renderFiles();
+        mountActive();
+        serialise();
+        return added;
+    };
+
+    /**
+     * Build the import disclosure: a paste box that auto-detects a directory tree
+     * vs filename+code blocks, a pick-file input (.zip or text files), Add/Replace,
+     * inline examples, and a status line. Imports into the current env + layer.
+     *
+     * @param {Function} readPicked reads a File[] into [{name, content}]
+     * @return {HTMLElement} the <details> panel
+     */
+    function buildImportPanel(readPicked) {
+        const paste = el('textarea', {class: 'form-control codeatelier-import-paste', rows: '6',
+            spellcheck: 'false',
+            placeholder: strings.importplaceholder || 'Paste a directory tree, or filename + code blocks…'}, []);
+        const status = el('span', {class: 'codeatelier-import-status small', 'aria-live': 'polite'}, []);
+        const radio = (val, label, checked) => {
+            const r = el('input', {type: 'radio', name: 'caimp_' + currentLang, value: val}, []);
+            r.checked = checked;
+            return el('label', {class: 'codeatelier-import-mode'}, [r, el('span', {text: ' ' + label}, [])]);
+        };
+        const appendR = radio('append', strings.importadd || 'Add to files', true);
+        const replaceR = radio('replace', strings.importreplace || 'Replace all', false);
+        const isReplace = () => replaceR.querySelector('input').checked;
+
+        const apply = (entries, skipped) => {
+            const valid = entries.filter((e) => sanitisePath(e.name) !== '');
+            if (!valid.length) {
+                status.textContent = strings.importempty || 'Nothing recognised to import.';
+                return;
+            }
+            const n = importFiles(valid, isReplace());
+            let msg = (strings.importok || 'Imported {$a} file(s).').replace('{$a}', String(n));
+            if (skipped) {
+                msg += ' ' + (strings.importskipped || '{$a} line(s) skipped.').replace('{$a}', String(skipped));
+            }
+            status.textContent = msg;
+            paste.value = '';
+        };
+
+        const importBtn = el('button', {type: 'button', class: 'btn btn-primary btn-sm',
+            text: strings.importdo || 'Import'}, []);
+        importBtn.addEventListener('click', () => {
+            const text = paste.value;
+            if (text.trim() === '') {
+                status.textContent = strings.importempty || 'Nothing recognised to import.';
+                return;
+            }
+            if (detectPasteFormat(text) === 'files') {
+                apply(parseFilesWithContent(text), 0);
+            } else {
+                const r = parseTree(text);
+                apply(r.files.map((name) => ({name: name})), r.skipped);
+            }
+        });
+
+        const pick = el('input', {type: 'file', class: 'form-control form-control-sm codeatelier-import-pick',
+            accept: '.zip,.txt,.java,.cs,.py,.js,.mjs,.ts,.c,.cpp,.cc,.h,.hpp,.go,.rs,.php,.rb,.kt,.html,.css,.json,.xml,.md,.sql',
+            multiple: 'multiple'}, []);
+        pick.addEventListener('change', () => {
+            if (!pick.files || !pick.files.length) {
+                return;
+            }
+            status.textContent = strings.importreading || 'Reading…';
+            readPicked(Array.prototype.slice.call(pick.files)).then((entries) => {
+                apply(entries, 0);
+                pick.value = '';
+            }).catch((err) => {
+                status.textContent = String((err && err.message) || err);
+            });
+        });
+
+        const example = (label, sample) => {
+            const a = el('button', {type: 'button', class: 'btn btn-link btn-sm', text: label}, []);
+            a.addEventListener('click', () => {
+                paste.value = sample;
+                paste.focus();
+            });
+            return a;
+        };
+
+        return el('details', {class: 'codeatelier-import'}, [
+            el('summary', {text: strings.import || 'Import files…'}, []),
+            el('div', {class: 'codeatelier-import-body'}, [
+                el('p', {class: 'codeatelier-import-help small text-muted',
+                    text: strings.importhelp || 'Paste a directory tree (creates empty files) or filenames with '
+                        + 'code blocks (files with content); or pick / drop a .zip or files onto the file list. '
+                        + 'Everything imports into the current language.'}, []),
+                paste,
+                el('div', {class: 'codeatelier-import-examples'}, [
+                    el('span', {class: 'small text-muted', text: (strings.importexamples || 'Insert example:') + ' '}, []),
+                    example(strings.importextree || 'directory tree', EXAMPLE_TREE),
+                    example(strings.importexfiles || 'files with code', EXAMPLE_FILES),
+                ]),
+                el('div', {class: 'codeatelier-import-actions'}, [appendR, replaceR, importBtn,
+                    el('span', {class: 'codeatelier-import-or small text-muted',
+                        text: strings.importorpick || 'or pick:'}, []),
+                    pick, status]),
+            ]),
+        ]);
+    }
+
+    /**
+     * Remove a file from the current environment. The last remaining file and the
+     * entry file are never deleted — the environment must stay runnable.
+     *
+     * @param {Number} index position in the current environment's file list
+     */
     function deleteFile(index) {
         if (files().length <= 1 || env().entry === files()[index].name) {
             return;
@@ -554,6 +799,12 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
         toolbar.style.display = toolbar.children.length ? '' : 'none';
     };
 
+    /**
+     * Switch to another language's file environment, flushing the open editor
+     * into the model first so nothing typed is lost.
+     *
+     * @param {String} lang the language code to switch to
+     */
     function switchLanguage(lang) {
         if (lang === currentLang || !model.envs[lang]) {
             return;
@@ -568,6 +819,12 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
         mountActive();
     }
 
+    /**
+     * Switch between the Starter and Solution editing layers, flushing the open
+     * editor into the current layer first.
+     *
+     * @param {String} key either 'starter' or 'solution'
+     */
     function switchLayer(key) {
         if (key === layer) {
             return;
@@ -580,7 +837,95 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
         mountActive();
     }
 
-    // ---- explorer header (New file) -------------------------------------------
+    // ---- file reading + import panel (author only) ----------------------------
+    const readFileText = (file) => new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result || ''));
+        r.onerror = () => rej(r.error);
+        r.readAsText(file);
+    });
+    const readFileBuf = (file) => new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.onerror = () => rej(r.error);
+        r.readAsArrayBuffer(file);
+    });
+    const readPicked = async (fileList) => {
+        const out = [];
+        for (const file of fileList) {
+            if (/\.zip$/i.test(file.name)) {
+                (await unzip(await readFileBuf(file))).forEach((z) => out.push(z));
+            } else {
+                out.push({name: file.webkitRelativePath || file.name, content: await readFileText(file)});
+            }
+        }
+        return out;
+    };
+    // Walk a dropped directory entry (HTML5 file-system API) into {file, path}.
+    const walkEntry = (entry, prefix) => new Promise((res) => {
+        if (entry.isFile) {
+            entry.file((f) => res([{file: f, path: prefix + entry.name}]), () => res([]));
+        } else if (entry.isDirectory) {
+            const reader = entry.createReader();
+            const acc = [];
+            const batch = () => reader.readEntries((items) => {
+                if (!items.length) {
+                    Promise.all(acc.map((e) => walkEntry(e, prefix + entry.name + '/')))
+                        .then((arrs) => res([].concat.apply([], arrs)));
+                    return;
+                }
+                acc.push.apply(acc, items);
+                batch();
+            }, () => res([]));
+            batch();
+        } else {
+            res([]);
+        }
+    });
+    const readDataTransfer = async (dt) => {
+        const items = dt.items ? Array.prototype.slice.call(dt.items) : [];
+        const entries = items.map((it) => (it.webkitGetAsEntry ? it.webkitGetAsEntry() : null)).filter(Boolean);
+        if (entries.length) {
+            const arrs = await Promise.all(entries.map((e) => walkEntry(e, '')));
+            const out = [];
+            for (const it of [].concat.apply([], arrs)) {
+                if (/\.zip$/i.test(it.file.name)) {
+                    (await unzip(await readFileBuf(it.file))).forEach((z) => out.push(z));
+                } else {
+                    out.push({name: it.path, content: await readFileText(it.file)});
+                }
+            }
+            return out;
+        }
+        return readPicked(Array.prototype.slice.call(dt.files || []));
+    };
+
+    let importPanel = null;
+    if (author) {
+        importPanel = buildImportPanel(readPicked);
+        // Mount the panel above the workspace box rather than inside it: the box is
+        // `overflow: hidden` (for its rounded two-pane frame), which would clip the
+        // panel's lower controls (the file picker, status) once the disclosure opens.
+        wrap.parentNode.insertBefore(importPanel, wrap);
+        // The explorer is a drop target: drop files / a folder / a .zip onto the tree.
+        explorer.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            explorer.classList.add('codeatelier-dropping');
+        });
+        explorer.addEventListener('dragleave', () => explorer.classList.remove('codeatelier-dropping'));
+        explorer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            explorer.classList.remove('codeatelier-dropping');
+            readDataTransfer(e.dataTransfer).then((entries) => {
+                const valid = entries.filter((x) => sanitisePath(x.name) !== '');
+                if (valid.length) {
+                    importFiles(valid, false);
+                }
+            }).catch(() => {});
+        });
+    }
+
+    // ---- explorer header (New file + Import) ----------------------------------
     if (!readonly) {
         const head = document.createElement('div');
         head.className = 'codeatelier-explorer-head';
@@ -590,6 +935,21 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
         add.textContent = strings.addfile || 'New file';
         add.addEventListener('click', addFile);
         head.appendChild(add);
+        if (author && importPanel) {
+            const imp = document.createElement('button');
+            imp.type = 'button';
+            imp.className = 'btn btn-link btn-sm codeatelier-import-open';
+            imp.textContent = strings.import || 'Import…';
+            imp.addEventListener('click', () => {
+                importPanel.open = true;
+                importPanel.scrollIntoView({block: 'nearest'});
+                const ta = importPanel.querySelector('.codeatelier-import-paste');
+                if (ta) {
+                    ta.focus();
+                }
+            });
+            head.appendChild(imp);
+        }
         explorer.appendChild(head);
     }
     explorer.appendChild(filelist);
@@ -622,6 +982,9 @@ export const setup = (root, backingTa, config, strings, onChange, getTheme) => {
         destroy: () => {
             if (cm && cm.destroy) {
                 cm.destroy();
+            }
+            if (importPanel && importPanel.parentNode) {
+                importPanel.parentNode.removeChild(importPanel);
             }
             if (wrap.parentNode) {
                 wrap.parentNode.removeChild(wrap);

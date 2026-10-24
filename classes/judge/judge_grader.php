@@ -80,7 +80,8 @@ class judge_grader {
         string $signature = '',
         string $entryfile = '',
         string $checkersource = '',
-        string $checkerlang = ''
+        string $checkerlang = '',
+        array $datafiles = []
     ): array {
         $tests = array_values($tests);
         $issql = ($language === 'sql');
@@ -118,7 +119,8 @@ class judge_grader {
             $zip = project_packager::package(
                 $language,
                 project_packager::decode_files($code),
-                $entryfile
+                $entryfile,
+                $datafiles
             );
             $runresults = $this->runner->run_multifile($zip, $cases);
         } else {
@@ -318,7 +320,8 @@ class judge_grader {
         string $scenario = 'stdinstdout',
         string $entrypoint = '',
         string $signature = '',
-        string $entryfile = ''
+        string $entryfile = '',
+        array $datafiles = []
     ): array {
         $tests = array_values($tests);
         $issql = ($language === 'sql');
@@ -345,7 +348,8 @@ class judge_grader {
             $zip = project_packager::package(
                 $language,
                 project_packager::decode_files($code),
-                $entryfile
+                $entryfile,
+                $datafiles
             );
             $runresults = $this->runner->run_multifile($zip, $cases);
         } else {
@@ -406,7 +410,8 @@ class judge_grader {
         string $signature,
         string $schemasql,
         string $input,
-        string $entryfile = ''
+        string $entryfile = '',
+        array $datafiles = []
     ): array {
         $isfunction = ($scenario === 'function');
         $isproject = ($scenario === 'project');
@@ -424,7 +429,8 @@ class judge_grader {
             $zip = project_packager::package(
                 $language,
                 project_packager::decode_files($code),
-                $entryfile
+                $entryfile,
+                $datafiles
             );
             $results = $this->runner->run_multifile($zip, [$case]);
         } else {

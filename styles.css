@@ -519,6 +519,88 @@
     cursor: pointer;
 }
 
+/* Folder rows in the project explorer tree (folders are derived from file paths). */
+.codeatelier-folderrow {
+    list-style: none;
+    padding: 0.05rem 0.15rem;
+}
+
+.codeatelier-folder-toggle {
+    border: 0;
+    background: transparent;
+    color: var(--ca-text-muted, #5c6770);
+    padding: 0.2rem 0.3rem;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    width: 100%;
+}
+
+/* The explorer as a drop target while dragging files/a folder onto it. */
+.codeatelier-project-explorer.codeatelier-dropping {
+    outline: 2px dashed var(--ca-focus, #0f6cbf);
+    outline-offset: -3px;
+    background: var(--ca-surface-muted, #f8f9fa);
+}
+
+/* Import disclosure: a full-width panel under the toolbar, matching the explorer. */
+.codeatelier-import {
+    margin: 0 0 0.5rem;
+    border: 1px solid var(--ca-border-soft, #e0e3e7);
+    border-radius: 0.35rem;
+    background: var(--ca-surface-muted, #f8f9fa);
+}
+
+.codeatelier-import > summary {
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ca-text, #1f2933);
+}
+
+.codeatelier-import-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0 0.6rem 0.6rem;
+}
+
+.codeatelier-import-paste {
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.82rem;
+}
+
+.codeatelier-import-examples,
+.codeatelier-import-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.codeatelier-import-mode {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    margin: 0;
+    font-size: 0.82rem;
+}
+
+.codeatelier-import-pick {
+    max-width: 16rem;
+}
+
+.codeatelier-import-status {
+    color: var(--ca-text-muted, #5c6770);
+}
+
+.codeatelier-import-open {
+    margin-left: auto;
+}
+
 .codeatelier-filename-label {
     overflow: hidden;
     text-overflow: ellipsis;

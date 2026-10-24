@@ -242,12 +242,37 @@ final class backup_test extends \advanced_testcase {
         $qgen = $generator->get_plugin_generator('core_question');
         $cat = $qgen->create_question_category(['contextid' => $context->id]);
         $projectfiles = json_encode([
-            ['name' => 'main.cpp', 'content' => "#include \"helper.h\"\nint main(){}\n"],
-            ['name' => 'helper.h', 'content' => "int add(int,int);\n"],
+            'version' => 2,
+            'envs' => [
+                'cpp' => [
+                    'entry' => 'main.cpp',
+                    'files' => [
+                        [
+                            'name' => 'main.cpp',
+                            'starter' => "#include <iostream>\n#include \"helper.h\"\n"
+                                . "int main() {\n    int a, b;\n    std::cin >> a >> b;\n"
+                                . "    // TODO: print the sum\n    return 0;\n}\n",
+                            'solution' => "#include <iostream>\n#include \"helper.h\"\n"
+                                . "int main() {\n    int a, b;\n    std::cin >> a >> b;\n"
+                                . "    std::cout << add(a, b) << std::endl;\n    return 0;\n}\n",
+                        ],
+                        [
+                            'name' => 'helper.h',
+                            'starter' => "#pragma once\nint add(int a, int b);\n",
+                            'solution' => "#pragma once\nint add(int a, int b);\n",
+                        ],
+                        [
+                            'name' => 'helper.cpp',
+                            'starter' => "#include \"helper.h\"\nint add(int a, int b) {\n    return 0;\n}\n",
+                            'solution' => "#include \"helper.h\"\nint add(int a, int b) {\n    return a + b;\n}\n",
+                        ],
+                    ],
+                ],
+            ],
         ]);
         $qgen->create_question('codeatelier', 'judge', [
                 'category' => $cat->id, 'scenario' => 'project', 'language' => 'cpp',
-                'projectfiles' => $projectfiles, 'entryfile' => 'main.cpp']);
+                'projectfiles' => $projectfiles]);
 
         $bc = new backup_controller(
             backup::TYPE_1COURSE,
@@ -278,9 +303,14 @@ final class backup_test extends \advanced_testcase {
         $restored = $this->find_restored_options($newcontext->id);
         $this->assertNotNull($restored);
         $this->assertEquals('project', $restored->scenario);
-        $this->assertEquals('main.cpp', $restored->entryfile);
-        $files = \qtype_codeatelier\judge\project_packager::decode_files($restored->projectfiles);
-        $this->assertSame(['main.cpp', 'helper.h'], array_keys($files));
+        // The scalar column stays null for projects; the entry rides in the blob.
+        $this->assertNull($restored->entryfile);
+        $envs = \qtype_codeatelier\judge\project_packager::decode_envs($restored->projectfiles);
+        $this->assertSame('main.cpp', $envs['cpp']['entry']);
+        $starters = \qtype_codeatelier\judge\project_packager::starter_files($envs['cpp']);
+        $this->assertSame(['main.cpp', 'helper.h', 'helper.cpp'], array_keys($starters));
+        $solutions = \qtype_codeatelier\judge\project_packager::reference_files($envs['cpp']);
+        $this->assertStringContainsString('return a + b;', $solutions['helper.cpp']);
     }
 
     /**

@@ -140,7 +140,7 @@ class grade_pending extends \core\task\scheduled_task {
      * @param \question_usage_by_activity $quba the regraded usage
      */
     private function update_quiz_grade(int $qubaid, \question_usage_by_activity $quba): void {
-        global $DB, $CFG;
+        global $DB;
 
         $attempt = $DB->get_record('quiz_attempts', ['uniqueid' => $qubaid]);
         if (!$attempt) {
@@ -149,10 +149,15 @@ class grade_pending extends \core\task\scheduled_task {
         $attempt->sumgrades = $quba->get_total_mark();
         $DB->update_record('quiz_attempts', $attempt);
 
-        $quiz = $DB->get_record('quiz', ['id' => $attempt->quiz]);
-        if ($quiz) {
-            require_once($CFG->dirroot . '/mod/quiz/locallib.php');
-            quiz_save_best_grade($quiz, $attempt->userid);
+        if (!$DB->record_exists('quiz', ['id' => $attempt->quiz])) {
+            return;
         }
+        // The gradebook write must go through the quiz grade calculator. The old
+        // quiz_save_best_grade() global was removed in Moodle 5, where calling it
+        // threw and left the attempt total updated but no quiz_grades row and an
+        // empty gradebook - the grade appeared in the attempt and nowhere else.
+        \mod_quiz\quiz_settings::create($attempt->quiz)
+            ->get_grade_calculator()
+            ->recompute_final_grade((int) $attempt->userid);
     }
 }

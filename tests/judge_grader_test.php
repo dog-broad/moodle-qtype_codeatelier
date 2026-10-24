@@ -420,18 +420,29 @@ final class judge_grader_test extends \advanced_testcase {
         $withdataset = [(object) ['input' => '', 'expected' => '[[1]]', 'matchmode' => 'resultset',
             'tolerance' => null, 'weight' => 1, 'visibility' => 1, 'checkerquery' => null,
             'datasetsql' => 'CREATE TABLE perTest(a INT); INSERT INTO perTest VALUES (1);']];
-        (new judge_grader($runner))->grade('SELECT a FROM perTest', 'sql', $withdataset,
-            'CREATE TABLE questionSchema(x INT);');
+        (new judge_grader($runner))->grade(
+            'SELECT a FROM perTest',
+            'sql',
+            $withdataset,
+            'CREATE TABLE questionSchema(x INT);'
+        );
         $source = $runner->last_cases()[0]['source'];
         $this->assertStringContainsString('perTest', $source, 'uses the per-test dataset');
         $this->assertStringNotContainsString('questionSchema', $source, 'replaces the question schema');
 
         // No dataset: the question schema is used.
         $nodataset = $this->sql_test('[[1]]', 'resultset');
-        (new judge_grader($runner))->grade('SELECT a FROM t', 'sql', $nodataset,
-            'CREATE TABLE questionSchema(x INT);');
-        $this->assertStringContainsString('questionSchema', $runner->last_cases()[0]['source'],
-            'falls back to the question schema when the test has no dataset');
+        (new judge_grader($runner))->grade(
+            'SELECT a FROM t',
+            'sql',
+            $nodataset,
+            'CREATE TABLE questionSchema(x INT);'
+        );
+        $this->assertStringContainsString(
+            'questionSchema',
+            $runner->last_cases()[0]['source'],
+            'falls back to the question schema when the test has no dataset'
+        );
     }
 
     public function test_parse_csv_rows_types_cells(): void {
@@ -447,7 +458,7 @@ final class judge_grader_test extends \advanced_testcase {
     }
 
     public function test_parse_csv_result_splits_header(): void {
-        // .headers on output: first line = column names, rest = typed data rows.
+        // With .headers on: first line = column names, rest = typed data rows.
         $result = judge_grader::parse_csv_result("name,total\nalice,5\nbob,\n");
         $this->assertSame(['name', 'total'], $result['columns']);
         $this->assertSame([['alice', 5], ['bob', null]], $result['rows']);

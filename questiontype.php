@@ -123,7 +123,10 @@ class qtype_codeatelier extends question_type {
                 }
             }
         }
-        $question->starters = $starters ? json_encode($starters) : null;
+        // Project and web questions author per-language starters in the file workspace,
+        // not the single-file per-language starter map, so that field stays empty.
+        $isfileset = in_array($question->scenario ?? '', ['project', 'web'], true);
+        $question->starters = (!$isfileset && $starters) ? json_encode($starters) : null;
 
         // The reference solution is a single-file scalar for function/stdin questions.
         // A project's reference lives in the workspace Solution layer (inside the
@@ -142,6 +145,16 @@ class qtype_codeatelier extends question_type {
         // when the blob/file set is blank.
         $pf = isset($question->projectfiles) ? trim((string) $question->projectfiles) : '';
         $question->projectfiles = ($pf !== '' && $pf !== '[]' && $pf !== '{}') ? $pf : null;
+        // A flat pre-workspace blob carries no per-language entry, so nothing could
+        // resolve a run target and the question would grade against nothing. Reject it
+        // here (the import and restore paths land here too) rather than store a
+        // question that silently cannot run.
+        if (
+            $scenario === 'project' && $question->projectfiles !== null
+                && !\qtype_codeatelier\judge\project_packager::is_env_blob($question->projectfiles)
+        ) {
+            throw new \moodle_exception('projectflatblob', 'qtype_codeatelier');
+        }
         $question->entryfile = ($scenario !== 'project'
                 && isset($question->entryfile) && trim((string) $question->entryfile) !== '')
                 ? (string) $question->entryfile : null;
@@ -173,9 +186,11 @@ class qtype_codeatelier extends question_type {
         // insert/update/delete path is reused unchanged.
         if (isset($question->testcasesjson)) {
             $decoded = json_decode((string) $question->testcasesjson, true);
-            foreach (['testinput', 'testexpected', 'matchmode', 'tolerance', 'testweight',
+            foreach (
+                ['testinput', 'testexpected', 'matchmode', 'tolerance', 'testweight',
                     'testvisibility', 'checkerquery', 'testdatasetsql', 'testfeedback', 'selector',
-                    'assertproperty', 'assertmatcher', 'actions', 'assertionjson', 'subtask'] as $arrayfield) {
+                    'assertproperty', 'assertmatcher', 'actions', 'assertionjson', 'subtask'] as $arrayfield
+            ) {
                 $question->$arrayfield = [];
             }
             foreach (is_array($decoded) ? $decoded : [] as $test) {
@@ -583,6 +598,20 @@ class qtype_codeatelier extends question_type {
             'entryis' => 'projectentryis',
             'setentry' => 'projectsetentry',
             'servedpage' => 'projectservedpage',
+            'import' => 'projectimport',
+            'importplaceholder' => 'projectimportplaceholder',
+            'importhelp' => 'projectimporthelp',
+            'importadd' => 'projectimportadd',
+            'importreplace' => 'projectimportreplace',
+            'importdo' => 'projectimportdo',
+            'importexamples' => 'projectimportexamples',
+            'importextree' => 'projectimportextree',
+            'importexfiles' => 'projectimportexfiles',
+            'importorpick' => 'projectimportorpick',
+            'importok' => 'projectimportok',
+            'importskipped' => 'projectimportskipped',
+            'importempty' => 'projectimportempty',
+            'importreading' => 'projectimportreading',
         ];
         $strings = [];
         foreach ($keys as $jskey => $stringid) {

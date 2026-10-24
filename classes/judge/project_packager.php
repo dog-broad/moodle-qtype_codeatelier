@@ -84,6 +84,27 @@ class project_packager {
     }
 
     /**
+     * Whether a projectfiles blob is in the language-keyed workspace format
+     * (`{envs: {...}}`) rather than the flat `[{name, content}]` array that
+     * predates the workspace.
+     *
+     * The distinction is load-bearing: a project's run entry lives per-language
+     * inside the envs blob, so a flat blob has no entry to resolve and cannot be
+     * graded. Callers reject rather than guess.
+     *
+     * @param string $json the projectfiles blob
+     * @return bool true if the blob carries an envs map
+     */
+    public static function is_env_blob(string $json): bool {
+        $json = trim($json);
+        if ($json === '') {
+            return false;
+        }
+        $decoded = json_decode($json, true);
+        return is_array($decoded) && isset($decoded['envs']) && is_array($decoded['envs']);
+    }
+
+    /**
      * Decode the language-keyed project workspace blob
      * `{envs: {<lang>: {entry, files: [{name, starter, solution}]}}}` into a map
      * `[lang => ['entry' => string, 'files' => [name => ['starter','solution']]]]`,
@@ -159,14 +180,18 @@ class project_packager {
      * @param string $language a CodeAtelier language key (must be a project language)
      * @param array $files name => content of the project source files
      * @param string $entryfile the entry/main file name
+     * @param array $extrafiles optional support/data files (path => content) placed in
+     *     the working directory alongside the sources; source files win on a collision
      * @return string the base64-encoded ZIP archive
      * @throws \coding_exception if the language is not a project language
      */
-    public static function package(string $language, array $files, string $entryfile): string {
+    public static function package(string $language, array $files, string $entryfile, array $extrafiles = []): string {
         if (!self::supports($language)) {
             throw new \coding_exception("Unsupported project language: {$language}");
         }
-        $archive = $files + self::scripts($language, $entryfile);
+        // Support files first so the project sources + generated scripts override on
+        // the unlikely name collision.
+        $archive = $extrafiles + $files + self::scripts($language, $entryfile);
 
         $tmp = tempnam(sys_get_temp_dir(), 'caproj') . '.zip';
         $zip = new \ZipArchive();
@@ -195,20 +220,22 @@ class project_packager {
         switch ($language) {
             case 'c':
                 return [
-                    'compile' => "#!/bin/sh\ngcc -O2 -std=c11 *.c -o a.out\n",
+                    'compile' => "#!/bin/sh\ngcc -O2 -std=c11 " . self::find('c') . " -o a.out\n",
                     'run' => "#!/bin/sh\n./a.out\n",
                 ];
             case 'cpp':
                 return [
-                    'compile' => "#!/bin/sh\ng++ -O2 -std=c++17 *.cpp -o a.out\n",
+                    'compile' => "#!/bin/sh\ng++ -O2 -std=c++17 " . self::find('cpp', 'cc', 'cxx') . " -o a.out\n",
                     'run' => "#!/bin/sh\n./a.out\n",
                 ];
             case 'java':
-                // The main class is the entry file's basename without .java.
-                $mainclass = self::shell_arg(preg_replace('/\.java$/', '', $entryfile));
+                // Compile every .java (any subdir) into out/, then run the entry's
+                // fully-qualified class: the run script reads the entry's package
+                // declaration (default package -> the bare class name).
                 return [
-                    'compile' => "#!/bin/sh\njavac *.java\n",
-                    'run' => "#!/bin/sh\njava {$mainclass}\n",
+                    'compile' => "#!/bin/sh\nmkdir -p out\njavac -d out " . self::find('java') . "\n",
+                    'run' => "#!/bin/sh\n" . self::jvm_class_var($entryfile, '.java', false)
+                        . "java -cp out \"\$CLASS\"\n",
                 ];
             case 'python':
                 return [
@@ -221,11 +248,13 @@ class project_packager {
                     'run' => "#!/bin/sh\nnode {$entry}\n",
                 ];
             case 'go':
-                // Build every .go (all package main) into one binary; Go needs a
-                // writable cache/workspace in the box.
+                // Build every .go into one binary; Go needs a writable cache. A
+                // genuinely multi-package layout needs a module (out of scope) —
+                // flat or single-package-in-a-subdir works.
                 return [
                     'compile' => "#!/bin/sh\n" . self::path_prepend('go-*')
-                        . "export GOCACHE=\$(pwd)/.gocache GOPATH=\$(pwd)/.go\ngo build -o a.out *.go\n",
+                        . "export GOCACHE=\$(pwd)/.gocache GOPATH=\$(pwd)/.go\ngo build -o a.out "
+                        . self::find('go') . "\n",
                     'run' => "#!/bin/sh\n./a.out\n",
                 ];
             case 'rust':
@@ -240,27 +269,29 @@ class project_packager {
                     'run' => "#!/bin/sh\n" . self::path_prepend('php-*') . "php {$entry}\n",
                 ];
             case 'typescript':
-                // Compile every .ts to CommonJS, then run the entry's emitted .js.
+                // Compile every .ts to CommonJS, then run the entry's emitted .js
+                // (same path, .js extension).
                 $entryjs = self::shell_arg(preg_replace('/\.ts$/', '', $entryfile) . '.js');
                 return [
-                    'compile' => "#!/bin/sh\ntsc --module commonjs --target es2019 *.ts\n",
+                    'compile' => "#!/bin/sh\ntsc --module commonjs --target es2019 " . self::find('ts') . "\n",
                     'run' => "#!/bin/sh\nnode {$entryjs}\n",
                 ];
             case 'csharp':
-                // Mono: compile all .cs into one exe and run it.
+                // Mono: compile all .cs (any subdir) into one exe and run it.
                 return [
-                    'compile' => "#!/bin/sh\n" . self::path_prepend('mono-*') . "mcs -out:a.exe *.cs\n",
+                    'compile' => "#!/bin/sh\n" . self::path_prepend('mono-*')
+                        . "mcs -out:a.exe " . self::find('cs') . "\n",
                     'run' => "#!/bin/sh\n" . self::path_prepend('mono-*') . "mono a.exe\n",
                 ];
             case 'kotlin':
-                // The entry file's JVM class name is its basename (first letter
-                // upper-cased) plus "Kt", e.g. Main.kt -> MainKt.
-                $ktbase = preg_replace('/\.kt$/', '', $entryfile);
-                $ktclass = self::shell_arg(ucfirst($ktbase) . 'Kt');
+                // Compile every .kt into a jar, then run the entry's JVM class: its
+                // package (read at run time) plus the basename (first letter upper)
+                // plus "Kt" — Main.kt -> MainKt, app/Main.kt (package app) -> app.MainKt.
                 return [
                     'compile' => "#!/bin/sh\n" . self::path_prepend('kotlin-*')
-                        . "kotlinc *.kt -include-runtime -d a.jar\n",
-                    'run' => "#!/bin/sh\njava -cp a.jar {$ktclass}\n",
+                        . "kotlinc " . self::find('kt') . " -include-runtime -d a.jar\n",
+                    'run' => "#!/bin/sh\n" . self::jvm_class_var($entryfile, '.kt', true)
+                        . "java -cp a.jar \"\$CLASS\"\n",
                 ];
             case 'ruby':
                 return [
@@ -270,6 +301,45 @@ class project_packager {
             default:
                 throw new \coding_exception("Unsupported project language: {$language}");
         }
+    }
+
+    /**
+     * A `find` expression listing every source file of the given extension(s) in any
+     * subdirectory, so a nested project (e.g. src/Main.java) compiles. Unquoted so
+     * the shell word-splits the result into separate compiler arguments.
+     *
+     * @param string ...$exts one or more file extensions (without the dot)
+     * @return string the shell `$(find ...)` expression
+     */
+    protected static function find(string ...$exts): string {
+        $names = [];
+        foreach ($exts as $ext) {
+            $names[] = "-name '*." . $ext . "'";
+        }
+        $expr = count($names) > 1 ? '\( ' . implode(' -o ', $names) . ' \)' : $names[0];
+        return "\$(find . -type f {$expr})";
+    }
+
+    /**
+     * A shell snippet assigning $CLASS to the JVM class to run for a JVM-language
+     * entry file: its package declaration (read from the file at run time, default
+     * package if none) plus the entry basename. Kotlin upper-cases the basename's
+     * first letter and appends "Kt".
+     *
+     * @param string $entryfile the entry file path
+     * @param string $ext the source extension to strip ('.java' or '.kt')
+     * @param bool $kotlin whether to apply Kotlin's file-class naming
+     * @return string the shell snippet (ends with a newline)
+     */
+    protected static function jvm_class_var(string $entryfile, string $ext, bool $kotlin): string {
+        $base = preg_replace('/' . preg_quote($ext, '/') . '$/', '', basename($entryfile));
+        $classname = $kotlin ? ucfirst($base) . 'Kt' : $base;
+        $entry = self::shell_arg($entryfile);
+        $class = self::shell_arg($classname);
+        // Read a leading `package x.y;` (Java) / `package x.y` (Kotlin) from the entry.
+        return "PKG=\$(grep -m1 -E '^[[:space:]]*package[[:space:]]' {$entry} 2>/dev/null"
+            . " | sed -e 's/.*package[[:space:]]*//' -e 's/[[:space:]]*;.*//' -e 's/[[:space:]]//g');\n"
+            . "CLASS={$class}; [ -n \"\$PKG\" ] && CLASS=\"\$PKG.{$classname}\";\n";
     }
 
     /**

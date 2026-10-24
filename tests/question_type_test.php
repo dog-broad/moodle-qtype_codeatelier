@@ -409,8 +409,9 @@ final class question_type_test extends \advanced_testcase {
     }
 
     public function test_project_scenario_round_trips(): void {
-        // A multi-file project stores its scenario, entry file and the starter file
-        // set (canonical JSON) through save/load.
+        // A multi-file project stores its scenario and the language-keyed workspace
+        // blob through save/load. The scalar entryfile column stays null for projects:
+        // the run entry lives per-language inside the blob.
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -420,24 +421,94 @@ final class question_type_test extends \advanced_testcase {
         $qgen = $generator->get_plugin_generator('core_question');
         $cat = $qgen->create_question_category(['contextid' => $context->id]);
 
-        $projectfiles = json_encode([
-            ['name' => 'main.cpp', 'content' => "#include \"helper.h\"\nint main(){}\n"],
-            ['name' => 'helper.h', 'content' => "int add(int,int);\n"],
-        ]);
         $question = $qgen->create_question('codeatelier', 'judge', [
             'category' => $cat->id, 'scenario' => 'project', 'language' => 'cpp',
-            'projectfiles' => $projectfiles, 'entryfile' => 'main.cpp',
+            'projectfiles' => self::cpp_project_blob(),
         ]);
         $data = question_bank::load_question_data($question->id);
 
         $this->assertEquals('judge', $data->options->tier);
         $this->assertEquals('project', $data->options->scenario);
         $this->assertEquals('cpp', $data->options->language);
-        $this->assertEquals('main.cpp', $data->options->entryfile);
-        // The file set round-trips as the same canonical set.
-        $files = \qtype_codeatelier\judge\project_packager::decode_files($data->options->projectfiles);
-        $this->assertSame(['main.cpp', 'helper.h'], array_keys($files));
-        $this->assertStringContainsString('int add(int,int);', $files['helper.h']);
+        $this->assertNull($data->options->entryfile);
+
+        // The workspace blob round-trips, entry and both layers intact.
+        $envs = \qtype_codeatelier\judge\project_packager::decode_envs($data->options->projectfiles);
+        $this->assertSame(['cpp'], array_keys($envs));
+        $this->assertSame('main.cpp', $envs['cpp']['entry']);
+        $starters = \qtype_codeatelier\judge\project_packager::starter_files($envs['cpp']);
+        $this->assertSame(['main.cpp', 'helper.h', 'helper.cpp'], array_keys($starters));
+        $this->assertStringContainsString('int add(int a, int b);', $starters['helper.h']);
+        $solutions = \qtype_codeatelier\judge\project_packager::reference_files($envs['cpp']);
+        $this->assertStringContainsString('return a + b;', $solutions['helper.cpp']);
+
+        // The runtime resolves the entry from the blob, not the legacy column.
+        $runtime = question_bank::load_question($question->id);
+        $this->assertSame('main.cpp', $runtime->project_entry('cpp'));
+    }
+
+    public function test_project_flat_blob_is_rejected(): void {
+        // A pre-workspace flat file set records no entry, so nothing could resolve a
+        // run target. Saving one must fail loudly rather than store a question that
+        // silently cannot be graded (this is also the Moodle-XML import path).
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $context = \context_course::instance($course->id);
+        $qgen = $generator->get_plugin_generator('core_question');
+        $cat = $qgen->create_question_category(['contextid' => $context->id]);
+
+        $flat = json_encode([
+            ['name' => 'main.cpp', 'content' => "int main(){}\n"],
+            ['name' => 'helper.h', 'content' => "int add(int,int);\n"],
+        ]);
+
+        $this->expectException(\moodle_exception::class);
+        $qgen->create_question('codeatelier', 'judge', [
+            'category' => $cat->id, 'scenario' => 'project', 'language' => 'cpp',
+            'projectfiles' => $flat, 'entryfile' => 'main.cpp',
+        ]);
+    }
+
+    /**
+     * A realistic three-file C++ project as the language-keyed workspace blob:
+     * separate compilation across a header, its implementation and a main that
+     * reads stdin. Starter layer is stubbed; solution layer is complete.
+     *
+     * @return string the projectfiles JSON
+     */
+    protected static function cpp_project_blob(): string {
+        return json_encode([
+            'version' => 2,
+            'envs' => [
+                'cpp' => [
+                    'entry' => 'main.cpp',
+                    'files' => [
+                        [
+                            'name' => 'main.cpp',
+                            'starter' => "#include <iostream>\n#include \"helper.h\"\n"
+                                . "int main() {\n    int a, b;\n    std::cin >> a >> b;\n"
+                                . "    // TODO: print the sum\n    return 0;\n}\n",
+                            'solution' => "#include <iostream>\n#include \"helper.h\"\n"
+                                . "int main() {\n    int a, b;\n    std::cin >> a >> b;\n"
+                                . "    std::cout << add(a, b) << std::endl;\n    return 0;\n}\n",
+                        ],
+                        [
+                            'name' => 'helper.h',
+                            'starter' => "#pragma once\nint add(int a, int b);\n",
+                            'solution' => "#pragma once\nint add(int a, int b);\n",
+                        ],
+                        [
+                            'name' => 'helper.cpp',
+                            'starter' => "#include \"helper.h\"\nint add(int a, int b) {\n    return 0;\n}\n",
+                            'solution' => "#include \"helper.h\"\nint add(int a, int b) {\n    return a + b;\n}\n",
+                        ],
+                    ],
+                ],
+            ],
+        ]);
     }
 
     public function test_web_scenario_round_trips(): void {
